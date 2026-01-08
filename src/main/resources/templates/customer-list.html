@@ -14,19 +14,26 @@
                     <th>Email</th>
                     <th>Name</th>
                     <th>Registration Date</th>
+                    <th>Birth Date</th>
+                    <th>Phone Number</th>
+                    <th>Address</th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="customer : ${customers}">
                     <td th:text="${customer.email}">email</td>
                     <td th:text="${customer.name}">name</td>
-                    <td th:text="${customer.registrationDate}">date</td>
+                    <td th:text="${customer.registrationDate}">registration date</td>
+                    <td th:text="${customer.birthDate}">birth date</td>
+                    <td th:text="${customer.phoneNumber}">phone number</td>
+                    <td th:text="${customer.address}">address</td>
                 </tr>
             </tbody>
         </table>
-        <!-- 戻るボタン -->
+        <!-- ボタンエリア -->
         <div class="text-center mt-4">
             <a href="/" class="btn btn-primary">Back to Home</a>
+            <a href="/customers/input" class="btn btn-success">Add New Customer</a>
         </div>
     </div>
 

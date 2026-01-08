@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Confirm Registration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Confirm Registration</h1>
+        <table class="table table-bordered">
+            <tr>
+                <th>Email</th>
+                <td th:text="${customerForm.email}"></td>
+            </tr>
+            <tr>
+                <th>Password</th>
+                <td>******</td> <!-- パスワードはマスクして表示 -->
+            </tr>
+            <tr>
+                <th>Name</th>
+                <td th:text="${customerForm.name}"></td>
+            </tr>
+            <tr>
+                <th>Birth Date</th>
+                <td th:text="${customerForm.birthDate}"></td>
+            </tr>
+            <tr>
+                <th>Phone Number</th>
+                <td th:text="${customerForm.phoneNumber}"></td>
+            </tr>
+            <tr>
+                <th>Address</th>
+                <td th:text="${customerForm.address}"></td>
+            </tr>
+        </table>
+        <div class="text-center mt-4">
+            <div class="d-flex justify-content-center gap-3">
+                <form th:action="@{/customers/input}" th:object="${customerForm}" method="post">
+                    <input type="hidden" th:field="*{email}">
+                    <input type="hidden" th:field="*{name}">
+                    <input type="hidden" th:field="*{birthDate}">
+                    <input type="hidden" th:field="*{phoneNumber}">
+                    <input type="hidden" th:field="*{address}">
+                    <button type="submit" class="btn btn-secondary">Back</button>
+                </form>
+                <form th:action="@{/customers/register}" th:object="${customerForm}" method="post">
+                    <input type="hidden" th:field="*{email}">
+                    <input type="hidden" th:field="*{password}">
+                    <input type="hidden" th:field="*{confirmPassword}">
+                    <input type="hidden" th:field="*{name}">
+                    <input type="hidden" th:field="*{birthDate}">
+                    <input type="hidden" th:field="*{phoneNumber}">
+                    <input type="hidden" th:field="*{address}">
+                    <button type="submit" class="btn btn-success">Register</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
