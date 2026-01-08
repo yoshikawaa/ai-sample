@@ -10,4 +10,7 @@ public class Customer {
     private String password;
     private String name;
     private LocalDate registrationDate;
+    private LocalDate birthDate;
+    private String phoneNumber;
+    private String address;
 }

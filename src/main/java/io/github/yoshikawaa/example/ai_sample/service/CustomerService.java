@@ -1,7 +1,10 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
@@ -11,12 +14,33 @@ import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public CustomerService(CustomerRepository customerRepository) {
+    public CustomerService(CustomerRepository customerRepository, PasswordEncoder passwordEncoder) {
         this.customerRepository = customerRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<Customer> getAllCustomers() {
         return customerRepository.findAll();
+    }
+
+    public void registerCustomer(Customer customer) {
+        // 未成年チェック
+        if (isUnderage(customer.getBirthDate())) {
+            throw new IllegalArgumentException("未成年の登録はできません。");
+        }
+
+        // パスワードをハッシュ化
+        customer.setPassword(passwordEncoder.encode(customer.getPassword()));
+
+        // 顧客情報を登録
+        customerRepository.save(customer);
+    }
+
+    private boolean isUnderage(LocalDate birthDate) {
+        LocalDate today = LocalDate.now();
+        int age = Period.between(birthDate, today).getYears();
+        return age < 18; // 18歳未満を未成年とする
     }
 }
