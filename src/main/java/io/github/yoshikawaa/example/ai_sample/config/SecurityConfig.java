@@ -19,16 +19,19 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
-                .anyRequest().permitAll()
-//                .requestMatchers("/", "/customers/input", "/customers/confirm", "/customers/complete", "/customers").permitAll()
-//                .anyRequest().authenticated()
+                .requestMatchers("/", "/customers/**", "/login", "/error").permitAll() // ログイン不要の画面
+                .anyRequest().authenticated() // それ以外は認証が必要
             )
             .formLogin(form -> form
-                .loginPage("/login")
+                .loginPage("/login") // カスタムログイン画面
+                .defaultSuccessUrl("/mypage", true) // ログイン成功後の遷移先
+                .failureUrl("/login?error") // 認証失敗時のリダイレクト先
                 .permitAll()
             )
             .logout(logout -> logout
-                .logoutSuccessUrl("/")
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/") // ログアウト後の遷移先
+                .permitAll()
             );
         return http.build();
     }
