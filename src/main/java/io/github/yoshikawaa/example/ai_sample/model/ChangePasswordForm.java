@@ -8,6 +8,7 @@ import org.terasoluna.gfw.common.validator.constraints.Compare;
 
 @Data
 @Compare(left = "confirmPassword", right = "newPassword", operator = Compare.Operator.EQUAL, message = "新しいパスワードと確認用パスワードが一致しません。")
+@Compare(left = "newPassword", right = "currentPassword", operator = Compare.Operator.NOT_EQUAL, message = "新しいパスワードは現在のパスワードと異なる必要があります。")
 public class ChangePasswordForm {
 
     @NotBlank

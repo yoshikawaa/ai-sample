@@ -4,11 +4,14 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
 
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
+import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
 
 @Service
 public class CustomerService {
@@ -44,6 +47,13 @@ public class CustomerService {
 
         // パスワードを更新
         customerRepository.updatePassword(customer.getEmail(), hashedPassword);
+
+        // 認証情報を更新
+        customer.setPassword(hashedPassword);
+        CustomerUserDetails updatedUserDetails = new CustomerUserDetails(customer);
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken(updatedUserDetails, null, updatedUserDetails.getAuthorities())
+        );
     }
 
     private boolean isUnderage(LocalDate birthDate) {
