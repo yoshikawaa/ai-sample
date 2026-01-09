@@ -38,6 +38,14 @@ public class CustomerService {
         customerRepository.save(customer);
     }
 
+    public void changePassword(Customer customer, String newPassword) {
+        // 新しいパスワードをハッシュ化
+        String hashedPassword = passwordEncoder.encode(newPassword);
+
+        // パスワードを更新
+        customerRepository.updatePassword(customer.getEmail(), hashedPassword);
+    }
+
     private boolean isUnderage(LocalDate birthDate) {
         LocalDate today = LocalDate.now();
         int age = Period.between(birthDate, today).getYears();
