@@ -2,42 +2,42 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Customer List</title>
-    <!-- Bootstrap CSS の読み込み -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind CSS の読み込み -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container mt-5">
-        <h1 class="text-center mb-4">Customer List</h1>
-        <table class="table table-striped table-bordered">
-            <thead class="table-dark">
-                <tr>
-                    <th>Email</th>
-                    <th>Name</th>
-                    <th>Registration Date</th>
-                    <th>Birth Date</th>
-                    <th>Phone Number</th>
-                    <th>Address</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="customer : ${customers}">
-                    <td th:text="${customer.email}">email</td>
-                    <td th:text="${customer.name}">name</td>
-                    <td th:text="${customer.registrationDate}">registration date</td>
-                    <td th:text="${customer.birthDate}">birth date</td>
-                    <td th:text="${customer.phoneNumber}">phone number</td>
-                    <td th:text="${customer.address}">address</td>
-                </tr>
-            </tbody>
-        </table>
-        <!-- ボタンエリア -->
-        <div class="text-center mt-4">
-            <a href="/" class="btn btn-primary">Back to Home</a>
-            <a href="/customers/input" class="btn btn-success">Add New Customer</a>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center">
+    <div class="container mx-auto px-4">
+        <div class="bg-white shadow-md rounded-lg p-8">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Customer List</h1>
+            <div class="overflow-x-auto">
+                <table class="table-auto w-full border-collapse border border-gray-300">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Email</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Name</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Registration Date</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Birth Date</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Phone Number</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="customer : ${customers}" class="hover:bg-gray-100">
+                            <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.email}">email</td>
+                            <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.name}">name</td>
+                            <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.registrationDate}">registration date</td>
+                            <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.birthDate}">birth date</td>
+                            <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.phoneNumber}">phone number</td>
+                            <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.address}">address</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-center space-x-4 mt-6">
+                <a href="/" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Back to Home</a>
+                <a href="/customers/input" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add New Customer</a>
+            </div>
         </div>
     </div>
-
-    <!-- Bootstrap JavaScript の読み込み（オプション） -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
