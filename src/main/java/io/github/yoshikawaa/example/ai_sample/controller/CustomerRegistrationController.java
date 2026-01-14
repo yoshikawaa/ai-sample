@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.time.LocalDate;
 
 @Controller
+@RequestMapping("/customers")
 public class CustomerRegistrationController {
 
     private final CustomerService customerService;
@@ -30,12 +32,12 @@ public class CustomerRegistrationController {
     }
 
     // 入力画面の表示
-    @GetMapping("/customers/input")
+    @GetMapping("/input")
     public String showInputForm() {
         return "customer-input";
     }
 
-    @PostMapping("/customers/confirm")
+    @PostMapping("/confirm")
     public String showConfirmForm(@Validated CustomerForm customerForm,
                                    BindingResult bindingResult) {
         // バリデーションエラーがある場合、入力画面に戻る
@@ -46,13 +48,13 @@ public class CustomerRegistrationController {
         return "customer-confirm";
     }
     
-    @PostMapping("/customers/input")
+    @PostMapping("/input")
     public String handleBackToInput(CustomerForm customerForm) {
         return "customer-input";
     }
     
     // 登録処理
-    @PostMapping("/customers/register")
+    @PostMapping("/register")
     public String registerCustomer(@Validated CustomerForm customerForm,
                                    BindingResult bindingResult) {
         // バリデーションエラーがある場合、入力画面に戻る
@@ -77,7 +79,7 @@ public class CustomerRegistrationController {
     }
 
     // 完了画面の表示
-    @GetMapping("/customers/complete")
+    @GetMapping("/complete")
     public String showCompletePage() {
         return "customer-complete";
     }
