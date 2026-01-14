@@ -5,7 +5,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 
 @Service
@@ -19,8 +18,8 @@ public class CustomerUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Customer customer = customerRepository.findByEmail(username)
+        return customerRepository.findByEmail(username)
+                .map(CustomerUserDetails::new)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        return new CustomerUserDetails(customer);
     }
 }
