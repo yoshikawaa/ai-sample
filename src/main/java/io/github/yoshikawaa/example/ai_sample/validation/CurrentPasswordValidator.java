@@ -1,12 +1,13 @@
 package io.github.yoshikawaa.example.ai_sample.validation;
 
-import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import jakarta.validation.ConstraintValidator;
-import jakarta.validation.ConstraintValidatorContext;
+import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
 
 @Component
 public class CurrentPasswordValidator implements ConstraintValidator<CurrentPassword, String> {
@@ -25,12 +26,17 @@ public class CurrentPasswordValidator implements ConstraintValidator<CurrentPass
         }
 
         // 現在の認証情報を取得
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return false; // 認証情報が取得できない場合は無効
+        }
+
+        Object principal = authentication.getPrincipal();
         if (principal instanceof CustomerUserDetails userDetails) {
             String currentPasswordHash = userDetails.getPassword();
             return passwordEncoder.matches(value, currentPasswordHash);
         }
 
-        return false; // 認証情報が取得できない場合は無効
+        return false; // 認証情報が CustomerUserDetails でない場合は無効
     }
 }
