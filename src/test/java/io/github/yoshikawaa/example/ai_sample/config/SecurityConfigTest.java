@@ -4,6 +4,7 @@ import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("SecurityConfig のテスト")
 class SecurityConfigTest {
 
     @Autowired
@@ -56,6 +58,7 @@ class SecurityConfigTest {
     }
 
     @Test
+    @DisplayName("testLoginSuccess: ログインが成功する")
     void testLoginSuccess() throws Exception {
         // ログイン成功のテスト
         mockMvc.perform(formLogin("/login").user("test@example.com").password("password123")) // 正しい資格情報でログイン
@@ -64,6 +67,7 @@ class SecurityConfigTest {
     }
 
     @Test
+    @DisplayName("testLoginFailure: ログインが失敗する")
     void testLoginFailure() throws Exception {
         // ログイン失敗のテスト
         mockMvc.perform(formLogin("/login").user("invalid@example.com").password("wrongPassword")) // 無効な資格情報でログイン
@@ -72,6 +76,7 @@ class SecurityConfigTest {
     }
 
     @Test
+    @DisplayName("testAccessProtectedResource: 認証済みユーザーは保護されたリソースにアクセスできる")
     @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
     void testAccessProtectedResource() throws Exception {
         // 認証済みユーザーが保護されたリソースにアクセスできることを確認
@@ -80,6 +85,7 @@ class SecurityConfigTest {
     }
 
     @Test
+    @DisplayName("testAccessProtectedResourceWithoutAuthentication: 未認証ユーザーはログインページにリダイレクトされる")
     @WithAnonymousUser // 未認証ユーザーを明示的にシミュレート
     void testAccessProtectedResourceWithoutAuthentication() throws Exception {
         // 未認証ユーザーが保護されたリソースにアクセスできないことを確認
@@ -89,6 +95,7 @@ class SecurityConfigTest {
     }
 
     @Test
+    @DisplayName("testLogout: ログアウトが成功する")
     @WithMockUser // モックユーザーで認証済みの状態をシミュレート
     void testLogout() throws Exception {
         // ログアウトのテスト

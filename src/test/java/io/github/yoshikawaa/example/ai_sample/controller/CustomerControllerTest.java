@@ -1,5 +1,6 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(CustomerController.class)
 @Import(SecurityConfig.class) // セキュリティ設定をインポート
+@DisplayName("CustomerController のテスト")
 class CustomerControllerTest {
 
     @Autowired
@@ -29,6 +31,7 @@ class CustomerControllerTest {
     private CustomerService customerService;
 
     @Test
+    @DisplayName("GET /customers: 顧客一覧を表示する")
     void testShowCustomers() throws Exception {
         // モックの動作を定義
         Customer customer1 = new Customer(

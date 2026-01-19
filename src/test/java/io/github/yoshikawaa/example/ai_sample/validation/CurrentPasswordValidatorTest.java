@@ -7,6 +7,7 @@ import jakarta.validation.Validator;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
+@DisplayName("CurrentPasswordValidator のテスト")
 class CurrentPasswordValidatorTest {
 
     @Autowired
@@ -37,6 +39,7 @@ class CurrentPasswordValidatorTest {
     }
 
     @Test
+    @DisplayName("testBlankCurrentPassword: 空のパスワードは有効とみなされる")
     void testBlankCurrentPassword() {
         // 現在のパスワードが空
         form.setCurrentPassword("");
@@ -48,6 +51,7 @@ class CurrentPasswordValidatorTest {
     }
     
     @Test
+    @DisplayName("testNullCurrentPassword: nullのパスワードは有効とみなされる")
     void testNullCurrentPassword() {
         // 現在のパスワードが null
         form.setCurrentPassword(null);
@@ -59,6 +63,7 @@ class CurrentPasswordValidatorTest {
     }
 
     @Test
+    @DisplayName("testNoAuthentication: 認証情報がない場合はバリデーションエラー")
     void testNoAuthentication() {
         // SecurityContext に認証情報が設定されていない場合
         SecurityContextHolder.clearContext(); // SecurityContext をクリア
@@ -74,6 +79,7 @@ class CurrentPasswordValidatorTest {
     }
 
     @Test
+    @DisplayName("testNoPrincipal: Principalがnullの場合はバリデーションエラー")
     void testNoPrincipal() {
         // SecurityContext に認証情報があるが、Principal が null の場合
         SecurityContext securityContext = Mockito.mock(SecurityContext.class);
@@ -93,6 +99,7 @@ class CurrentPasswordValidatorTest {
     }
 
     @Test
+    @DisplayName("testPrincipalNotCustomerUserDetails: PrincipalがCustomerUserDetails型でない場合はエラー")
     void testPrincipalNotCustomerUserDetails() {
         // SecurityContext に認証情報があるが、Principal が CustomerUserDetails 型でない場合
         Object invalidPrincipal = "InvalidPrincipal"; // CustomerUserDetails 型ではないオブジェクト
@@ -114,6 +121,7 @@ class CurrentPasswordValidatorTest {
     }
 
     @Test
+    @DisplayName("testInvalidCurrentPassword: 現在のパスワードが間違っている場合はエラー")
     void testInvalidCurrentPassword() {
         // モックの認証情報を設定
         CustomerUserDetails userDetails = Mockito.mock(CustomerUserDetails.class);
@@ -138,6 +146,7 @@ class CurrentPasswordValidatorTest {
     }
 
     @Test
+    @DisplayName("testValidCurrentPassword: 正しいパスワードの場合はバリデーション成功")
     void testValidCurrentPassword() {
         // モックの認証情報を設定
         CustomerUserDetails userDetails = Mockito.mock(CustomerUserDetails.class);

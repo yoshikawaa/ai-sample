@@ -19,7 +19,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/", "/customers/**", "/login", "/error").permitAll() // ログイン不要の画面
+                .requestMatchers("/", "/customers/**", "/login", "/password-reset/**", "/error").permitAll() // ログイン不要の画面
                 .anyRequest().authenticated() // それ以外は認証が必要
             )
             .formLogin(form -> form

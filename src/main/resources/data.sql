@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS password_reset_tokens;
 DROP TABLE IF EXISTS customer;
 
 CREATE TABLE customer (
@@ -8,6 +9,14 @@ CREATE TABLE customer (
     birth_date DATE,
     phone_number VARCHAR(20),
     address VARCHAR(255)
+);
+
+CREATE TABLE password_reset_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    reset_token VARCHAR(255) NOT NULL,
+    token_expiry BIGINT NOT NULL,
+    FOREIGN KEY (email) REFERENCES customer(email) ON DELETE CASCADE
 );
 
 INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address) VALUES
