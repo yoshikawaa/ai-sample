@@ -19,8 +19,8 @@ spring:
     password: password
     protocol: smtp
     properties:
-      mail.smtp.auth: false
-      mail.smtp.starttls.enable: false
+      "[mail.smtp.auth]": false
+      "[mail.smtp.starttls.enable]": false
     default-encoding: UTF-8
   thymeleaf:
     cache: false

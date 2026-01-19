@@ -81,6 +81,7 @@ public class GreenMailConfig {
 - カスタムプロパティには必ず `app.` プレフィックスを付ける
 - `@Profile` より `@ConditionalOnProperty` を優先使用
 - `matchIfMissing = true` でデフォルト動作を明示
+- カスタムプロパティは `META-INF/additional-spring-configuration-metadata.json` にメタデータを追加し、IDEでの補完とドキュメント表示を可能にする
 
 ### 2. リポジトリ層（MyBatis）
 
@@ -111,7 +112,46 @@ public interface CustomerRepository {
 - 複数行SQLはテキストブロック（`"""`）を使用
 - 複数パラメータの場合は `@Param` を使用
 
-### 3. サービス層
+### 3. インポートとコードスタイル
+
+#### インポート規約
+```java
+// ✅ 推奨: 具体的なインポート
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+// ❌ 禁止: ワイルドカードインポート
+import org.springframework.web.bind.annotation.*;
+```
+
+**重要**:
+- ワイルドカードインポート（`import ....*;`）は使用しない
+- 未使用のインポートは削除する
+- IDEの自動インポート機能を活用
+
+#### YAML設定ファイル
+```yaml
+# ✅ 推奨: 特殊文字を含むキーは角括弧で囲む
+spring:
+  mail:
+    properties:
+      "[mail.smtp.auth]": false
+      "[mail.smtp.starttls.enable]": false
+
+# ❌ 非推奨: 特殊文字をそのまま使用
+spring:
+  mail:
+    properties:
+      mail.smtp.auth: false  # 警告が出る
+```
+
+**重要**:
+- ドット（`.`）やハイフン（`-`）を含むキーは `"[key.name]"` で囲む
+- Spring Boot は両方の形式をサポートするが、警告を避けるため角括弧を使用
+
+### 4. サービス層
 
 #### 認証情報の更新
 ```java
@@ -130,7 +170,7 @@ public void updateCustomerInfo(Customer customer) {
 - 顧客情報更新時は必ず `SecurityContextHolder` も更新
 - トランザクション管理が必要な場合は `@Transactional` を付与
 
-### 4. コントローラ層
+### 5. コントローラ層
 
 #### フォームバリデーション
 ```java
@@ -152,7 +192,7 @@ public String updateCustomer(@AuthenticationPrincipal CustomerUserDetails userDe
 - バリデーションエラー時は入力画面を再表示
 - 成功時は PRG パターン（Post-Redirect-Get）を使用
 
-### 5. モデルクラス
+### 6. モデルクラス
 
 #### フォームクラス
 ```java
@@ -188,7 +228,7 @@ public class CustomerForm {
 }
 ```
 
-### 6. テンプレート（Thymeleaf）
+### 7. テンプレート（Thymeleaf）
 
 #### 基本構成
 ```html
@@ -246,12 +286,12 @@ public class CustomerForm {
     <input type="text" th:field="*{name}" readonly>
 </form>
 <!-- Backボタン: 入力画面へ戻る（hiddenフィールドで値を保持） -->
-<form th:action="@{/mypage/edit}" method="post">
+<form th:action="@{/mypage/edit}" th:object="${customerEditForm}" method="post">
     <input type="hidden" th:field="*{name}">
     <button type="submit">Back</button>
 </form>
 <!-- 登録/更新ボタン: 実行処理へ -->
-<form th:action="@{/mypage/update}" method="post">
+<form th:action="@{/mypage/update}" th:object="${customerEditForm}" method="post">
     <input type="hidden" th:field="*{name}">
     <button type="submit">Update</button>
 </form>
@@ -261,6 +301,9 @@ public class CustomerForm {
 - 入力→確認→完了の3画面フロー
 - 確認画面からBackボタンで入力画面に戻れる
 - hiddenフィールドで入力値を保持
+- 同じオブジェクトを複数の画面で使い回す場合は、各要素（`<form>`、`<div>`等）に `th:object="${objectName}"` を指定し、フィールドは `th:field="*{fieldName}"` でバインディング
+- `th:object` はフォームに限らず任意のHTML要素で使用可能
+- `th:object` を指定することで、Backボタンや確認画面でもバインディングが正しく機能する
 
 #### 完了画面
 ```html
@@ -430,6 +473,7 @@ class CustomerRepositoryTest {
 ## コードスタイル
 
 ### 1. インポート
+- ワイルドカードインポート（`import ....*;`）は使用しない
 - 不要なインポートは削除する
 - 使用していないアノテーションのインポートも削除
 - IDE のコードフォーマッターを使用
@@ -444,6 +488,23 @@ class CustomerRepositoryTest {
 - JavaDoc は public メソッドに記述
 - 複雑なロジックには適切なコメントを追加
 - 日本語コメント可
+
+## プロジェクト設定
+
+### VSCode設定（.vscode/settings.json）
+
+```json
+{
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.dependency.packagePresentation": "flat",
+  "java.compile.nullAnalysis.mode": "disabled"
+}
+```
+
+**重要**:
+- `java.compile.nullAnalysis.mode` は `"disabled"` に設定
+- Eclipse JDTのnull安全性チェックはSpring TestやHamcrestなどの外部ライブラリで多数の誤検知を生む
+- null安全性は実行時テストとコードレビューで担保
 
 ## 禁止事項
 

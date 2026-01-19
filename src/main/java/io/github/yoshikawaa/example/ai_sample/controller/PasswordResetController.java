@@ -6,7 +6,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/password-reset") // クラスレベルで共通のパスを設定
@@ -24,7 +27,7 @@ public class PasswordResetController {
     }
 
     @PostMapping("/request")
-    public String handleResetRequest(@RequestParam String email, Model model) {
+    public String handleResetRequest(@RequestParam(required = true) String email, Model model) {
         try {
             passwordResetService.sendResetLink(email);
             model.addAttribute("message", "パスワードリセットリンクを送信しました。");
