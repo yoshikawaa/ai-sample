@@ -67,6 +67,14 @@ public class CustomerService {
         );
     }
 
+    public void deleteCustomer(String email) {
+        // 顧客を削除
+        customerRepository.deleteByEmail(email);
+
+        // 認証情報をクリア
+        SecurityContextHolder.clearContext();
+    }
+
     private boolean isUnderage(LocalDate birthDate) {
         LocalDate today = LocalDate.now();
         int age = Period.between(birthDate, today).getYears();

@@ -38,5 +38,8 @@ public interface CustomerRepository {
         WHERE email = #{email}
     """)
     void updateCustomerInfo(Customer customer);
+
+    @Update("DELETE FROM customer WHERE email = #{email}")
+    void deleteByEmail(String email);
 }
 

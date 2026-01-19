@@ -146,4 +146,18 @@ class CustomerServiceTest {
         // リポジトリの呼び出しを検証
         verify(customerRepository, times(1)).updateCustomerInfo(customer);
     }
+
+    @Test
+    @DisplayName("deleteCustomer: 顧客を削除できる")
+    void testDeleteCustomer() {
+        // モックの動作を定義
+        doNothing().when(customerRepository).deleteByEmail("test@example.com");
+
+        // サービスメソッドを呼び出し
+        customerService.deleteCustomer("test@example.com");
+
+        // リポジトリの呼び出しを検証
+        verify(customerRepository, times(1)).deleteByEmail("test@example.com");
+    }
 }
+

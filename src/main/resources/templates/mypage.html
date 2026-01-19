@@ -32,6 +32,14 @@
                     <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
                 </form>
             </div>
+
+            <!-- 危険な操作エリア -->
+            <div class="mt-12 pt-6 border-t border-gray-300">
+                <div class="text-center">
+                    <p class="text-sm text-gray-500 mb-3">危険な操作</p>
+                    <a th:href="@{/mypage/delete}" class="text-red-600 hover:text-red-800 text-sm underline">アカウントを削除する</a>
+                </div>
+            </div>
         </div>
     </div>
 </body>
