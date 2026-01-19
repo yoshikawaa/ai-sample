@@ -1,11 +1,9 @@
 package io.github.yoshikawaa.example.ai_sample.validation;
 
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
-import io.github.yoshikawaa.example.ai_sample.validation.CurrentPassword;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
