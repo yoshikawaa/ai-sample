@@ -1,5 +1,6 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -13,12 +14,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(HomeController.class)
 @Import(SecurityConfig.class) // セキュリティ設定をインポート
+@DisplayName("HomeController のテスト")
 class HomeControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
+    @DisplayName("GET /: ホームページを表示する")
     void testHome() throws Exception {
         // "/" エンドポイントに GET リクエストを送信
         mockMvc.perform(get("/"))

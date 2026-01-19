@@ -1,6 +1,7 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -12,12 +13,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(LoginController.class)
 @Import(SecurityConfig.class) // セキュリティ設定をインポート
+@DisplayName("LoginController のテスト")
 class LoginControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
+    @DisplayName("GET /login: ログインページを表示する")
     void testShowLoginPage() throws Exception {
         // テスト実行
         mockMvc.perform(get("/login")) // GET リクエストを送信

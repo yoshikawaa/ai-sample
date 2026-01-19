@@ -4,6 +4,7 @@ import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("MyPageController のテスト")
 class MyPageControllerTest {
 
     @Autowired
@@ -63,6 +65,7 @@ class MyPageControllerTest {
     }
 
     @Test
+    @DisplayName("GET /mypage: マイページを表示する")
     @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
     void testShowMyPage() throws Exception {
         // テスト実行
@@ -72,6 +75,7 @@ class MyPageControllerTest {
     }
 
     @Test
+    @DisplayName("GET /mypage/change-password: パスワード変更フォームを表示する")
     @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
     void testShowChangePasswordPage() throws Exception {
         // 正しいリクエストパスを使用してテスト実行
@@ -81,6 +85,7 @@ class MyPageControllerTest {
     }
 
     @Test
+    @DisplayName("POST /mypage/change-password: 正常にパスワードを変更する")
     @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
     void testChangePassword_ValidInput() throws Exception {
         // テストデータ（フォームデータ）
@@ -101,6 +106,7 @@ class MyPageControllerTest {
     }
 
     @Test
+    @DisplayName("POST /mypage/change-password: バリデーションエラーの場合フォームを再表示する")
     @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
     void testChangePassword_InvalidInput() throws Exception {
         // テストデータ（フォームデータ: バリデーションエラーを意図的に発生させる）
@@ -119,6 +125,7 @@ class MyPageControllerTest {
     }
 
     @Test
+    @DisplayName("GET /mypage/change-password-complete: パスワード変更完了画面を表示する")
     @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
     void testShowChangePasswordCompletePage() throws Exception {
         // テスト実行

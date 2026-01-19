@@ -2,6 +2,7 @@ package io.github.yoshikawaa.example.ai_sample.service;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,6 +18,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
+@DisplayName("CustomerService のテスト")
 class CustomerServiceTest {
 
     @MockitoBean
@@ -29,6 +31,7 @@ class CustomerServiceTest {
     private CustomerService customerService;
 
     @Test
+    @DisplayName("getAllCustomers: すべての顧客を取得できる")
     void testFindAllCustomers() {
         // モックの動作を定義
         when(customerRepository.findAll()).thenReturn(Arrays.asList(
@@ -46,6 +49,7 @@ class CustomerServiceTest {
     }
 
     @Test
+    @DisplayName("registerCustomer: 顧客を登録する際にパスワードをハッシュ化する")
     void testRegisterCustomer() {
         // テストデータの準備
         Customer newCustomer = new Customer(
@@ -73,6 +77,7 @@ class CustomerServiceTest {
     }
 
     @Test
+    @DisplayName("registerCustomer: 未成年の顧客登録時に例外をスローする")
     void testIsUnderageThrowsException() {
         // 未成年の顧客データを準備
         Customer underageCustomer = new Customer(
@@ -92,6 +97,7 @@ class CustomerServiceTest {
     }
 
     @Test
+    @DisplayName("changePassword: パスワードを変更する際にハッシュ化して更新する")
     void testChangePassword() {
         // テストデータの準備
         Customer customer = new Customer(

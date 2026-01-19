@@ -3,6 +3,7 @@ package io.github.yoshikawaa.example.ai_sample.controller;
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -23,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(CustomerRegistrationController.class)
 @Import(SecurityConfig.class) // セキュリティ設定をインポート
+@DisplayName("CustomerRegistrationController のテスト")
 class CustomerRegistrationControllerTest {
 
     @MockitoBean
@@ -32,6 +34,7 @@ class CustomerRegistrationControllerTest {
     private MockMvc mockMvc;
 
     @Test
+    @DisplayName("GET /customers/input: 顧客入力フォームを表示する")
     void testShowInputForm() throws Exception {
         // テスト実行
         mockMvc.perform(get("/customers/input"))
@@ -40,6 +43,7 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /customers/confirm: 正常な入力で確認画面を表示する")
     void testShowConfirmForm_ValidInput() throws Exception {
         // テストデータ（バリデーションエラーなし）
         MultiValueMap<String, String> validCustomerForm = new LinkedMultiValueMap<>();
@@ -61,6 +65,7 @@ class CustomerRegistrationControllerTest {
         }
 
     @Test
+    @DisplayName("POST /customers/confirm: 不正な入力で入力画面に戻る")
     void testShowConfirmForm_InvalidInput() throws Exception {
         // テストデータ（バリデーションエラーあり）
         MultiValueMap<String, String> invalidCustomerForm = new LinkedMultiValueMap<>();
@@ -82,6 +87,7 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /customers/input: 入力画面に戻る処理")
     void testHandleBackToInput() throws Exception {
         // テストデータ
         MultiValueMap<String, String> customerForm = new LinkedMultiValueMap<>();
@@ -102,6 +108,7 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /customers/register: 正常に顧客を登録する")
     void testRegisterCustomer_ValidInput() throws Exception {
         // テストデータ（バリデーションエラーなし）
         MultiValueMap<String, String> validCustomerForm = new LinkedMultiValueMap<>();
@@ -125,6 +132,7 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /customers/register: 不正な入力で入力画面に戻る")
     void testRegisterCustomer_InvalidInput() throws Exception {
         // テストデータ（バリデーションエラーあり）
         MultiValueMap<String, String> invalidCustomerForm = new LinkedMultiValueMap<>();
@@ -149,6 +157,7 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /customers/register: ビジネスエラーの場合エラー画面を表示する")
     void testHandleBusinessError() throws Exception {
         // モックの設定: CustomerService が IllegalArgumentException をスロー
         doThrow(new IllegalArgumentException("ビジネスエラーが発生しました"))
@@ -174,6 +183,7 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("GET /customers/complete: 登録完了画面を表示する")
     void testShowCompletePage() throws Exception {
         // テスト実行
         mockMvc.perform(get("/customers/complete")) // GET リクエストを送信

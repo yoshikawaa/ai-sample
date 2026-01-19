@@ -7,8 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 class AiSampleApplicationTests {
 
     @Test
-    void testMainMethod() {
-        // main メソッドを呼び出してカバレッジを上げる
-        AiSampleApplication.main(new String[] {});
+    void contextLoads() {
+        // Springコンテキストが正常にロードされることを確認
     }
 }

@@ -12,6 +12,16 @@ spring:
   h2:
     console:
       enabled: true
+  mail:
+    host: localhost
+    port: 3025
+    username: test@example.com
+    password: password
+    protocol: smtp
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+    default-encoding: UTF-8
   thymeleaf:
     cache: false
 mybatis:
