@@ -103,4 +103,30 @@ public class MyPageController {
     public String showEditCompletePage() {
         return "customer-edit-complete";
     }
+
+    @GetMapping("/delete")
+    public String showDeletePage() {
+        return "customer-delete";
+    }
+
+    @PostMapping("/delete-confirm")
+    public String showDeleteConfirmPage() {
+        return "customer-delete-confirm";
+    }
+
+    @PostMapping("/delete")
+    public String handleBackToDelete() {
+        return "customer-delete";
+    }
+
+    @PostMapping("/delete-execute")
+    public String deleteCustomer(@AuthenticationPrincipal CustomerUserDetails userDetails) {
+        customerService.deleteCustomer(userDetails.getCustomer().getEmail());
+        return "redirect:/mypage/delete-complete";
+    }
+
+    @GetMapping("/delete-complete")
+    public String showDeleteCompletePage() {
+        return "customer-delete-complete";
+    }
 }

@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Password Reset Complete</title>
-    <!-- Tailwind CSS の読み込み -->
+    <title>Account Deletion Complete</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-900 min-h-screen flex items-center justify-center">
@@ -13,12 +12,13 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">Password Reset Complete</h1>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Account Deletion Complete</h1>
             <p class="text-lg text-gray-600 mb-6">
-                新しいパスワードが正常に設定されました。
+                アカウントの削除が完了しました。<br>
+                ご利用ありがとうございました。
             </p>
             <div class="flex justify-center space-x-4">
-                <a th:href="@{/login}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Go to Login</a>
+                <a th:href="@{/}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Home</a>
             </div>
         </div>
     </div>

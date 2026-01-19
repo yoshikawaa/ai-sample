@@ -333,6 +333,55 @@ public class CustomerForm {
 - ボタンは `flex justify-center space-x-4` で配置
 - ボタンのパディングは `px-4 py-2`
 
+#### 画面の統一ルール
+
+**完了画面のフォーマット**:
+```html
+<div class="mb-6">
+    <svg class="mx-auto h-16 w-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+</div>
+<h1 class="text-3xl font-bold text-gray-800 mb-6">Title in English</h1>
+<p class="text-lg text-gray-600 mb-6">
+    日本語での説明文。
+</p>
+<div class="flex justify-center space-x-4">
+    <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Button in English</a>
+</div>
+```
+
+**エラー画面のフォーマット**:
+```html
+<div class="mb-6">
+    <svg class="mx-auto h-16 w-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+</div>
+<h1 class="text-3xl font-bold text-gray-800 mb-6">Error</h1>
+<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert" th:text="${errorMessage}">
+    Error message here.
+</div>
+<div class="flex justify-center space-x-4">
+    <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Button in English</a>
+</div>
+```
+
+**画面全体の統一ルール**:
+- タイトル（h1）: 英語
+- 説明文（p）: 日本語
+- ボタンテキスト: 英語
+- 完了画面: 緑色のチェックアイコン
+- エラー画面: 赤色の×マークアイコン
+- ボタンスタイル: `bg-blue-500 hover:bg-blue-600` で統一
+
+**アイコン表示について**:
+- アイコンは **Heroicons** のインラインSVGを使用
+- 外部ライブラリやCDN不要（SVGをHTML内に直接記述）
+- TailwindCSSクラスでサイズと色を制御: `h-16 w-16 text-green-500` または `text-red-500`
+- 完了画面: チェックマーク付き円（`M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z`）
+- エラー画面: ×マーク付き円（`M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z`）
+
 ## テストコード
 
 ### 1. テスト用設定
@@ -470,6 +519,19 @@ class CustomerRepositoryTest {
 - 1つのコントローラに対して1つのテストクラス
 - 重複したテストクラスは作成しない
 
+### 5. テスト実施の必須事項
+
+**新機能実装時の必須テスト**:
+- リポジトリ層のテスト（`@MybatisTest`）
+- サービス層のテスト（`@SpringBootTest`）
+- コントローラ層のテスト（`@WebMvcTest` または `@SpringBootTest` + `@AutoConfigureMockMvc`）
+
+**重要**:
+- 新しいメソッドを追加した際は、必ず対応するテストを追加する
+- リポジトリとサービスのテストを忘れない
+- テスト追加後は `mvn clean test` で全テストを実行し、合格を確認する
+- カバレッジ目標: ビジネスロジック（Service、Controller）100%、リポジトリ層100%
+
 ## コードスタイル
 
 ### 1. インポート
@@ -479,8 +541,88 @@ class CustomerRepositoryTest {
 - IDE のコードフォーマッターを使用
 
 ### 2. 命名規則
-- クラス名: PascalCase
-- メソッド名: camelCase
+
+#### Javaクラス・ファイル
+- **クラス名**: PascalCase
+- **メソッド名**: camelCase
+- **定数**: UPPER_SNAKE_CASE
+- **パッケージ名**: lowercase
+
+#### レイヤー別の命名規則
+
+**コントローラ（Controller）**:
+- クラス名: `{機能名}Controller`
+- 例: `CustomerController`, `MyPageController`, `PasswordResetController`
+- ファイル名: クラス名と同じ `.java`
+- テストクラス: `{クラス名}Test` → `CustomerControllerTest`
+
+**サービス（Service）**:
+- クラス名: `{機能名}Service`
+- 例: `CustomerService`, `EmailService`, `PasswordResetService`
+- ファイル名: クラス名と同じ `.java`
+- テストクラス: `{クラス名}Test` → `CustomerServiceTest`
+
+**リポジトリ（Repository）**:
+- クラス名: `{エンティティ名}Repository`
+- 例: `CustomerRepository`, `PasswordResetTokenRepository`
+- ファイル名: クラス名と同じ `.java`
+- テストクラス: `{クラス名}Test` → `CustomerRepositoryTest`
+
+**モデル（Model）**:
+- エンティティ: `{エンティティ名}` → `Customer`, `PasswordResetToken`
+- フォーム: `{機能名}Form` → `CustomerForm`, `CustomerEditForm`, `ChangePasswordForm`
+- ファイル名: クラス名と同じ `.java`
+
+**設定（Config）**:
+- クラス名: `{機能名}Config`
+- 例: `SecurityConfig`, `GreenMailConfig`
+- ファイル名: クラス名と同じ `.java`
+
+**バリデーション（Validation）**:
+- アノテーション: `@{検証名}` → `@CurrentPassword`
+- バリデータ: `{検証名}Validator` → `CurrentPasswordValidator`
+
+**セキュリティ（Security）**:
+- UserDetails実装: `{エンティティ名}UserDetails` → `CustomerUserDetails`
+- UserDetailsService実装: `{エンティティ名}UserDetailsService` → `CustomerUserDetailsService`
+
+#### HTMLテンプレート
+
+**命名パターン**:
+- 単一画面: `{機能名}.html` → `home.html`, `login.html`, `mypage.html`
+- 一覧画面: `{エンティティ名}-list.html` → `customer-list.html`
+- 入力画面: `{エンティティ名}-input.html` または `{機能名}-{操作}.html`
+  - 例: `customer-input.html`, `customer-edit.html`, `change-password.html`
+- 確認画面: `{機能名}-confirm.html` → `customer-confirm.html`, `customer-edit-confirm.html`
+- 完了画面: `{機能名}-complete.html` → `customer-complete.html`, `change-password-complete.html`
+- エラー画面: `{機能名}-error.html` または `business-error.html`
+
+**リクエストとの対応**:
+- リクエスト: `POST /customers/register` → 完了画面: `customer-complete.html`
+- リクエスト: `POST /mypage/edit-confirm` → 確認画面: `customer-edit-confirm.html`
+- ハイフン区切りで複数単語を表現
+
+#### メソッド命名規則
+
+**コントローラメソッド**:
+- GET（画面表示）: `show{画面名}Page()` → `showMyPage()`, `showEditPage()`
+- POST（処理実行）: `{動詞}{処理名}()` → `registerCustomer()`, `updateCustomer()`, `deleteCustomer()`
+- POST（確認画面表示）: `show{機能名}ConfirmPage()` → `showEditConfirmPage()`
+- POST（Backボタン）: `handleBackTo{画面名}()` → `handleBackToEdit()`
+
+**サービスメソッド**:
+- 取得: `get{対象}()` → `getAllCustomers()`
+- 登録: `register{対象}()` → `registerCustomer()`
+- 更新: `update{対象}()` または `change{対象}()` → `updateCustomerInfo()`, `changePassword()`
+- 削除: `delete{対象}()` → `deleteCustomer()`
+- 送信: `send{対象}()` → `sendResetLink()`
+
+**リポジトリメソッド**:
+- 全件取得: `findAll()`
+- 条件検索: `findBy{条件}()` → `findByEmail()`, `findByToken()`
+- 保存: `save({エンティティ})`
+- 更新: `update{項目}()` → `updatePassword()`, `updateCustomerInfo()`
+- 削除: `deleteBy{条件}()` → `deleteByEmail()`
 - 定数: UPPER_SNAKE_CASE
 - パッケージ名: lowercase
 

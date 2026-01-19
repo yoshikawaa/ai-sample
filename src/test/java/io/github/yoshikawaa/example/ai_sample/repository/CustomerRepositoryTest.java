@@ -163,4 +163,42 @@ class CustomerRepositoryTest {
         Optional<Customer> customer = customerRepository.findByEmail("non-existent@example.com");
         assertThat(customer).isNotPresent();
     }
+
+    @Test
+    @DisplayName("deleteByEmail: メールアドレスで顧客を削除できる")
+    void testDeleteByEmail() {
+        // テスト用の顧客を作成して保存
+        Customer testCustomer = new Customer();
+        testCustomer.setEmail("delete-test@example.com");
+        testCustomer.setPassword("password");
+        testCustomer.setName("Delete Test");
+        testCustomer.setRegistrationDate(LocalDate.now());
+        testCustomer.setBirthDate(LocalDate.of(1990, 1, 1));
+        testCustomer.setPhoneNumber("999-999-9999");
+        testCustomer.setAddress("999 Delete St");
+        customerRepository.save(testCustomer);
+
+        // 顧客が保存されたことを確認
+        Optional<Customer> savedCustomer = customerRepository.findByEmail("delete-test@example.com");
+        assertThat(savedCustomer).isPresent();
+
+        // 顧客を削除
+        customerRepository.deleteByEmail("delete-test@example.com");
+
+        // 顧客が削除されたことを確認
+        Optional<Customer> deletedCustomer = customerRepository.findByEmail("delete-test@example.com");
+        assertThat(deletedCustomer).isNotPresent();
+    }
+
+    @Test
+    @DisplayName("deleteByEmail: 存在しないメールアドレスでもエラーが発生しない")
+    void testDeleteByEmail_存在しないメールアドレス() {
+        // 存在しないメールアドレスで削除（エラーが発生しないことを確認）
+        customerRepository.deleteByEmail("non-existent-delete@example.com");
+
+        // 顧客が存在しないことを確認
+        Optional<Customer> customer = customerRepository.findByEmail("non-existent-delete@example.com");
+        assertThat(customer).isNotPresent();
+    }
 }
+

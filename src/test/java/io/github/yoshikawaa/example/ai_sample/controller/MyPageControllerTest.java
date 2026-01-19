@@ -248,4 +248,54 @@ class MyPageControllerTest {
             .andExpect(status().isOk())
             .andExpect(view().name("customer-edit-complete"));
     }
+
+    @Test
+    @DisplayName("GET /mypage/delete: 削除確認画面を表示できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void showDeletePage() throws Exception {
+        mockMvc.perform(get("/mypage/delete"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-delete"));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/delete-confirm: 削除最終確認画面を表示できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void showDeleteConfirmPage() throws Exception {
+        mockMvc.perform(post("/mypage/delete-confirm")
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-delete-confirm"));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/delete: 削除確認画面に戻れる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void handleBackToDelete() throws Exception {
+        mockMvc.perform(post("/mypage/delete")
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-delete"));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/delete-execute: 顧客を削除できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void deleteCustomer() throws Exception {
+        mockMvc.perform(post("/mypage/delete-execute")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/mypage/delete-complete"));
+
+        verify(customerService, times(1)).deleteCustomer("test@example.com");
+    }
+
+    @Test
+    @DisplayName("GET /mypage/delete-complete: 削除完了画面を表示できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void showDeleteCompletePage() throws Exception {
+        mockMvc.perform(get("/mypage/delete-complete"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-delete-complete"));
+    }
 }
