@@ -7,7 +7,7 @@
 ### 技術スタック
 - **Spring Boot**: 3.5.9
 - **Java**: 17
-- **永続化**: MyBatis 3.0.5
+- **永続化**: MyBatis 3.5.16（MyBatis Spring Boot Starter 3.0.5）
 - **テンプレートエンジン**: Thymeleaf（Spring Boot管理）
 - **CSS**: Tailwind CSS latest（CDN経由）
 - **セキュリティ**: Spring Security（Spring Boot管理）
