@@ -23,8 +23,10 @@
             </div>
 
             <div class="text-center mt-6">
+                <!-- 顧客情報編集ボタン -->
+                <a th:href="@{/mypage/edit}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Edit Information</a>
                 <!-- パスワード変更ボタン -->
-                <a href="/mypage/change-password" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Change Password</a>
+                <a th:href="@{/mypage/change-password}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Change Password</a>
                 <!-- ログアウトボタン (POST リクエスト) -->
                 <form th:action="@{/logout}" method="post" style="display: inline;">
                     <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>

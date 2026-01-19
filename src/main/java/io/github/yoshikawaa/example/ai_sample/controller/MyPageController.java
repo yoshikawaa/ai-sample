@@ -2,6 +2,7 @@ package io.github.yoshikawaa.example.ai_sample.controller;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,6 +10,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import io.github.yoshikawaa.example.ai_sample.model.ChangePasswordForm;
+import io.github.yoshikawaa.example.ai_sample.model.Customer;
+import io.github.yoshikawaa.example.ai_sample.model.CustomerEditForm;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 
@@ -50,5 +53,54 @@ public class MyPageController {
     @GetMapping("/change-password-complete")
     public String showChangePasswordCompletePage() {
         return "change-password-complete";
+    }
+
+    @GetMapping("/edit")
+    public String showEditPage(@AuthenticationPrincipal CustomerUserDetails userDetails, Model model) {
+        Customer customer = userDetails.getCustomer();
+        CustomerEditForm editForm = new CustomerEditForm();
+        editForm.setName(customer.getName());
+        editForm.setBirthDate(customer.getBirthDate());
+        editForm.setPhoneNumber(customer.getPhoneNumber());
+        editForm.setAddress(customer.getAddress());
+        model.addAttribute("customerEditForm", editForm);
+        return "customer-edit";
+    }
+
+    @PostMapping("/edit-confirm")
+    public String showEditConfirmPage(@Validated CustomerEditForm customerEditForm,
+                                       BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "customer-edit";
+        }
+        return "customer-edit-confirm";
+    }
+
+    @PostMapping("/edit")
+    public String handleBackToEdit(CustomerEditForm customerEditForm) {
+        return "customer-edit";
+    }
+
+    @PostMapping("/update")
+    public String updateCustomer(@AuthenticationPrincipal CustomerUserDetails userDetails,
+                                  @Validated CustomerEditForm customerEditForm,
+                                  BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "customer-edit";
+        }
+
+        Customer customer = userDetails.getCustomer();
+        customer.setName(customerEditForm.getName());
+        customer.setBirthDate(customerEditForm.getBirthDate());
+        customer.setPhoneNumber(customerEditForm.getPhoneNumber());
+        customer.setAddress(customerEditForm.getAddress());
+
+        customerService.updateCustomerInfo(customer);
+        return "redirect:/mypage/edit-complete";
+    }
+
+    @GetMapping("/edit-complete")
+    public String showEditCompletePage() {
+        return "customer-edit-complete";
     }
 }

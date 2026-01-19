@@ -31,5 +31,12 @@ public interface CustomerRepository {
         WHERE email = #{email}
     """)
     void updatePassword(@Param("email") String email, @Param("password") String password);
+
+    @Update("""
+        UPDATE customer
+        SET name = #{name}, birth_date = #{birthDate}, phone_number = #{phoneNumber}, address = #{address}
+        WHERE email = #{email}
+    """)
+    void updateCustomerInfo(Customer customer);
 }
 

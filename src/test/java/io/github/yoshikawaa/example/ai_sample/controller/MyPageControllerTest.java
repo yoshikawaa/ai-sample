@@ -133,4 +133,119 @@ class MyPageControllerTest {
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
                 .andExpect(view().name("change-password-complete")); // ビュー名が "change-password-complete" であることを確認
     }
+
+    @Test
+    @DisplayName("GET /mypage/edit: 編集画面を表示できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void showEditPage() throws Exception {
+        mockMvc.perform(get("/mypage/edit"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-edit"))
+            .andExpect(model().attributeExists("customerEditForm"))
+            .andExpect(model().attribute("customerEditForm", org.hamcrest.Matchers.hasProperty("name", org.hamcrest.Matchers.is("Test User"))))
+            .andExpect(model().attribute("customerEditForm", org.hamcrest.Matchers.hasProperty("phoneNumber", org.hamcrest.Matchers.is("123-456-7890"))));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/edit-confirm: 確認画面を表示できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void showEditConfirmPage() throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "Updated Name");
+        params.add("birthDate", "1990-01-01");
+        params.add("phoneNumber", "987-654-3210");
+        params.add("address", "456 New St");
+
+        mockMvc.perform(post("/mypage/edit-confirm")
+                .params(params)
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-edit-confirm"))
+            .andExpect(model().attributeExists("customerEditForm"));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/edit: 確認画面から入力画面に戻れる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void backToEditPage() throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "Updated Name");
+        params.add("birthDate", "1990-01-01");
+        params.add("phoneNumber", "987-654-3210");
+        params.add("address", "456 New St");
+
+        mockMvc.perform(post("/mypage/edit")
+                .params(params)
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-edit"));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/update: 顧客情報を更新できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void updateCustomer() throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "Updated Name");
+        params.add("birthDate", "1990-01-01");
+        params.add("phoneNumber", "987-654-3210");
+        params.add("address", "456 New St");
+
+        mockMvc.perform(post("/mypage/update")
+                .params(params)
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/mypage/edit-complete"));
+
+        verify(customerService, times(1)).updateCustomerInfo(any(Customer.class));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/update: バリデーションエラーで編集画面に戻る")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void updateCustomerWithValidationError() throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "");  // 空の名前はバリデーションエラー
+        params.add("birthDate", "");  // 空の生年月日もエラー
+        params.add("phoneNumber", "");
+        params.add("address", "");
+
+        mockMvc.perform(post("/mypage/update")
+                .params(params)
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-edit"))
+            .andExpect(model().attributeHasFieldErrors("customerEditForm", "name", "birthDate", "phoneNumber", "address"));
+
+        verify(customerService, times(0)).updateCustomerInfo(any(Customer.class));
+    }
+
+    @Test
+    @DisplayName("POST /mypage/edit-confirm: バリデーションエラーで編集画面に戻る")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void editConfirmWithValidationError() throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "");  // 空の名前はバリデーションエラー
+        params.add("birthDate", "1990-01-01");
+        params.add("phoneNumber", "987-654-3210");
+        params.add("address", "456 New St");
+
+        mockMvc.perform(post("/mypage/edit-confirm")
+                .params(params)
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-edit"))
+            .andExpect(model().attributeHasFieldErrors("customerEditForm", "name"));
+
+        verify(customerService, times(0)).updateCustomerInfo(any(Customer.class));
+    }
+
+    @Test
+    @DisplayName("GET /mypage/edit-complete: 更新完了画面を表示できる")
+    @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    void showEditCompletePage() throws Exception {
+        mockMvc.perform(get("/mypage/edit-complete"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("customer-edit-complete"));
+    }
 }

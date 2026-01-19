@@ -56,6 +56,17 @@ public class CustomerService {
         );
     }
 
+    public void updateCustomerInfo(Customer customer) {
+        // 顧客情報を更新
+        customerRepository.updateCustomerInfo(customer);
+
+        // 認証情報を更新
+        CustomerUserDetails updatedUserDetails = new CustomerUserDetails(customer);
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken(updatedUserDetails, null, updatedUserDetails.getAuthorities())
+        );
+    }
+
     private boolean isUnderage(LocalDate birthDate) {
         LocalDate today = LocalDate.now();
         int age = Period.between(birthDate, today).getYears();
