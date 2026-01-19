@@ -11,8 +11,8 @@
             <h1 class="text-4xl font-bold text-gray-800 mb-4" th:text="${message}">Welcome!</h1>
             <p class="text-lg text-gray-600 mb-6">This is the home page of your Spring Boot application.</p>
             <div class="flex justify-center space-x-4">
-                <a href="/customers" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">View Customers</a>
-                <a href="/login" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Login</a>
+                <a th:href="@{/customers}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">View Customers</a>
+                <a th:href="@{/login}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Login</a>
             </div>
         </div>
     </div>

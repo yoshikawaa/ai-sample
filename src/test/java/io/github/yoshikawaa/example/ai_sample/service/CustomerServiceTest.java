@@ -35,8 +35,8 @@ class CustomerServiceTest {
     void testFindAllCustomers() {
         // モックの動作を定義
         when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(1990, 1, 1), LocalDate.of(2023, 1, 1), "123-456-7890", "123 Main St"),
-            new Customer("jane.doe@example.com", "password456", "Jane Doe", LocalDate.of(1992, 2, 2), LocalDate.of(2023, 2, 2), "987-654-3210", "456 Elm St")
+            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St"),
+            new Customer("jane.doe@example.com", "password456", "Jane Doe", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "987-654-3210", "456 Elm St")
         ));
 
         // サービスメソッドを呼び出し
@@ -121,5 +121,29 @@ class CustomerServiceTest {
     
         // リポジトリの呼び出しを検証
         verify(customerRepository, times(1)).updatePassword(customer.getEmail(), hashedPassword);
+    }
+
+    @Test
+    @DisplayName("updateCustomerInfo: 顧客情報を更新する")
+    void testUpdateCustomerInfo() {
+        // テストデータの準備
+        Customer customer = new Customer(
+            "john.doe@example.com",
+            "password123",
+            "Updated Name",
+            LocalDate.of(2023, 3, 1), // registrationDate
+            LocalDate.of(1990, 5, 20), // birthDate
+            "999-888-7777",
+            "999 Updated St"
+        );
+
+        // モックの動作を定義
+        doNothing().when(customerRepository).updateCustomerInfo(customer);
+
+        // サービスメソッドを呼び出し
+        customerService.updateCustomerInfo(customer);
+
+        // リポジトリの呼び出しを検証
+        verify(customerRepository, times(1)).updateCustomerInfo(customer);
     }
 }

@@ -119,4 +119,48 @@ class CustomerRepositoryTest {
         // 検証
         assertThat(customer).isNotPresent();
     }
+
+    @Test
+    @DisplayName("updateCustomerInfo: 顧客情報を更新できる")
+    void testUpdateCustomerInfo() {
+        // 更新前の顧客を取得
+        Optional<Customer> beforeCustomer = customerRepository.findByEmail("john.doe@example.com");
+        assertThat(beforeCustomer).isPresent();
+
+        // 顧客情報を更新
+        Customer updatedCustomer = beforeCustomer.get();
+        updatedCustomer.setName("John Updated");
+        updatedCustomer.setBirthDate(LocalDate.of(1991, 2, 2));
+        updatedCustomer.setPhoneNumber("999-888-7777");
+        updatedCustomer.setAddress("999 Updated St");
+        customerRepository.updateCustomerInfo(updatedCustomer);
+
+        // 更新後の顧客を取得して検証
+        Optional<Customer> afterCustomer = customerRepository.findByEmail("john.doe@example.com");
+        assertThat(afterCustomer).isPresent();
+        assertThat(afterCustomer.get().getName()).isEqualTo("John Updated");
+        assertThat(afterCustomer.get().getBirthDate()).isEqualTo(LocalDate.of(1991, 2, 2));
+        assertThat(afterCustomer.get().getPhoneNumber()).isEqualTo("999-888-7777");
+        assertThat(afterCustomer.get().getAddress()).isEqualTo("999 Updated St");
+        // パスワードとメールアドレスは更新されないことを確認
+        assertThat(afterCustomer.get().getPassword()).isEqualTo(beforeCustomer.get().getPassword());
+        assertThat(afterCustomer.get().getEmail()).isEqualTo("john.doe@example.com");
+    }
+
+    @Test
+    @DisplayName("updateCustomerInfo: 存在しないメールアドレスでもエラーが発生しない")
+    void testUpdateCustomerInfo_存在しないメールアドレス() {
+        // 存在しない顧客の情報を更新（エラーが発生しないことを確認）
+        Customer nonExistentCustomer = new Customer();
+        nonExistentCustomer.setEmail("non-existent@example.com");
+        nonExistentCustomer.setName("Non Existent");
+        nonExistentCustomer.setBirthDate(LocalDate.of(1990, 1, 1));
+        nonExistentCustomer.setPhoneNumber("000-000-0000");
+        nonExistentCustomer.setAddress("000 Non St");
+        customerRepository.updateCustomerInfo(nonExistentCustomer);
+
+        // 顧客が存在しないことを確認
+        Optional<Customer> customer = customerRepository.findByEmail("non-existent@example.com");
+        assertThat(customer).isNotPresent();
+    }
 }
