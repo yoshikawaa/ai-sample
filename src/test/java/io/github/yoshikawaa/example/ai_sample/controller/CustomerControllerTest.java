@@ -263,4 +263,88 @@ class CustomerControllerTest {
         // サービス呼び出しの検証
         verify(customerService, times(1)).getCustomerByEmail("nonexistent@example.com");
     }
-}
+
+    @Test
+    @DisplayName("GET /customers?sort=name,asc: 名前で昇順ソートできる")
+    void testShowCustomers_SortByNameAsc() throws Exception {
+        // モックの動作を定義
+        Customer customer1 = new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1");
+        Customer customer2 = new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2");
+        Page<Customer> customerPage = new PageImpl<>(Arrays.asList(customer1, customer2), 
+            PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("name").ascending()), 2);
+        when(customerService.getAllCustomersWithPagination(any())).thenReturn(customerPage);
+
+        // テスト実行
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("sort", "name,asc");
+        mockMvc.perform(get("/customers").params(params))
+                .andExpect(status().isOk())
+                .andExpect(view().name("customer-list"))
+                .andExpect(model().attributeExists("customerPage"));
+
+        verify(customerService, times(1)).getAllCustomersWithPagination(any());
+    }
+
+    @Test
+    @DisplayName("GET /customers?sort=registrationDate,desc: 登録日で降順ソートできる")
+    void testShowCustomers_SortByRegistrationDateDesc() throws Exception {
+        // モックの動作を定義
+        Customer customer1 = new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2");
+        Customer customer2 = new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1");
+        Page<Customer> customerPage = new PageImpl<>(Arrays.asList(customer1, customer2), 
+            PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("registrationDate").descending()), 2);
+        when(customerService.getAllCustomersWithPagination(any())).thenReturn(customerPage);
+
+        // テスト実行
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("sort", "registrationDate,desc");
+        mockMvc.perform(get("/customers").params(params))
+                .andExpect(status().isOk())
+                .andExpect(view().name("customer-list"))
+                .andExpect(model().attributeExists("customerPage"));
+
+        verify(customerService, times(1)).getAllCustomersWithPagination(any());
+    }
+
+    @Test
+    @DisplayName("GET /customers/search?sort=email,asc: 検索結果をメールアドレスで昇順ソートできる")
+    void testSearchCustomers_SortByEmailAsc() throws Exception {
+        // モックの動作を定義
+        Customer customer1 = new Customer("alice@example.com", "password", "Alice Test", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1");
+        Customer customer2 = new Customer("bob@example.com", "password", "Bob Test", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2");
+        Page<Customer> customerPage = new PageImpl<>(Arrays.asList(customer1, customer2), 
+            PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("email").ascending()), 2);
+        when(customerService.searchCustomersWithPagination(anyString(), any(), any())).thenReturn(customerPage);
+
+        // テスト実行
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "test");
+        params.add("sort", "email,asc");
+        mockMvc.perform(get("/customers/search").params(params))
+                .andExpect(status().isOk())
+                .andExpect(view().name("customer-list"))
+                .andExpect(model().attributeExists("customerPage"));
+
+        verify(customerService, times(1)).searchCustomersWithPagination(anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("GET /customers?page=1&sort=name,asc: ページネーションとソートが正しく連携する")
+    void testShowCustomers_PaginationWithSort() throws Exception {
+        // モックの動作を定義
+        Customer customer = new Customer("test@example.com", "password", "Test User", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-4567", "Address");
+        Page<Customer> customerPage = new PageImpl<>(Arrays.asList(customer), 
+            PageRequest.of(1, 10, org.springframework.data.domain.Sort.by("name").ascending()), 15);
+        when(customerService.getAllCustomersWithPagination(any())).thenReturn(customerPage);
+
+        // テスト実行
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("page", "1");
+        params.add("sort", "name,asc");
+        mockMvc.perform(get("/customers").params(params))
+                .andExpect(status().isOk())
+                .andExpect(view().name("customer-list"))
+                .andExpect(model().attributeExists("customerPage"));
+
+        verify(customerService, times(1)).getAllCustomersWithPagination(any());
+    }}

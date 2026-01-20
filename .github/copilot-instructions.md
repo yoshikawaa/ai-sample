@@ -380,6 +380,44 @@ public class CustomerForm {
 - CSRFトークンは Spring Security が自動挿入
 - リンクは必ず `th:href="@{/path}"` を使用（`href="/path"` は禁止）
 
+#### ページネーション
+
+**ソート状態を保持する方法**:
+```html
+<!-- ✅ 推奨: プロパティとディレクションを個別に取得 -->
+<a th:href="@{/customers(
+    page=${customerPage.number + 1}, 
+    size=${customerPage.size}, 
+    sort=${customerPage.sort.isSorted() ? customerPage.sort.iterator().next().property + ',' + customerPage.sort.iterator().next().direction : null}
+)}">Next</a>
+
+<!-- ❌ 禁止: toString()を使用（ページ遷移でソート値が増殖する） -->
+<a th:href="@{/customers(page=${customerPage.number + 1}, sort=${customerPage.sort.toString()})}">Next</a>
+```
+
+**重要**:
+- `customerPage.sort.toString()` は使用禁止（ページ遷移ごとにソート値が重複して追加される）
+- `isSorted()` でソートの有無を確認し、ソートがない場合は `null` を渡す
+- `iterator().next().property` でソートプロパティ名を取得（例: `name`, `registrationDate`）
+- `iterator().next().direction` でソート方向を取得（例: `ASC`, `DESC`）
+- カンマ区切りで `property,direction` 形式にする（Spring MVCが `?sort=name,asc` を自動的にPageableにバインド）
+- 検索パラメータがある場合は、それらも同様に保持する
+
+**完全な例（検索＋ページネーション＋ソート）**:
+```html
+<a th:if="${customerPage.hasNext()}" 
+   th:href="@{/customers(
+       page=${customerPage.number + 1}, 
+       size=${customerPage.size}, 
+       name=${customerSearchForm.name}, 
+       email=${customerSearchForm.email}, 
+       sort=${customerPage.sort.isSorted() ? customerPage.sort.iterator().next().property + ',' + customerPage.sort.iterator().next().direction : null}
+   )}"
+   class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
+    Next &raquo;
+</a>
+```
+
 #### 確認画面パターン
 登録・編集などの重要な操作には確認画面を設ける：
 
@@ -612,7 +650,22 @@ class CustomerServiceTest {
 }
 ```
 
-### 4. リポジトリテスト
+### 4. テストメソッド追加時の注意事項
+
+**重要**:
+- テストクラス名はテスト対象のコントローラ/サービス/リポジトリ名に対応させる
+- 例: `MyPageController` → `MyPageControllerTest`
+- 1つのクラスに対して1つのテストクラス
+- 重複したテストクラスは作成しない
+- **`@Test` には必ず `@DisplayName` を付けて日本語でテスト内容を記述する**
+  - 例: `@DisplayName("顧客情報を更新できる")`
+  - テストの目的が一目でわかるようにする
+- **クラスの最後のメソッドを編集する場合、必ずクラスの閉じ括弧 `}` を `oldString` と `newString` の両方に含めること**
+  - これを忘れるとコンパイルエラーになる
+  - 適用対象: コントローラテスト、サービステスト、リポジトリテストすべて
+- `@Test` アノテーションの重複に注意（コピー&ペーストミスを避ける）
+
+### 5. リポジトリテスト
 
 ```java
 @MybatisTest
@@ -632,13 +685,7 @@ class CustomerRepositoryTest {
 }
 ```
 
-**重要**:
-- テストクラス名はテスト対象のコントローラ/サービス名に対応させる
-- 例: `MyPageController` → `MyPageControllerTest`
-- 1つのコントローラに対して1つのテストクラス
-- 重複したテストクラスは作成しない
-
-### 5. テスト実施の必須事項
+### 6. テスト実施の必須事項
 
 **新機能実装時の必須テスト**:
 - リポジトリ層のテスト（`@MybatisTest`）

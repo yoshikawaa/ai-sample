@@ -186,7 +186,7 @@ class CustomerServiceTest {
     void testGetAllCustomersWithPagination() {
         // モックの動作を定義
         Pageable pageable = PageRequest.of(0, 10);
-        when(customerRepository.findAllWithPagination(10, 0)).thenReturn(Arrays.asList(
+        when(customerRepository.findAllWithPagination(10, 0, null, null)).thenReturn(Arrays.asList(
             new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St"),
             new Customer("jane.doe@example.com", "password456", "Jane Doe", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "987-654-3210", "456 Elm St")
         ));
@@ -199,7 +199,7 @@ class CustomerServiceTest {
         assertThat(page.getContent()).hasSize(2);
         assertThat(page.getTotalElements()).isEqualTo(2);
         assertThat(page.getTotalPages()).isEqualTo(1);
-        verify(customerRepository, times(1)).findAllWithPagination(10, 0);
+        verify(customerRepository, times(1)).findAllWithPagination(10, 0, null, null);
         verify(customerRepository, times(1)).count();
     }
 
@@ -208,7 +208,7 @@ class CustomerServiceTest {
     void testSearchCustomersWithPagination() {
         // モックの動作を定義
         Pageable pageable = PageRequest.of(0, 10);
-        when(customerRepository.searchWithPagination("John", "john@example.com", 10, 0)).thenReturn(Arrays.asList(
+        when(customerRepository.searchWithPagination("John", "john@example.com", 10, 0, null, null)).thenReturn(Arrays.asList(
             new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St")
         ));
         when(customerRepository.countBySearch("John", "john@example.com")).thenReturn(1L);
@@ -220,7 +220,7 @@ class CustomerServiceTest {
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getContent().get(0).getName()).isEqualTo("John Doe");
-        verify(customerRepository, times(1)).searchWithPagination("John", "john@example.com", 10, 0);
+        verify(customerRepository, times(1)).searchWithPagination("John", "john@example.com", 10, 0, null, null);
         verify(customerRepository, times(1)).countBySearch("John", "john@example.com");
     }
 
@@ -262,5 +262,117 @@ class CustomerServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("顧客が見つかりません。");
         verify(customerRepository, times(1)).findByEmail("nonexistent@example.com");
+    }
+
+    @Test
+    @DisplayName("getAllCustomersWithPagination: 名前で昇順ソートができる")
+    void testGetAllCustomersWithPagination_SortByNameAsc() {
+        // テストデータの準備
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("name").ascending());
+        
+        // モックの動作を定義
+        when(customerRepository.findAllWithPagination(10, 0, "name", "ASC")).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+        ));
+        when(customerRepository.count()).thenReturn(2L);
+
+        // サービスメソッドを呼び出し
+        Page<Customer> result = customerService.getAllCustomersWithPagination(pageable);
+
+        // 検証
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Alice");
+        assertThat(result.getContent().get(1).getName()).isEqualTo("Bob");
+        verify(customerRepository, times(1)).findAllWithPagination(10, 0, "name", "ASC");
+    }
+
+    @Test
+    @DisplayName("getAllCustomersWithPagination: 登録日で降順ソートができる")
+    void testGetAllCustomersWithPagination_SortByRegistrationDateDesc() {
+        // テストデータの準備
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("registrationDate").descending());
+        
+        // モックの動作を定義
+        when(customerRepository.findAllWithPagination(10, 0, "registration_date", "DESC")).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+        when(customerRepository.count()).thenReturn(2L);
+
+        // サービスメソッドを呼び出し
+        Page<Customer> result = customerService.getAllCustomersWithPagination(pageable);
+
+        // 検証
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getRegistrationDate()).isEqualTo(LocalDate.of(2023, 2, 2));
+        assertThat(result.getContent().get(1).getRegistrationDate()).isEqualTo(LocalDate.of(2023, 1, 1));
+        verify(customerRepository, times(1)).findAllWithPagination(10, 0, "registration_date", "DESC");
+    }
+
+    @Test
+    @DisplayName("searchCustomersWithPagination: 検索結果をメールアドレスで昇順ソートができる")
+    void testSearchCustomersWithPagination_SortByEmailAsc() {
+        // テストデータの準備
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("email").ascending());
+        
+        // モックの動作を定義
+        when(customerRepository.searchWithPagination("test", null, 10, 0, "email", "ASC")).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice Test", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob Test", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+        ));
+        when(customerRepository.countBySearch("test", null)).thenReturn(2L);
+
+        // サービスメソッドを呼び出し
+        Page<Customer> result = customerService.searchCustomersWithPagination("test", null, pageable);
+
+        // 検証
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getEmail()).isEqualTo("alice@example.com");
+        assertThat(result.getContent().get(1).getEmail()).isEqualTo("bob@example.com");
+        verify(customerRepository, times(1)).searchWithPagination("test", null, 10, 0, "email", "ASC");
+    }
+
+    @Test
+    @DisplayName("getAllCustomersWithPagination: 生年月日で昇順ソートができる")
+    void testGetAllCustomersWithPagination_SortByBirthDateAsc() {
+        // テストデータの準備
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("birthDate").ascending());
+        
+        // モックの動作を定義
+        when(customerRepository.findAllWithPagination(10, 0, "birth_date", "ASC")).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+        ));
+        when(customerRepository.count()).thenReturn(2L);
+
+        // サービスメソッドを呼び出し
+        Page<Customer> result = customerService.getAllCustomersWithPagination(pageable);
+
+        // 検証
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getBirthDate()).isEqualTo(LocalDate.of(1990, 1, 1));
+        assertThat(result.getContent().get(1).getBirthDate()).isEqualTo(LocalDate.of(1992, 2, 2));
+        verify(customerRepository, times(1)).findAllWithPagination(10, 0, "birth_date", "ASC");
+    }
+
+    @Test
+    @DisplayName("getAllCustomersWithPagination: 不明なプロパティでソート指定時はデフォルト（登録日）でソートされる")
+    void testGetAllCustomersWithPagination_SortByUnknownPropertyUsesDefault() {
+        // テストデータの準備
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("unknownProperty").ascending());
+        
+        // モックの動作を定義
+        when(customerRepository.findAllWithPagination(10, 0, "registration_date", "ASC")).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+        when(customerRepository.count()).thenReturn(1L);
+
+        // サービスメソッドを呼び出し
+        Page<Customer> result = customerService.getAllCustomersWithPagination(pageable);
+
+        // 検証: デフォルトの registration_date でソートされる
+        assertThat(result.getContent()).hasSize(1);
+        verify(customerRepository, times(1)).findAllWithPagination(10, 0, "registration_date", "ASC");
     }
 }

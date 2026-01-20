@@ -16,8 +16,20 @@ public interface CustomerRepository {
     @Select("SELECT * FROM customer")
     List<Customer> findAll();
 
-    @Select("SELECT * FROM customer ORDER BY registration_date DESC LIMIT #{limit} OFFSET #{offset}")
-    List<Customer> findAllWithPagination(@Param("limit") int limit, @Param("offset") int offset);
+    @Select("""
+        <script>
+        SELECT * FROM customer
+        <if test="sortColumn != null and sortColumn != ''">
+            ORDER BY ${sortColumn} ${sortDirection}
+        </if>
+        <if test="sortColumn == null or sortColumn == ''">
+            ORDER BY registration_date DESC
+        </if>
+        LIMIT #{limit} OFFSET #{offset}
+        </script>
+    """)
+    List<Customer> findAllWithPagination(@Param("limit") int limit, @Param("offset") int offset, 
+                                          @Param("sortColumn") String sortColumn, @Param("sortDirection") String sortDirection);
 
     @Select("SELECT COUNT(*) FROM customer")
     long count();
@@ -75,11 +87,18 @@ public interface CustomerRepository {
                 AND LOWER(email) LIKE LOWER(CONCAT('%', #{email}, '%'))
             </if>
         </where>
-        ORDER BY registration_date DESC
+        <if test="sortColumn != null and sortColumn != ''">
+            ORDER BY ${sortColumn} ${sortDirection}
+        </if>
+        <if test="sortColumn == null or sortColumn == ''">
+            ORDER BY registration_date DESC
+        </if>
         LIMIT #{limit} OFFSET #{offset}
         </script>
     """)
-    List<Customer> searchWithPagination(@Param("name") String name, @Param("email") String email, @Param("limit") int limit, @Param("offset") int offset);
+    List<Customer> searchWithPagination(@Param("name") String name, @Param("email") String email, 
+                                         @Param("limit") int limit, @Param("offset") int offset,
+                                         @Param("sortColumn") String sortColumn, @Param("sortDirection") String sortDirection);
 
     @Select("""
         <script>
