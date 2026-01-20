@@ -9,6 +9,29 @@
     <div class="container mx-auto px-4">
         <div class="bg-white shadow-md rounded-lg p-8">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Customer List</h1>
+            
+            <!-- 検索フォーム -->
+            <form th:action="@{/customers/search}" th:object="${customerSearchForm}" method="get" class="mb-6 space-y-4" novalidate>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="name" class="block text-gray-700 font-medium">Name</label>
+                        <input type="text" id="name" name="name" th:field="*{name}" 
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" 
+                               placeholder="Enter name">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-gray-700 font-medium">Email</label>
+                        <input type="text" id="email" name="email" th:field="*{email}" 
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" 
+                               placeholder="Enter email">
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Search</button>
+                    <a th:href="@{/customers}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Clear</a>
+                </div>
+            </form>
+            
             <div class="overflow-x-auto">
                 <table class="table-auto w-full border-collapse border border-gray-300">
                     <thead class="bg-gray-200">
@@ -22,7 +45,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="customer : ${customers}" class="hover:bg-gray-100">
+                        <tr th:each="customer : ${customerPage.content}" class="hover:bg-gray-100">
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.email}">email</td>
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.name}">name</td>
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.registrationDate}">registration date</td>
@@ -30,12 +53,44 @@
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.phoneNumber}">phone number</td>
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.address}">address</td>
                         </tr>
+                        <tr th:if="${customerPage.totalElements == 0}">
+                            <td colspan="6" class="border border-gray-300 px-4 py-2 text-center text-gray-500">検索結果がありません。</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
-            <div class="flex justify-center space-x-4 mt-6">
-                <a th:href="@{/}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Back to Home</a>
-                <a th:href="@{/customers/input}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add New Customer</a>
+            
+            <!-- ページネーション -->
+            <div th:if="${customerPage.totalPages > 1}" class="flex justify-center items-center space-x-2 mt-6">
+                <!-- 前へボタン -->
+                <a th:if="${customerPage.hasPrevious()}" 
+                   th:href="@{/customers(page=${customerPage.number - 1}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email})}"
+                   class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
+                    &laquo; Previous
+                </a>
+                <span th:if="${!customerPage.hasPrevious()}" class="bg-gray-300 text-gray-500 px-3 py-1 rounded cursor-not-allowed">
+                    &laquo; Previous
+                </span>
+                
+                <!-- ページ番号 -->
+                <span class="text-gray-700">
+                    Page <span th:text="${customerPage.number + 1}">1</span> of <span th:text="${customerPage.totalPages}">1</span>
+                    (<span th:text="${customerPage.totalElements}">0</span> total)
+                </span>
+                
+                <!-- 次へボタン -->
+                <a th:if="${customerPage.hasNext()}" 
+                   th:href="@{/customers(page=${customerPage.number + 1}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email})}"
+                   class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
+                    Next &raquo;
+                </a>
+                <span th:if="${!customerPage.hasNext()}" class="bg-gray-300 text-gray-500 px-3 py-1 rounded cursor-not-allowed">
+                    Next &raquo;
+                </span>
+            </div>
+            
+            <div class="flex justify-center mt-6">
+                <a th:href="@{/}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Back to Home</a>
             </div>
         </div>
     </div>

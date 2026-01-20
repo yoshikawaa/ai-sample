@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.time.LocalDate;
 
 @Controller
-@RequestMapping("/customers")
+@RequestMapping("/register")
 public class CustomerRegistrationController {
 
     private final CustomerService customerService;
@@ -75,7 +75,7 @@ public class CustomerRegistrationController {
         // 顧客情報を登録
         customerService.registerCustomer(customer);
     
-        return "redirect:/customers/complete";
+        return "redirect:/register/complete";
     }
 
     // 完了画面の表示

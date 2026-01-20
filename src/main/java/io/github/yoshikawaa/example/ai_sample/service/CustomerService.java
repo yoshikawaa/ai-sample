@@ -4,6 +4,9 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +29,14 @@ public class CustomerService {
 
     public List<Customer> getAllCustomers() {
         return customerRepository.findAll();
+    }
+
+    public Page<Customer> getAllCustomersWithPagination(Pageable pageable) {
+        int offset = (int) pageable.getOffset();
+        int pageSize = pageable.getPageSize();
+        List<Customer> customers = customerRepository.findAllWithPagination(pageSize, offset);
+        long total = customerRepository.count();
+        return new PageImpl<>(customers, pageable, total);
     }
 
     public void registerCustomer(Customer customer) {
@@ -73,6 +84,18 @@ public class CustomerService {
 
         // 認証情報をクリア
         SecurityContextHolder.clearContext();
+    }
+
+    public List<Customer> searchCustomers(String name, String email) {
+        return customerRepository.search(name, email);
+    }
+
+    public Page<Customer> searchCustomersWithPagination(String name, String email, Pageable pageable) {
+        int offset = (int) pageable.getOffset();
+        int pageSize = pageable.getPageSize();
+        List<Customer> customers = customerRepository.searchWithPagination(name, email, pageSize, offset);
+        long total = customerRepository.countBySearch(name, email);
+        return new PageImpl<>(customers, pageable, total);
     }
 
     private boolean isUnderage(LocalDate birthDate) {

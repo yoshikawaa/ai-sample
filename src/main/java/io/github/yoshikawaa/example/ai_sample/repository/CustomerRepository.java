@@ -16,6 +16,12 @@ public interface CustomerRepository {
     @Select("SELECT * FROM customer")
     List<Customer> findAll();
 
+    @Select("SELECT * FROM customer ORDER BY registration_date DESC LIMIT #{limit} OFFSET #{offset}")
+    List<Customer> findAllWithPagination(@Param("limit") int limit, @Param("offset") int offset);
+
+    @Select("SELECT COUNT(*) FROM customer")
+    long count();
+
     @Select("SELECT * FROM customer WHERE email = #{email}")
     Optional<Customer> findByEmail(String email);
 
@@ -41,5 +47,52 @@ public interface CustomerRepository {
 
     @Update("DELETE FROM customer WHERE email = #{email}")
     void deleteByEmail(String email);
-}
 
+    @Select("""
+        <script>
+        SELECT * FROM customer
+        <where>
+            <if test="name != null and name != ''">
+                AND LOWER(name) LIKE LOWER(CONCAT('%', #{name}, '%'))
+            </if>
+            <if test="email != null and email != ''">
+                AND LOWER(email) LIKE LOWER(CONCAT('%', #{email}, '%'))
+            </if>
+        </where>
+        ORDER BY registration_date DESC
+        </script>
+    """)
+    List<Customer> search(@Param("name") String name, @Param("email") String email);
+
+    @Select("""
+        <script>
+        SELECT * FROM customer
+        <where>
+            <if test="name != null and name != ''">
+                AND LOWER(name) LIKE LOWER(CONCAT('%', #{name}, '%'))
+            </if>
+            <if test="email != null and email != ''">
+                AND LOWER(email) LIKE LOWER(CONCAT('%', #{email}, '%'))
+            </if>
+        </where>
+        ORDER BY registration_date DESC
+        LIMIT #{limit} OFFSET #{offset}
+        </script>
+    """)
+    List<Customer> searchWithPagination(@Param("name") String name, @Param("email") String email, @Param("limit") int limit, @Param("offset") int offset);
+
+    @Select("""
+        <script>
+        SELECT COUNT(*) FROM customer
+        <where>
+            <if test="name != null and name != ''">
+                AND LOWER(name) LIKE LOWER(CONCAT('%', #{name}, '%'))
+            </if>
+            <if test="email != null and email != ''">
+                AND LOWER(email) LIKE LOWER(CONCAT('%', #{email}, '%'))
+            </if>
+        </where>
+        </script>
+    """)
+    long countBySearch(@Param("name") String name, @Param("email") String email);
+}

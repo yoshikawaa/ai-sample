@@ -6,6 +6,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -159,5 +162,64 @@ class CustomerServiceTest {
         // リポジトリの呼び出しを検証
         verify(customerRepository, times(1)).deleteByEmail("test@example.com");
     }
-}
 
+    @Test
+    @DisplayName("searchCustomers: 顧客を検索できる")
+    void testSearchCustomers() {
+        // モックの動作を定義
+        when(customerRepository.search("John", "john@example.com")).thenReturn(Arrays.asList(
+            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St")
+        ));
+
+        // サービスメソッドを呼び出し
+        var customers = customerService.searchCustomers("John", "john@example.com");
+
+        // 検証
+        assertThat(customers).hasSize(1);
+        assertThat(customers.get(0).getName()).isEqualTo("John Doe");
+        verify(customerRepository, times(1)).search("John", "john@example.com");
+    }
+
+    @Test
+    @DisplayName("getAllCustomersWithPagination: ページネーションで顧客を取得できる")
+    void testGetAllCustomersWithPagination() {
+        // モックの動作を定義
+        Pageable pageable = PageRequest.of(0, 10);
+        when(customerRepository.findAllWithPagination(10, 0)).thenReturn(Arrays.asList(
+            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St"),
+            new Customer("jane.doe@example.com", "password456", "Jane Doe", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "987-654-3210", "456 Elm St")
+        ));
+        when(customerRepository.count()).thenReturn(2L);
+
+        // サービスメソッドを呼び出し
+        Page<Customer> page = customerService.getAllCustomersWithPagination(pageable);
+
+        // 検証
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getTotalPages()).isEqualTo(1);
+        verify(customerRepository, times(1)).findAllWithPagination(10, 0);
+        verify(customerRepository, times(1)).count();
+    }
+
+    @Test
+    @DisplayName("searchCustomersWithPagination: 検索条件でページネーション")
+    void testSearchCustomersWithPagination() {
+        // モックの動作を定義
+        Pageable pageable = PageRequest.of(0, 10);
+        when(customerRepository.searchWithPagination("John", "john@example.com", 10, 0)).thenReturn(Arrays.asList(
+            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St")
+        ));
+        when(customerRepository.countBySearch("John", "john@example.com")).thenReturn(1L);
+
+        // サービスメソッドを呼び出し
+        Page<Customer> page = customerService.searchCustomersWithPagination("John", "john@example.com", pageable);
+
+        // 検証
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getName()).isEqualTo("John Doe");
+        verify(customerRepository, times(1)).searchWithPagination("John", "john@example.com", 10, 0);
+        verify(customerRepository, times(1)).countBySearch("John", "john@example.com");
+    }
+}
