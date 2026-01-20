@@ -88,6 +88,6 @@ public class CustomerRegistrationController {
     @ExceptionHandler(IllegalArgumentException.class)
     public String handleBusinessError(IllegalArgumentException ex, Model model) {
         model.addAttribute("errorMessage", ex.getMessage());
-        return "business-error";
+        return "customer-registration-error";
     }
 }

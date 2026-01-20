@@ -31,6 +31,11 @@ public class CustomerService {
         return customerRepository.findAll();
     }
 
+    public Customer getCustomerByEmail(String email) {
+        return customerRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("顧客が見つかりません。"));
+    }
+
     public Page<Customer> getAllCustomersWithPagination(Pageable pageable) {
         int offset = (int) pageable.getOffset();
         int pageSize = pageable.getPageSize();

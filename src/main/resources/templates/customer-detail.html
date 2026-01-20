@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Customer Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center">
+    <div class="container mx-auto px-4">
+        <div class="bg-white shadow-md rounded-lg p-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Customer Detail</h1>
+            
+            <div class="space-y-4">
+                <div class="border-b border-gray-200 pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <p class="text-gray-900 text-lg" th:text="${customer.email}">email</p>
+                </div>
+                
+                <div class="border-b border-gray-200 pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <p class="text-gray-900 text-lg" th:text="${customer.name}">name</p>
+                </div>
+                
+                <div class="border-b border-gray-200 pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Registration Date</label>
+                    <p class="text-gray-900 text-lg" th:text="${customer.registrationDate}">registration date</p>
+                </div>
+                
+                <div class="border-b border-gray-200 pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
+                    <p class="text-gray-900 text-lg" th:text="${customer.birthDate}">birth date</p>
+                </div>
+                
+                <div class="border-b border-gray-200 pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <p class="text-gray-900 text-lg" th:text="${customer.phoneNumber}">phone number</p>
+                </div>
+                
+                <div class="border-b border-gray-200 pb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <p class="text-gray-900 text-lg" th:text="${customer.address}">address</p>
+                </div>
+            </div>
+            
+            <div class="flex justify-center mt-8">
+                <a th:href="@{/customers}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Back to List</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

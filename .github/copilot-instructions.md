@@ -274,6 +274,33 @@ public String updateCustomer(@AuthenticationPrincipal CustomerUserDetails userDe
 - バリデーションエラー時は入力画面を再表示
 - 成功時は PRG パターン（Post-Redirect-Get）を使用
 
+#### メソッドの配置順序
+```java
+@Controller
+@RequestMapping("/customers")
+public class CustomerController {
+    
+    // 1. 一覧表示（デフォルトエンドポイント）
+    @GetMapping
+    public String showCustomers(...) { }
+    
+    // 2. 検索（一覧表示の派生機能）
+    @GetMapping("/search")
+    public String searchCustomers(...) { }
+    
+    // 3. 詳細表示（パスパラメータを使用）
+    @GetMapping("/{email}")
+    public String showCustomerDetail(...) { }
+}
+```
+
+**重要**:
+- 機能的に関連するメソッドを近くに配置
+- 一覧表示系（一覧、検索）→ 詳細表示の順
+- パスパラメータを使うエンドポイントは最後に配置
+- CRUD操作は GET → POST → PUT → DELETE の順
+- 可読性とメンテナンス性を重視
+
 ### 6. モデルクラス
 
 #### フォームクラス
@@ -687,7 +714,13 @@ class CustomerRepositoryTest {
   - 例: `customer-input.html`, `customer-edit.html`, `change-password.html`
 - 確認画面: `{機能名}-confirm.html` → `customer-confirm.html`, `customer-edit-confirm.html`
 - 完了画面: `{機能名}-complete.html` → `customer-complete.html`, `change-password-complete.html`
-- エラー画面: `{機能名}-error.html` または `business-error.html`
+- エラー画面: `{機能名}-error.html` → `customer-error.html`, `customer-registration-error.html`
+
+**重要な原則**:
+- **機能に基づく命名**: ファイル名は機能や業務を明確に表す
+- **汎用的な名前は避ける**: `business-error.html`, `common-error.html` などの抽象的な名前は使用しない
+- **既存ファイルの見直し**: 新規作成時に既存の類似ファイルがガイドラインに沿っているか確認する
+- **一貫性の維持**: 同じパターンを繰り返し適用する
 
 **リクエストとの対応**:
 - リクエスト: `POST /customers/register` → 完了画面: `customer-complete.html`

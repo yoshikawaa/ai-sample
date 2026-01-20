@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
@@ -44,5 +45,17 @@ public class CustomerController {
             customerSearchForm.getName(), customerSearchForm.getEmail(), pageable);
         model.addAttribute("customerPage", customerPage);
         return "customer-list";
+    }
+
+    @GetMapping("/{email}")
+    public String showCustomerDetail(@PathVariable String email, Model model) {
+        try {
+            Customer customer = customerService.getCustomerByEmail(email);
+            model.addAttribute("customer", customer);
+            return "customer-detail";
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+            return "customer-error";
+        }
     }
 }

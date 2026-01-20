@@ -42,6 +42,7 @@
                             <th class="border border-gray-300 px-4 py-2 text-left">Birth Date</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Phone Number</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Address</th>
+                            <th class="border border-gray-300 px-4 py-2 text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,9 +53,12 @@
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.birthDate}">birth date</td>
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.phoneNumber}">phone number</td>
                             <td class="border border-gray-300 px-4 py-2 text-gray-800" th:text="${customer.address}">address</td>
+                            <td class="border border-gray-300 px-4 py-2 text-center">
+                                <a th:href="@{/customers/{email}(email=${customer.email})}" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">Detail</a>
+                            </td>
                         </tr>
                         <tr th:if="${customerPage.totalElements == 0}">
-                            <td colspan="6" class="border border-gray-300 px-4 py-2 text-center text-gray-500">検索結果がありません。</td>
+                            <td colspan="7" class="border border-gray-300 px-4 py-2 text-center text-gray-500">検索結果がありません。</td>
                         </tr>
                     </tbody>
                 </table>
