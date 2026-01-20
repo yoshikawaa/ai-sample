@@ -14,6 +14,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -221,5 +222,45 @@ class CustomerServiceTest {
         assertThat(page.getContent().get(0).getName()).isEqualTo("John Doe");
         verify(customerRepository, times(1)).searchWithPagination("John", "john@example.com", 10, 0);
         verify(customerRepository, times(1)).countBySearch("John", "john@example.com");
+    }
+
+    @Test
+    @DisplayName("getCustomerByEmail: メールアドレスで顧客を取得できる")
+    void testGetCustomerByEmail() {
+        // モックの動作を定義
+        Customer customer = new Customer(
+            "john.doe@example.com",
+            "password123",
+            "John Doe",
+            LocalDate.of(2023, 1, 1),
+            LocalDate.of(1990, 1, 1),
+            "123-456-7890",
+            "123 Main St"
+        );
+        when(customerRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(customer));
+
+        // サービスメソッドを呼び出し
+        Customer result = customerService.getCustomerByEmail("john.doe@example.com");
+
+        // 検証
+        assertThat(result).isNotNull();
+        assertThat(result.getEmail()).isEqualTo("john.doe@example.com");
+        assertThat(result.getName()).isEqualTo("John Doe");
+        verify(customerRepository, times(1)).findByEmail("john.doe@example.com");
+    }
+
+    @Test
+    @DisplayName("getCustomerByEmail: 存在しないメールアドレスの場合、例外をスローする")
+    void testGetCustomerByEmail_NotFound() {
+        // モックの動作を定義
+        when(customerRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+
+        // 例外がスローされることを検証
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            customerService.getCustomerByEmail("nonexistent@example.com");
+        });
+
+        assertThat(exception.getMessage()).isEqualTo("顧客が見つかりません。");
+        verify(customerRepository, times(1)).findByEmail("nonexistent@example.com");
     }
 }

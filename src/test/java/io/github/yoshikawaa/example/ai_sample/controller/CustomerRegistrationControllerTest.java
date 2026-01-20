@@ -178,7 +178,7 @@ class CustomerRegistrationControllerTest {
                 .params(validCustomerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
-                .andExpect(view().name("business-error")) // ビュー名が "business-error" であることを確認
+                .andExpect(view().name("customer-registration-error")) // ビュー名が "customer-registration-error" であることを確認
                 .andExpect(model().attribute("errorMessage", "ビジネスエラーが発生しました")); // モデルにエラーメッセージが含まれていることを確認
     }
 

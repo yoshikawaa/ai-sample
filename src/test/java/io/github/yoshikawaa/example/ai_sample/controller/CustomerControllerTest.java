@@ -219,4 +219,48 @@ class CustomerControllerTest {
         // サービス呼び出しの検証
         verify(customerService, times(1)).searchCustomersWithPagination(eq("NonExistent"), eq("nonexistent@example.com"), any());
     }
+
+    @Test
+    @DisplayName("GET /customers/{email}: 顧客詳細を表示する")
+    void testShowCustomerDetail() throws Exception {
+        // モックの動作を定義
+        Customer customer = new Customer(
+            "john.doe@example.com",
+            "password123",
+            "John Doe",
+            LocalDate.of(2023, 3, 1),
+            LocalDate.of(1990, 5, 20),
+            "123-456-7890",
+            "123 Main St"
+        );
+        when(customerService.getCustomerByEmail("john.doe@example.com")).thenReturn(customer);
+
+        // テスト実行
+        mockMvc.perform(get("/customers/{email}", "john.doe@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("customer-detail"))
+                .andExpect(model().attributeExists("customer"))
+                .andExpect(model().attribute("customer", customer));
+
+        // サービス呼び出しの検証
+        verify(customerService, times(1)).getCustomerByEmail("john.doe@example.com");
+    }
+
+    @Test
+    @DisplayName("GET /customers/{email}: 存在しないメールアドレスの場合、エラー画面を表示する")
+    void testShowCustomerDetail_NotFound() throws Exception {
+        // モックの動作を定義
+        when(customerService.getCustomerByEmail("nonexistent@example.com"))
+            .thenThrow(new IllegalArgumentException("顧客が見つかりません。"));
+
+        // テスト実行
+        mockMvc.perform(get("/customers/{email}", "nonexistent@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("customer-error"))
+                .andExpect(model().attributeExists("errorMessage"))
+                .andExpect(model().attribute("errorMessage", "顧客が見つかりません。"));
+
+        // サービス呼び出しの検証
+        verify(customerService, times(1)).getCustomerByEmail("nonexistent@example.com");
+    }
 }
