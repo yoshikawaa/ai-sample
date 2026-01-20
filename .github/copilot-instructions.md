@@ -13,6 +13,7 @@
 - **セキュリティ**: Spring Security（Spring Boot管理）
 - **メール送信**: GreenMail 2.1.8（テスト用）
 - **バリデーション**: Bean Validation（Spring Boot管理）+ TERASOLUNA Validation 5.10.0.RELEASE
+- **CSV**: OpenCSV 5.9
 
 ### パッケージ構成
 ```
@@ -131,6 +132,110 @@ import org.springframework.web.bind.annotation.*;
 - 未使用のインポートは削除する
 - IDEの自動インポート機能を活用
 
+#### FQCN（完全修飾クラス名）の使用禁止
+```java
+// ✅ 推奨: インポートして短縮形を使用
+import org.springframework.data.domain.Sort;
+import com.opencsv.bean.ColumnPositionMappingStrategy;
+
+Sort.Order order = pageable.getSort().iterator().next();
+ColumnPositionMappingStrategy<CustomerCsvDto> strategy = new ColumnPositionMappingStrategy<>();
+
+// ❌ 禁止: FQCN（完全修飾クラス名）を直接使用
+org.springframework.data.domain.Sort.Order order = pageable.getSort().iterator().next();
+com.opencsv.bean.ColumnPositionMappingStrategy<CustomerCsvDto> strategy = 
+    new com.opencsv.bean.ColumnPositionMappingStrategy<>();
+```
+
+**重要**:
+- コード内でFQCNを直接使用しない（必ずimport文を使用）
+- 可読性が向上し、コードが簡潔になる
+- IDEのリファクタリング機能が正しく動作する
+
+#### 文字列チェック
+```java
+// ✅ 推奨: StringUtils.hasText()を使用
+import org.springframework.util.StringUtils;
+
+if (StringUtils.hasText(name) || StringUtils.hasText(email)) {
+    // 検索処理
+}
+
+// ❌ 非推奨: 手動でnullと空文字をチェック
+if ((name != null && !name.isEmpty()) || (email != null && !email.isEmpty())) {
+    // 検索処理
+}
+```
+
+**重要**:
+- `StringUtils.hasText()` を使用して文字列の有効性をチェック
+- null、空文字（`""`）、空白文字のみ（`"   "`）を一度にチェック可能
+- 冗長なnullチェックと空文字チェックを避ける
+- 可読性が向上し、Spring Frameworkの標準パターンに準拠
+
+#### コード簡潔化のベストプラクティス
+
+##### 冗長な条件チェックの削減
+```java
+// ✅ 推奨: 必要最小限のチェック
+if (sortInfo[0] != null) {
+    // sortInfo[0]とsortInfo[1]は常に同時にnullまたは非nullになる
+}
+
+// ❌ 非推奨: 冗長なチェック
+if (sortInfo[0] != null && sortInfo[1] != null) {
+    // 両方チェックする必要がない
+}
+```
+
+##### 不要な型変換の回避
+```java
+// ✅ 推奨: boolean値を直接使用
+boolean ascending = order.getDirection().isAscending();
+customers = sortCustomers(customers, property, ascending);
+
+// ❌ 非推奨: boolean→String→booleanの往復変換
+String direction = order.getDirection().isAscending() ? "ASC" : "DESC";
+boolean ascending = "ASC".equals(direction);
+```
+
+##### 不要な中間変数の削減
+```java
+// ✅ 推奨: メソッド呼び出しを直接引数に
+customers = sortCustomers(customers, order.getProperty(), order.getDirection().isAscending());
+
+// ❌ 非推奨: 一度しか使わない変数を宣言
+String property = order.getProperty();
+boolean ascending = order.getDirection().isAscending();
+customers = sortCustomers(customers, property, ascending);
+```
+
+##### switchのdefaultケースの効率的な使用
+```java
+// ✅ 推奨: 同じ処理をdefaultで統合
+String column = switch (property) {
+    case "email" -> "email";
+    case "name" -> "name";
+    case "birthDate" -> "birth_date";
+    default -> "registration_date";  // registrationDateと未知のプロパティの両方をカバー
+};
+
+// ❌ 非推奨: defaultと同じ処理を個別に記述
+String column = switch (property) {
+    case "email" -> "email";
+    case "name" -> "name";
+    case "registrationDate" -> "registration_date";  // defaultと同じ
+    case "birthDate" -> "birth_date";
+    default -> "registration_date";
+};
+```
+
+**重要**:
+- ロジックが保証する場合は冗長なチェックを省略
+- 型変換の往復を避け、元の型のまま使用
+- 一度しか使わない変数は宣言せず直接使用
+- switchのdefaultで複数のケースをまとめる
+
 #### YAML設定ファイル
 ```yaml
 # ✅ 推奨: 特殊文字を含むキーは角括弧で囲む
@@ -150,6 +255,35 @@ spring:
 **重要**:
 - ドット（`.`）やハイフン（`-`）を含むキーは `"[key.name]"` で囲む
 - Spring Boot は両方の形式をサポートするが、警告を避けるため角括弧を使用
+
+#### メソッド配置順序
+```java
+@Service
+public class CustomerService {
+    
+    // 1. フィールド
+    private final CustomerRepository customerRepository;
+    
+    // 2. コンストラクタ
+    public CustomerService(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
+    }
+    
+    // 3. publicメソッド
+    public List<Customer> getAllCustomers() { }
+    public Customer getCustomerByEmail(String email) { }
+    public void registerCustomer(Customer customer) { }
+    
+    // 4. privateメソッド
+    private boolean isUnderage(LocalDate birthDate) { }
+    private String[] extractSortInfo(Pageable pageable) { }
+}
+```
+
+**重要**:
+- **メソッドの配置順序**: publicメソッド → privateメソッド
+- publicメソッドはクラスの公開インターフェースであり、先に配置することで可読性が向上
+- privateメソッドは実装の詳細であり、後に配置
 
 ### 4. サービス層
 
@@ -336,6 +470,123 @@ public class CustomerForm {
     // フィールド定義
 }
 ```
+
+#### CSV出力用DTOパターン
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class CustomerCsvDto {
+
+    @CsvBindByName(column = "Email")
+    @CsvBindByPosition(position = 0)
+    private String email;
+
+    @CsvBindByName(column = "Name")
+    @CsvBindByPosition(position = 1)
+    private String name;
+
+    @CsvBindByName(column = "Registration Date")
+    @CsvBindByPosition(position = 2)
+    @CsvDate(value = "yyyy-MM-dd")
+    private LocalDate registrationDate;
+
+    @CsvBindByName(column = "Birth Date")
+    @CsvBindByPosition(position = 3)
+    @CsvDate(value = "yyyy-MM-dd")
+    private LocalDate birthDate;
+
+    @CsvBindByName(column = "Phone Number")
+    @CsvBindByPosition(position = 4)
+    private String phoneNumber;
+
+    @CsvBindByName(column = "Address")
+    @CsvBindByPosition(position = 5)
+    private String address;
+
+    /**
+     * Customerエンティティから変換
+     */
+    public static CustomerCsvDto fromEntity(Customer customer) {
+        return new CustomerCsvDto(
+            customer.getEmail(),
+            customer.getName(),
+            customer.getRegistrationDate(),
+            customer.getBirthDate(),
+            customer.getPhoneNumber(),
+            customer.getAddress()
+        );
+    }
+}
+```
+
+**重要**:
+- **DTOパターンを使用**: ドメイン層（Customer）をプレゼンテーション層（CSV）から分離
+- **`@CsvBindByName`**: ヘッダー名を定義
+- **`@CsvBindByPosition`**: カラムの順序を制御（必須）
+- **`@CsvDate`**: 日付フォーマットを指定
+- **`fromEntity()`**: エンティティからDTOへの変換メソッド
+- CSV出力専用のクラスとして model パッケージに配置
+
+**アーキテクチャ上の利点**:
+- ドメインエンティティがCSV出力形式に依存しない
+- 複数のCSVフォーマットを容易に追加可能
+- 将来的に他の出力形式（Excel、JSON等）も同様のパターンで実装可能
+
+#### CSV生成処理（Service層）
+```java
+private byte[] generateCSV(List<Customer> customers) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         OutputStreamWriter osw = new OutputStreamWriter(baos, StandardCharsets.UTF_8)) {
+        
+        // UTF-8 BOMを追加（Excelでの文字化け防止）
+        baos.write(0xEF);
+        baos.write(0xBB);
+        baos.write(0xBF);
+        
+        // ヘッダー行を明示的に書き込み（@CsvBindByNameのカラム名を@CsvBindByPositionの順序で出力）
+        osw.write("Email,Name,Registration Date,Birth Date,Phone Number,Address\n");
+        osw.flush();
+        
+        // CustomerエンティティをCustomerCsvDtoに変換
+        List<CustomerCsvDto> csvDtos = customers.stream()
+            .map(CustomerCsvDto::fromEntity)
+            .collect(Collectors.toList());
+        
+        // OpenCSVを使用してデータ行を生成（@CsvBindByPositionで順序制御）
+        com.opencsv.bean.ColumnPositionMappingStrategy<CustomerCsvDto> strategy = 
+            new com.opencsv.bean.ColumnPositionMappingStrategy<>();
+        strategy.setType(CustomerCsvDto.class);
+        
+        StatefulBeanToCsv<CustomerCsvDto> beanToCsv = new StatefulBeanToCsvBuilder<CustomerCsvDto>(osw)
+            .withMappingStrategy(strategy)
+            .withApplyQuotesToAll(false)
+            .build();
+        
+        beanToCsv.write(csvDtos);
+        osw.flush();
+        
+        return baos.toByteArray();
+    } catch (Exception e) {
+        throw new RuntimeException("CSV生成中にエラーが発生しました", e);
+    }
+}
+```
+
+**重要**:
+- **UTF-8 BOM**: Excelでの文字化け防止のため必須
+- **ヘッダー手動書き込み**: `@CsvBindByName`のカラム名を`@CsvBindByPosition`の順序で出力
+- **ColumnPositionMappingStrategy**: データ行の順序を`@CsvBindByPosition`で制御
+- **ハイブリッドアプローチ**: ヘッダーは手動、データ行は自動生成
+  - カスタムMappingStrategyによる完全自動化は実装が複雑でデータ行が正しく出力されない問題あり
+  - 現在の方式がシンプルで確実
+- **エスケープ処理**: OpenCSVが自動的に処理（ダブルクォート等）
+- **`withApplyQuotesToAll(false)`**: 必要なフィールドのみをクォートで囲む
+
+**禁止事項**:
+- ❌ ドメインエンティティに直接CSV出力用アノテーションを付与しない
+- ❌ カスタムMappingStrategyで完全自動化を試みない（データ行が出力されない）
+- ❌ 手動でCSVエスケープ処理を実装しない（OpenCSVに任せる）
 
 ### 7. テンプレート（Thymeleaf）
 
@@ -660,9 +911,11 @@ class CustomerServiceTest {
 - **`@Test` には必ず `@DisplayName` を付けて日本語でテスト内容を記述する**
   - 例: `@DisplayName("顧客情報を更新できる")`
   - テストの目的が一目でわかるようにする
-- **クラスの最後のメソッドを編集する場合、必ずクラスの閉じ括弧 `}` を `oldString` と `newString` の両方に含めること**
-  - これを忘れるとコンパイルエラーになる
-  - 適用対象: コントローラテスト、サービステスト、リポジトリテストすべて
+- **クラスの最後に新しいメソッドを追加する場合の重要なルール**
+  - `oldString` には既存の最後のメソッドの閉じ括弧からクラスの閉じ括弧まで（`}\n}`）を含める
+  - `newString` には既存の最後のメソッドの閉じ括弧 + 新しいメソッド全体 + クラスの閉じ括弧（`}\n\n    // 新メソッド...\n}`）を含める
+  - これを忘れるとクラスの閉じ括弧が欠けてコンパイルエラーになる
+  - 適用対象: すべてのJavaクラス（Service、Controller、Repository、Testなど）
 - `@Test` アノテーションの重複に注意（コピー&ペーストミスを避ける）
 
 ### 5. リポジトリテスト

@@ -375,4 +375,277 @@ class CustomerServiceTest {
         assertThat(result.getContent()).hasSize(1);
         verify(customerRepository, times(1)).findAllWithPagination(10, 0, "registration_date", "ASC");
     }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: 全顧客をCSVエクスポートできる")
+    void exportCustomersToCSV_AllCustomers() {
+        // モックの動作を定義
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+        ));
+
+        // サービスメソッドを呼び出し
+        Pageable pageable = PageRequest.of(0, 10);
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証
+        assertThat(csvData).isNotEmpty();
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        
+        // UTF-8 BOMを確認
+        assertThat(csv).startsWith("\uFEFF");
+        
+        // ヘッダーを確認
+        assertThat(csv).contains("Email,Name,Registration Date,Birth Date,Phone Number,Address");
+        
+        // データを確認
+        assertThat(csv).contains("alice@example.com");
+        assertThat(csv).contains("Alice");
+        assertThat(csv).contains("bob@example.com");
+        assertThat(csv).contains("Bob");
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: 検索条件でフィルタリングしてエクスポートできる")
+    void exportCustomersToCSV_WithSearchConditions() {
+        // モックの動作を定義
+        when(customerRepository.search("Alice", null)).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し
+        Pageable pageable = PageRequest.of(0, 10);
+        byte[] csvData = customerService.exportCustomersToCSV("Alice", null, pageable);
+
+        // 検証
+        assertThat(csvData).isNotEmpty();
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        
+        assertThat(csv).contains("alice@example.com");
+        assertThat(csv).contains("Alice");
+        assertThat(csv).doesNotContain("bob@example.com");
+        
+        verify(customerRepository, times(1)).search("Alice", null);
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: ソート順を適用してエクスポートできる")
+    void exportCustomersToCSV_WithSorting() {
+        // モックの動作を定義
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し（名前の昇順でソート）
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("name").ascending());
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証: CSV内のデータが名前順にソートされていることを確認
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        int aliceIndex = csv.indexOf("Alice");
+        int bobIndex = csv.indexOf("Bob");
+        
+        assertThat(aliceIndex).isLessThan(bobIndex);
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: ダブルクォートをエスケープできる")
+    void exportCustomersToCSV_EscapeDoubleQuotes() {
+        // モックの動作を定義（ダブルクォートを含む名前）
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("test@example.com", "password", "Test \"Name\"", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address \"1\"")
+        ));
+
+        // サービスメソッドを呼び出し
+        Pageable pageable = PageRequest.of(0, 10);
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証: ダブルクォートがエスケープされていることを確認
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(csv).contains("Test \"\"Name\"\"");
+        assertThat(csv).contains("Address \"\"1\"\"");
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: 降順ソートを適用してエクスポートできる")
+    void exportCustomersToCSV_WithDescendingSort() {
+        // モックの動作を定義
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+        ));
+
+        // サービスメソッドを呼び出し（名前の降順でソート）
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("name").descending());
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証: CSV内のデータが名前降順でソートされていることを確認
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        int aliceIndex = csv.indexOf("Alice");
+        int bobIndex = csv.indexOf("Bob");
+        
+        assertThat(bobIndex).isLessThan(aliceIndex);
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: emailでソートしてエクスポートできる")
+    void exportCustomersToCSV_SortByEmail() {
+        // モックの動作を定義
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し（emailの昇順でソート）
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("email").ascending());
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証: CSV内のデータがemail順にソートされていることを確認
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        int aliceIndex = csv.indexOf("alice@example.com");
+        int bobIndex = csv.indexOf("bob@example.com");
+        
+        assertThat(aliceIndex).isLessThan(bobIndex);
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: birthDateでソートしてエクスポートできる")
+    void exportCustomersToCSV_SortByBirthDate() {
+        // モックの動作を定義
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し（生年月日の昇順でソート）
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("birthDate").ascending());
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証: CSV内のデータが生年月日順にソートされていることを確認
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        int aliceIndex = csv.indexOf("Alice");
+        int bobIndex = csv.indexOf("Bob");
+        
+        assertThat(aliceIndex).isLessThan(bobIndex);
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: 未知のプロパティでソートした場合はregistrationDateでソートされる")
+    void exportCustomersToCSV_SortByUnknownProperty() {
+        // モックの動作を定義
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し（未知のプロパティでソート）
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("unknownProperty").ascending());
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証: CSV内のデータが登録日順にソートされていることを確認（デフォルト動作）
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        int aliceIndex = csv.indexOf("Alice");
+        int bobIndex = csv.indexOf("Bob");
+        
+        assertThat(aliceIndex).isLessThan(bobIndex);
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: registrationDateでソートしてエクスポートできる")
+    void exportCustomersToCSV_SortByRegistrationDate() {
+        // モックの動作を定義
+        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し（登録日の昇順でソート）
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("registrationDate").ascending());
+        byte[] csvData = customerService.exportCustomersToCSV(null, null, pageable);
+
+        // 検証: CSV内のデータが登録日順にソートされていることを確認
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        int aliceIndex = csv.indexOf("Alice");
+        int bobIndex = csv.indexOf("Bob");
+        
+        assertThat(aliceIndex).isLessThan(bobIndex);
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: CSV生成時にエラーが発生した場合、RuntimeExceptionがスローされる")
+    void exportCustomersToCSV_WithInvalidData() {
+        // リポジトリがnullを返すことでNullPointerExceptionを誘発
+        when(customerRepository.findAll()).thenReturn(null);
+        
+        Pageable pageable = PageRequest.of(0, 10);
+        
+        // CSV生成時に例外がスローされることを確認
+        assertThrows(RuntimeException.class, () -> {
+            customerService.exportCustomersToCSV(null, null, pageable);
+        });
+        
+        verify(customerRepository, times(1)).findAll();
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: emailのみで検索してエクスポートできる")
+    void exportCustomersToCSV_WithEmailOnly() {
+        // モックの動作を定義
+        when(customerRepository.search(null, "alice@example.com")).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し
+        Pageable pageable = PageRequest.of(0, 10);
+        byte[] csvData = customerService.exportCustomersToCSV(null, "alice@example.com", pageable);
+
+        // 検証
+        assertThat(csvData).isNotEmpty();
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        
+        assertThat(csv).contains("alice@example.com");
+        assertThat(csv).contains("Alice");
+        
+        verify(customerRepository, times(1)).search(null, "alice@example.com");
+    }
+
+    @Test
+    @DisplayName("exportCustomersToCSV: nameとemailの両方で検索してエクスポートできる")
+    void exportCustomersToCSV_WithBothNameAndEmail() {
+        // モックの動作を定義
+        when(customerRepository.search("Alice", "alice@example.com")).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        ));
+
+        // サービスメソッドを呼び出し
+        Pageable pageable = PageRequest.of(0, 10);
+        byte[] csvData = customerService.exportCustomersToCSV("Alice", "alice@example.com", pageable);
+
+        // 検証
+        assertThat(csvData).isNotEmpty();
+        String csv = new String(csvData, java.nio.charset.StandardCharsets.UTF_8);
+        
+        assertThat(csv).contains("alice@example.com");
+        assertThat(csv).contains("Alice");
+        
+        verify(customerRepository, times(1)).search("Alice", "alice@example.com");
+    }
 }

@@ -1,18 +1,29 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.opencsv.bean.ColumnPositionMappingStrategy;
+import com.opencsv.bean.StatefulBeanToCsv;
+import com.opencsv.bean.StatefulBeanToCsvBuilder;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
+import io.github.yoshikawaa.example.ai_sample.model.CustomerCsvDto;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
 
@@ -105,6 +116,27 @@ public class CustomerService {
         return new PageImpl<>(customers, pageable, total);
     }
 
+    public byte[] exportCustomersToCSV(String name, String email, Pageable pageable) {
+        // 検索条件に基づいて顧客を取得（全件）
+        List<Customer> customers;
+        
+        if (StringUtils.hasText(name) || StringUtils.hasText(email)) {
+            // 検索条件がある場合は全件取得（ページネーションなし）
+            customers = customerRepository.search(name, email);
+        } else {
+            // 検索条件がない場合は全件取得
+            customers = customerRepository.findAll();
+        }
+        
+        // ソート処理（必要に応じて）
+        if (pageable.getSort().isSorted()) {
+            Sort.Order order = pageable.getSort().iterator().next();
+            customers = sortCustomers(customers, order.getProperty(), order.getDirection().isAscending());
+        }
+        
+        return generateCSV(customers);
+    }
+
     private boolean isUnderage(LocalDate birthDate) {
         LocalDate today = LocalDate.now();
         int age = Period.between(birthDate, today).getYears();
@@ -113,7 +145,7 @@ public class CustomerService {
 
     private String[] extractSortInfo(Pageable pageable) {
         if (pageable.getSort().isSorted()) {
-            org.springframework.data.domain.Sort.Order order = pageable.getSort().iterator().next();
+            Sort.Order order = pageable.getSort().iterator().next();
             String property = order.getProperty();
             String direction = order.getDirection().isAscending() ? "ASC" : "DESC";
             
@@ -121,7 +153,6 @@ public class CustomerService {
             String column = switch (property) {
                 case "email" -> "email";
                 case "name" -> "name";
-                case "registrationDate" -> "registration_date";
                 case "birthDate" -> "birth_date";
                 default -> "registration_date";
             };
@@ -130,5 +161,55 @@ public class CustomerService {
         }
         return new String[]{null, null};
     }
-}
 
+    private List<Customer> sortCustomers(List<Customer> customers, String property, boolean ascending) {
+        return customers.stream()
+            .sorted((c1, c2) -> {
+                int result = switch (property) {
+                    case "email" -> c1.getEmail().compareTo(c2.getEmail());
+                    case "name" -> c1.getName().compareTo(c2.getName());
+                    case "birthDate" -> c1.getBirthDate().compareTo(c2.getBirthDate());
+                    default -> c1.getRegistrationDate().compareTo(c2.getRegistrationDate());
+                };
+                return ascending ? result : -result;
+            })
+            .toList();
+    }
+
+    private byte[] generateCSV(List<Customer> customers) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             OutputStreamWriter osw = new OutputStreamWriter(baos, StandardCharsets.UTF_8)) {
+            
+            // UTF-8 BOMを追加（Excelでの文字化け防止）
+            baos.write(0xEF);
+            baos.write(0xBB);
+            baos.write(0xBF);
+            
+            // ヘッダー行を明示的に書き込み（@CsvBindByNameのカラム名を@CsvBindByPositionの順序で出力）
+            osw.write("Email,Name,Registration Date,Birth Date,Phone Number,Address\n");
+            osw.flush();
+            
+            // CustomerエンティティをCustomerCsvDtoに変換
+            List<CustomerCsvDto> csvDtos = customers.stream()
+                .map(CustomerCsvDto::fromEntity)
+                .collect(Collectors.toList());
+            
+            // OpenCSVを使用してデータ行を生成（@CsvBindByPositionで順序制御）
+            ColumnPositionMappingStrategy<CustomerCsvDto> strategy = 
+                new ColumnPositionMappingStrategy<>();
+            strategy.setType(CustomerCsvDto.class);
+            
+            StatefulBeanToCsv<CustomerCsvDto> beanToCsv = new StatefulBeanToCsvBuilder<CustomerCsvDto>(osw)
+                .withMappingStrategy(strategy)
+                .withApplyQuotesToAll(false)
+                .build();
+            
+            beanToCsv.write(csvDtos);
+            osw.flush();
+            
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("CSV生成中にエラーが発生しました", e);
+        }
+    }
+}
