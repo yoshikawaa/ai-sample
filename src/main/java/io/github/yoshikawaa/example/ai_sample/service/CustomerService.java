@@ -39,7 +39,8 @@ public class CustomerService {
     public Page<Customer> getAllCustomersWithPagination(Pageable pageable) {
         int offset = (int) pageable.getOffset();
         int pageSize = pageable.getPageSize();
-        List<Customer> customers = customerRepository.findAllWithPagination(pageSize, offset);
+        String[] sortInfo = extractSortInfo(pageable);
+        List<Customer> customers = customerRepository.findAllWithPagination(pageSize, offset, sortInfo[0], sortInfo[1]);
         long total = customerRepository.count();
         return new PageImpl<>(customers, pageable, total);
     }
@@ -98,7 +99,8 @@ public class CustomerService {
     public Page<Customer> searchCustomersWithPagination(String name, String email, Pageable pageable) {
         int offset = (int) pageable.getOffset();
         int pageSize = pageable.getPageSize();
-        List<Customer> customers = customerRepository.searchWithPagination(name, email, pageSize, offset);
+        String[] sortInfo = extractSortInfo(pageable);
+        List<Customer> customers = customerRepository.searchWithPagination(name, email, pageSize, offset, sortInfo[0], sortInfo[1]);
         long total = customerRepository.countBySearch(name, email);
         return new PageImpl<>(customers, pageable, total);
     }
@@ -108,4 +110,25 @@ public class CustomerService {
         int age = Period.between(birthDate, today).getYears();
         return age < 18; // 18歳未満を未成年とする
     }
+
+    private String[] extractSortInfo(Pageable pageable) {
+        if (pageable.getSort().isSorted()) {
+            org.springframework.data.domain.Sort.Order order = pageable.getSort().iterator().next();
+            String property = order.getProperty();
+            String direction = order.getDirection().isAscending() ? "ASC" : "DESC";
+            
+            // プロパティ名をDBカラム名に変換
+            String column = switch (property) {
+                case "email" -> "email";
+                case "name" -> "name";
+                case "registrationDate" -> "registration_date";
+                case "birthDate" -> "birth_date";
+                default -> "registration_date";
+            };
+            
+            return new String[]{column, direction};
+        }
+        return new String[]{null, null};
+    }
 }
+

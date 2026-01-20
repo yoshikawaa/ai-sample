@@ -30,7 +30,7 @@ public class CustomerController {
     }
 
     @GetMapping
-    public String showCustomers(@PageableDefault(size = 10) Pageable pageable,
+    public String showCustomers(@PageableDefault(size = 10, sort = "registrationDate", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable,
                                 Model model) {
         Page<Customer> customerPage = customerService.getAllCustomersWithPagination(pageable);
         model.addAttribute("customerPage", customerPage);
@@ -39,7 +39,7 @@ public class CustomerController {
 
     @GetMapping("/search")
     public String searchCustomers(CustomerSearchForm customerSearchForm,
-                                   @PageableDefault(size = 10) Pageable pageable,
+                                   @PageableDefault(size = 10, sort = "registrationDate", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable,
                                    Model model) {
         Page<Customer> customerPage = customerService.searchCustomersWithPagination(
             customerSearchForm.getName(), customerSearchForm.getEmail(), pageable);

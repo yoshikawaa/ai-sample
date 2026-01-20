@@ -274,19 +274,19 @@ class CustomerRepositoryTest {
     @DisplayName("findAllWithPagination: ページネーションで顧客を取得できる")
     void testFindAllWithPagination() {
         // 1ページ目（5件取得、offset=0）
-        List<Customer> page1 = customerRepository.findAllWithPagination(5, 0);
+        List<Customer> page1 = customerRepository.findAllWithPagination(5, 0, null, null);
         assertThat(page1).hasSize(5);
 
         // 2ページ目（5件取得、offset=5）
-        List<Customer> page2 = customerRepository.findAllWithPagination(5, 5);
+        List<Customer> page2 = customerRepository.findAllWithPagination(5, 5, null, null);
         assertThat(page2).hasSize(5);
 
         // 3ページ目（5件取得、offset=10）
-        List<Customer> page3 = customerRepository.findAllWithPagination(5, 10);
+        List<Customer> page3 = customerRepository.findAllWithPagination(5, 10, null, null);
         assertThat(page3).hasSize(5); // data.sqlには15件
 
         // 4ページ目（5件取得、offset=15）- データなし
-        List<Customer> page4 = customerRepository.findAllWithPagination(5, 15);
+        List<Customer> page4 = customerRepository.findAllWithPagination(5, 15, null, null);
         assertThat(page4).isEmpty();
 
         // 登録日の降順であることを確認
@@ -307,7 +307,7 @@ class CustomerRepositoryTest {
     @DisplayName("searchWithPagination: 検索条件でページネーション")
     void testSearchWithPagination() {
         // 名前で検索（1ページ目）
-        List<Customer> results = customerRepository.searchWithPagination("Doe", null, 2, 0);
+        List<Customer> results = customerRepository.searchWithPagination("Doe", null, 2, 0, null, null);
         assertThat(results).hasSizeLessThanOrEqualTo(2);
         assertThat(results).allMatch(c -> c.getName().toLowerCase().contains("doe"));
     }

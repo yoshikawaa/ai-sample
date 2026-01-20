@@ -36,10 +36,38 @@
                 <table class="table-auto w-full border-collapse border border-gray-300">
                     <thead class="bg-gray-200">
                         <tr>
-                            <th class="border border-gray-300 px-4 py-2 text-left">Email</th>
-                            <th class="border border-gray-300 px-4 py-2 text-left">Name</th>
-                            <th class="border border-gray-300 px-4 py-2 text-left">Registration Date</th>
-                            <th class="border border-gray-300 px-4 py-2 text-left">Birth Date</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">
+                                <a th:href="@{/customers(page=${customerPage.number}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email}, sort='email,' + ${customerPage.sort.getOrderFor('email')?.direction?.name() == 'ASC' ? 'DESC' : 'ASC'})}"
+                                   class="text-blue-600 hover:text-blue-800">
+                                    Email
+                                    <span th:if="${customerPage.sort.getOrderFor('email')?.direction?.name() == 'ASC'}">▲</span>
+                                    <span th:if="${customerPage.sort.getOrderFor('email')?.direction?.name() == 'DESC'}">▼</span>
+                                </a>
+                            </th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">
+                                <a th:href="@{/customers(page=${customerPage.number}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email}, sort='name,' + ${customerPage.sort.getOrderFor('name')?.direction?.name() == 'ASC' ? 'DESC' : 'ASC'})}"
+                                   class="text-blue-600 hover:text-blue-800">
+                                    Name
+                                    <span th:if="${customerPage.sort.getOrderFor('name')?.direction?.name() == 'ASC'}">▲</span>
+                                    <span th:if="${customerPage.sort.getOrderFor('name')?.direction?.name() == 'DESC'}">▼</span>
+                                </a>
+                            </th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">
+                                <a th:href="@{/customers(page=${customerPage.number}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email}, sort='registrationDate,' + ${customerPage.sort.getOrderFor('registrationDate')?.direction?.name() == 'ASC' ? 'DESC' : 'ASC'})}"
+                                   class="text-blue-600 hover:text-blue-800">
+                                    Registration Date
+                                    <span th:if="${customerPage.sort.getOrderFor('registrationDate')?.direction?.name() == 'ASC'}">▲</span>
+                                    <span th:if="${customerPage.sort.getOrderFor('registrationDate')?.direction?.name() == 'DESC'}">▼</span>
+                                </a>
+                            </th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">
+                                <a th:href="@{/customers(page=${customerPage.number}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email}, sort='birthDate,' + ${customerPage.sort.getOrderFor('birthDate')?.direction?.name() == 'ASC' ? 'DESC' : 'ASC'})}"
+                                   class="text-blue-600 hover:text-blue-800">
+                                    Birth Date
+                                    <span th:if="${customerPage.sort.getOrderFor('birthDate')?.direction?.name() == 'ASC'}">▲</span>
+                                    <span th:if="${customerPage.sort.getOrderFor('birthDate')?.direction?.name() == 'DESC'}">▼</span>
+                                </a>
+                            </th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Phone Number</th>
                             <th class="border border-gray-300 px-4 py-2 text-left">Address</th>
                             <th class="border border-gray-300 px-4 py-2 text-center">Action</th>
@@ -68,7 +96,7 @@
             <div th:if="${customerPage.totalPages > 1}" class="flex justify-center items-center space-x-2 mt-6">
                 <!-- 前へボタン -->
                 <a th:if="${customerPage.hasPrevious()}" 
-                   th:href="@{/customers(page=${customerPage.number - 1}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email})}"
+                   th:href="@{/customers(page=${customerPage.number - 1}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email}, sort=${customerPage.sort.isSorted() ? customerPage.sort.iterator().next().property + ',' + customerPage.sort.iterator().next().direction : null})}"
                    class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
                     &laquo; Previous
                 </a>
@@ -84,7 +112,7 @@
                 
                 <!-- 次へボタン -->
                 <a th:if="${customerPage.hasNext()}" 
-                   th:href="@{/customers(page=${customerPage.number + 1}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email})}"
+                   th:href="@{/customers(page=${customerPage.number + 1}, size=${customerPage.size}, name=${customerSearchForm.name}, email=${customerSearchForm.email}, sort=${customerPage.sort.isSorted() ? customerPage.sort.iterator().next().property + ',' + customerPage.sort.iterator().next().direction : null})}"
                    class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
                     Next &raquo;
                 </a>
