@@ -172,6 +172,88 @@ public void updateCustomerInfo(Customer customer) {
 
 ### 5. コントローラ層
 
+#### リクエストマッピング
+```java
+@Controller
+@RequestMapping("/customers")
+public class CustomerController {
+    
+    @GetMapping
+    public String showCustomers() {
+        // GET /customers
+    }
+    
+    @GetMapping("/search")
+    public String searchCustomers() {
+        // GET /customers/search
+    }
+}
+```
+
+**重要**:
+- 複数のメソッドで共通するパスはクラスレベルに `@RequestMapping` を付与
+- メソッドレベルには相対パスまたはパスなし（空）を指定
+- RESTful なURL設計を心がける
+
+#### フォームオブジェクトの使用
+```java
+@Controller
+@RequestMapping("/customers")
+public class CustomerController {
+    
+    @ModelAttribute("customerSearchForm")
+    public CustomerSearchForm customerSearchForm() {
+        return new CustomerSearchForm();
+    }
+    
+    @GetMapping
+    public String showCustomers(Model model) {
+        // customerSearchFormは自動的にモデルに追加される
+        return "customer-list";
+    }
+    
+    @GetMapping("/search")
+    public String searchCustomers(CustomerSearchForm customerSearchForm, Model model) {
+        // 引数のフォームオブジェクトには@ModelAttributeは不要
+        // Spring MVCが自動的にリクエストパラメータをバインドし、モデルに追加する
+        return "customer-list";
+    }
+}
+```
+
+**重要**:
+- コントローラレベルでフォームオブジェクトを共通化する場合は `@ModelAttribute` メソッドを実装
+- `@ModelAttribute` メソッドは全てのリクエストハンドラーの前に実行され、戻り値を自動的にモデルに追加
+- メソッド引数にフォームオブジェクトを使用する場合、`@ModelAttribute` アノテーションは不要
+- Spring MVC が自動的にリクエストパラメータをバインドし、モデルに追加する
+
+#### ページネーション
+```java
+@GetMapping
+public String showCustomers(@PageableDefault(size = 10) Pageable pageable,
+                            Model model) {
+    Page<Customer> customerPage = customerService.getAllCustomersWithPagination(pageable);
+    model.addAttribute("customerPage", customerPage);
+    return "customer-list";
+}
+
+@GetMapping("/search")
+public String searchCustomers(CustomerSearchForm customerSearchForm,
+                               @PageableDefault(size = 10) Pageable pageable,
+                               Model model) {
+    Page<Customer> customerPage = customerService.searchCustomersWithPagination(
+        customerSearchForm.getName(), customerSearchForm.getEmail(), pageable);
+    model.addAttribute("customerPage", customerPage);
+    return "customer-list";
+}
+```
+
+**重要**:
+- ページネーションには `Pageable` 引数を使用（`@RequestParam int page` や `@RequestParam int size` は使用しない）
+- `@PageableDefault` でデフォルトのページサイズを指定（ページ番号のデフォルトは0）
+- Spring MVC が `?page=1&size=20` などのリクエストパラメータを自動的に `Pageable` にバインド
+- `PageRequest.of(page, size)` のような手動生成は不要
+
 #### フォームバリデーション
 ```java
 @PostMapping("/edit")
@@ -373,7 +455,12 @@ public class CustomerForm {
 - ボタンテキスト: 英語
 - 完了画面: 緑色のチェックアイコン
 - エラー画面: 赤色の×マークアイコン
-- ボタンスタイル: `bg-blue-500 hover:bg-blue-600` で統一
+
+**ボタンの色使い**:
+- **プライマリアクション**: `bg-blue-500 hover:bg-blue-600`（検索、登録、更新、削除実行など）
+- **セカンダリアクション**: `bg-gray-500 hover:bg-gray-600`（Back、Cancel、戻るなど）
+- **新規作成**: `bg-green-500 hover:bg-green-600`（必要に応じて使用）
+- **危険な操作**: `bg-red-500 hover:bg-red-600`（削除の確認ボタンなど）
 
 **アイコン表示について**:
 - アイコンは **Heroicons** のインラインSVGを使用
@@ -447,6 +534,10 @@ class CustomerEditControllerTest {
     @DisplayName("顧客情報を更新できる")
     @WithUserDetails(value = "test@example.com", setupBefore = TestExecutionEvent.TEST_EXECUTION)
     void updateCustomer() throws Exception {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "John Doe");
+        params.add("email", "john@example.com");
+        
         mockMvc.perform(post("/mypage/edit")
                 .params(params)
                 .with(csrf()))
@@ -464,6 +555,7 @@ class CustomerEditControllerTest {
 - `setupBefore = TestExecutionEvent.TEST_EXECUTION` を指定
 - CSRF トークンは `.with(csrf())` で付与
 - `@DisplayName` で日本語のテスト名を記述
+- **リクエストパラメータは `MultiValueMap` と `.params()` を使用**（`.param()` の連鎖は避ける）
 
 ### 3. サービステスト
 

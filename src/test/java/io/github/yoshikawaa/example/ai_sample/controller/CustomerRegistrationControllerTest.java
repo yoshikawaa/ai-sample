@@ -34,10 +34,10 @@ class CustomerRegistrationControllerTest {
     private MockMvc mockMvc;
 
     @Test
-    @DisplayName("GET /customers/input: 顧客入力フォームを表示する")
+    @DisplayName("GET /register/input: 顧客入力フォームを表示する")
     void testShowInputForm() throws Exception {
         // テスト実行
-        mockMvc.perform(get("/customers/input"))
+        mockMvc.perform(get("/register/input"))
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
                 .andExpect(view().name("customer-input")); // ビュー名が "customer-input" であることを確認
     }
@@ -56,7 +56,7 @@ class CustomerRegistrationControllerTest {
         validCustomerForm.add("address", "123 Main St");
 
         // テスト実行
-        mockMvc.perform(post("/customers/confirm")
+        mockMvc.perform(post("/register/confirm")
                 .params(validCustomerForm) // params を使用してフォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
@@ -78,7 +78,7 @@ class CustomerRegistrationControllerTest {
         invalidCustomerForm.add("address", "");
 
         // テスト実行
-        mockMvc.perform(post("/customers/confirm")
+        mockMvc.perform(post("/register/confirm")
                 .params(invalidCustomerForm) // params を使用してフォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
@@ -100,7 +100,7 @@ class CustomerRegistrationControllerTest {
         customerForm.add("address", "123 Test St");
 
         // テスト実行
-        mockMvc.perform(post("/customers/input")
+        mockMvc.perform(post("/register/input")
                 .params(customerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
@@ -121,11 +121,11 @@ class CustomerRegistrationControllerTest {
         validCustomerForm.add("address", "123 Main St");
 
         // テスト実行
-        mockMvc.perform(post("/customers/register")
+        mockMvc.perform(post("/register/register")
                 .params(validCustomerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().is3xxRedirection()) // リダイレクトが発生することを確認
-                .andExpect(redirectedUrl("/customers/complete")); // リダイレクト先が "/customers/complete" であることを確認
+                .andExpect(redirectedUrl("/register/complete")); // リダイレクト先が "/register/complete" であることを確認
 
         // サービス呼び出しの検証
         verify(customerService, times(1)).registerCustomer(any(Customer.class));
@@ -145,7 +145,7 @@ class CustomerRegistrationControllerTest {
         invalidCustomerForm.add("address", "");
 
         // テスト実行
-        mockMvc.perform(post("/customers/register")
+        mockMvc.perform(post("/register/register")
                 .params(invalidCustomerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
@@ -174,7 +174,7 @@ class CustomerRegistrationControllerTest {
         validCustomerForm.add("address", "123 Main St");
 
         // テスト実行
-        mockMvc.perform(post("/customers/register")
+        mockMvc.perform(post("/register/register")
                 .params(validCustomerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
@@ -183,10 +183,10 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
-    @DisplayName("GET /customers/complete: 登録完了画面を表示する")
+    @DisplayName("GET /register/complete: 登録完了画面を表示する")
     void testShowCompletePage() throws Exception {
         // テスト実行
-        mockMvc.perform(get("/customers/complete")) // GET リクエストを送信
+        mockMvc.perform(get("/register/complete")) // GET リクエストを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
                 .andExpect(view().name("customer-complete")); // ビュー名が "customer-complete" であることを確認
     }

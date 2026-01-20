@@ -29,7 +29,7 @@ class CustomerRepositoryTest {
 
         // 検証
         assertThat(customers).isNotEmpty();
-        assertThat(customers.size()).isGreaterThanOrEqualTo(3); // `data.sql` に基づく
+        assertThat(customers.size()).isGreaterThanOrEqualTo(15); // `data.sql` に基づく
     }
 
     @Test
@@ -200,5 +200,127 @@ class CustomerRepositoryTest {
         Optional<Customer> customer = customerRepository.findByEmail("non-existent-delete@example.com");
         assertThat(customer).isNotPresent();
     }
-}
 
+    @Test
+    @DisplayName("search: 名前で検索できる")
+    void testSearch_名前のみ() {
+        // 名前で検索
+        List<Customer> customers = customerRepository.search("John", null);
+
+        // 検証
+        assertThat(customers).isNotEmpty();
+        assertThat(customers).anyMatch(c -> c.getName().contains("John"));
+    }
+
+    @Test
+    @DisplayName("search: メールアドレスで検索できる")
+    void testSearch_メールアドレスのみ() {
+        // メールアドレスで検索
+        List<Customer> customers = customerRepository.search(null, "jane");
+
+        // 検証
+        assertThat(customers).isNotEmpty();
+        assertThat(customers).anyMatch(c -> c.getEmail().contains("jane"));
+    }
+
+    @Test
+    @DisplayName("search: 名前とメールアドレスで検索できる")
+    void testSearch_名前とメールアドレス() {
+        // 名前とメールアドレスで検索
+        List<Customer> customers = customerRepository.search("Jane", "jane");
+
+        // 検証
+        assertThat(customers).isNotEmpty();
+        assertThat(customers).allMatch(c -> c.getName().contains("Jane") && c.getEmail().contains("jane"));
+    }
+
+    @Test
+    @DisplayName("search: 検索条件なしで全件取得")
+    void testSearch_検索条件なし() {
+        // 検索条件なしで全件取得
+        List<Customer> customers = customerRepository.search(null, null);
+
+        // 検証（全件取得）
+        assertThat(customers).isNotEmpty();
+        assertThat(customers.size()).isGreaterThanOrEqualTo(15);
+    }
+
+    @Test
+    @DisplayName("search: 該当なしの場合、空のリストを返す")
+    void testSearch_該当なし() {
+        // 存在しない条件で検索
+        List<Customer> customers = customerRepository.search("NonExistentName", "nonexistent@example.com");
+
+        // 検証（空のリスト）
+        assertThat(customers).isEmpty();
+    }
+
+    @Test
+    @DisplayName("search: 登録日の降順でソートされる")
+    void testSearch_登録日降順() {
+        // 全件検索
+        List<Customer> customers = customerRepository.search(null, null);
+
+        // 検証（登録日の降順）
+        assertThat(customers).isNotEmpty();
+        for (int i = 0; i < customers.size() - 1; i++) {
+            LocalDate current = customers.get(i).getRegistrationDate();
+            LocalDate next = customers.get(i + 1).getRegistrationDate();
+            assertThat(current.isAfter(next) || current.isEqual(next)).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("findAllWithPagination: ページネーションで顧客を取得できる")
+    void testFindAllWithPagination() {
+        // 1ページ目（5件取得、offset=0）
+        List<Customer> page1 = customerRepository.findAllWithPagination(5, 0);
+        assertThat(page1).hasSize(5);
+
+        // 2ページ目（5件取得、offset=5）
+        List<Customer> page2 = customerRepository.findAllWithPagination(5, 5);
+        assertThat(page2).hasSize(5);
+
+        // 3ページ目（5件取得、offset=10）
+        List<Customer> page3 = customerRepository.findAllWithPagination(5, 10);
+        assertThat(page3).hasSize(5); // data.sqlには15件
+
+        // 4ページ目（5件取得、offset=15）- データなし
+        List<Customer> page4 = customerRepository.findAllWithPagination(5, 15);
+        assertThat(page4).isEmpty();
+
+        // 登録日の降順であることを確認
+        assertThat(page1.get(0).getRegistrationDate()).isAfterOrEqualTo(page1.get(1).getRegistrationDate());
+        
+        // ページ間の順序を確認（page1の最後 >= page2の最初）
+        assertThat(page1.get(4).getRegistrationDate()).isAfterOrEqualTo(page2.get(0).getRegistrationDate());
+    }
+
+    @Test
+    @DisplayName("count: 全顧客数を取得できる")
+    void testCount() {
+        long count = customerRepository.count();
+        assertThat(count).isGreaterThanOrEqualTo(15);
+    }
+
+    @Test
+    @DisplayName("searchWithPagination: 検索条件でページネーション")
+    void testSearchWithPagination() {
+        // 名前で検索（1ページ目）
+        List<Customer> results = customerRepository.searchWithPagination("Doe", null, 2, 0);
+        assertThat(results).hasSizeLessThanOrEqualTo(2);
+        assertThat(results).allMatch(c -> c.getName().toLowerCase().contains("doe"));
+    }
+
+    @Test
+    @DisplayName("countBySearch: 検索結果の件数を取得できる")
+    void testCountBySearch() {
+        // 名前で検索
+        long count = customerRepository.countBySearch("Doe", null);
+        assertThat(count).isGreaterThanOrEqualTo(2); // John Doe, Jane Doe
+
+        // 該当なし
+        long noResults = customerRepository.countBySearch("NonExistent", null);
+        assertThat(noResults).isZero();
+    }
+}

@@ -45,7 +45,7 @@
                 <div class="text-center mt-6">
                     <div class="flex justify-center space-x-4">
                         <!-- Back ボタン -->
-                        <form th:action="@{/customers/input}" th:object="${customerForm}" method="post">
+                        <form th:action="@{/register/input}" th:object="${customerForm}" method="post">
                             <input type="hidden" th:field="*{email}">
                             <input type="hidden" th:field="*{name}">
                             <input type="hidden" th:field="*{birthDate}">
@@ -55,7 +55,7 @@
                         </form>
 
                         <!-- Register ボタン -->
-                        <form th:action="@{/customers/register}" th:object="${customerForm}" method="post">
+                        <form th:action="@{/register/register}" th:object="${customerForm}" method="post">
                             <input type="hidden" th:field="*{email}">
                             <input type="hidden" th:field="*{password}">
                             <input type="hidden" th:field="*{confirmPassword}">

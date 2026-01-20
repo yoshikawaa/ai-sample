@@ -19,8 +19,14 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/", "/customers/**", "/login", "/password-reset/**", "/error").permitAll() // ログイン不要の画面
+                .requestMatchers("/", "/customers", "/customers/search", "/register/**", "/login", "/password-reset/**", "/h2-console/**", "/error").permitAll() // ログイン不要の画面
                 .anyRequest().authenticated() // それ以外は認証が必要
+            )
+            .headers(headers -> headers
+                .frameOptions(frameOptions -> frameOptions.sameOrigin()) // H2コンソール用にiframeを許可
+            )
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers("/h2-console/**") // H2コンソール用にCSRFを無効化
             )
             .formLogin(form -> form
                 .loginPage("/login") // カスタムログイン画面
