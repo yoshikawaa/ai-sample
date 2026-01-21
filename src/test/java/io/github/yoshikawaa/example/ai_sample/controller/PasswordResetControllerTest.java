@@ -236,14 +236,6 @@ class PasswordResetControllerTest {
     }
 
     @Test
-    @DisplayName("GET /password-reset/complete: 完了画面を表示する")
-    void testShowResetCompletePage() throws Exception {
-        mockMvc.perform(get("/password-reset/complete"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("password-reset-complete"));
-    }
-
-    @Test
     @DisplayName("POST /password-reset/reset: 確認用パスワードが空の場合、バリデーションエラーを表示する")
     void testResetPassword_確認用パスワードが空() throws Exception {
         // Act & Assert
@@ -258,5 +250,13 @@ class PasswordResetControllerTest {
 
         verify(passwordResetService, never()).validateResetToken(anyString());
         verify(passwordResetService, never()).updatePassword(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("GET /password-reset/complete: 完了画面を表示する")
+    void testShowResetCompletePage() throws Exception {
+        mockMvc.perform(get("/password-reset/complete"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("password-reset-complete"));
     }
 }

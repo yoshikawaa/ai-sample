@@ -222,6 +222,82 @@ class CustomerControllerTest {
     }
 
     @Test
+    @DisplayName("GET /customers/export: CSVをエクスポートできる")
+    void exportCustomersToCSV() throws Exception {
+        // モックの動作を定義
+        String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
+                           "\"test@example.com\",\"Test User\",\"2023-01-01\",\"1990-01-01\",\"123-4567\",\"Address\"";
+        byte[] csvData = csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        when(customerService.exportCustomersToCSV(eq(null), eq(null), any())).thenReturn(csvData);
+
+        // テスト実行
+        mockMvc.perform(get("/customers/export"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                .andExpect(header().exists("Content-Disposition"))
+                .andExpect(content().bytes(csvData));
+
+        verify(customerService, times(1)).exportCustomersToCSV(eq(null), eq(null), any());
+    }
+
+    @Test
+    @DisplayName("GET /customers/export: 検索条件付きでCSVをエクスポートできる")
+    void exportCustomersToCSV_WithSearchConditions() throws Exception {
+        // モックの動作を定義
+        String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
+                           "\"alice@example.com\",\"Alice\",\"2023-01-01\",\"1990-01-01\",\"111-1111\",\"Address1\"";
+        byte[] csvData = csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        when(customerService.exportCustomersToCSV(eq("Alice"), eq(null), any())).thenReturn(csvData);
+
+        // テスト実行
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("name", "Alice");
+        mockMvc.perform(get("/customers/export").params(params))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                .andExpect(content().bytes(csvData));
+
+        verify(customerService, times(1)).exportCustomersToCSV(eq("Alice"), eq(null), any());
+    }
+
+    @Test
+    @DisplayName("GET /customers/export: ソート条件付きでCSVをエクスポートできる")
+    void exportCustomersToCSV_WithSort() throws Exception {
+        // モックの動作を定義
+        String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
+                           "\"alice@example.com\",\"Alice\",\"2023-01-01\",\"1990-01-01\",\"111-1111\",\"Address1\"";
+        byte[] csvData = csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        when(customerService.exportCustomersToCSV(eq(null), eq(null), any())).thenReturn(csvData);
+
+        // テスト実行
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("sort", "name,asc");
+        mockMvc.perform(get("/customers/export").params(params))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"));
+
+        verify(customerService, times(1)).exportCustomersToCSV(eq(null), eq(null), any());
+    }
+
+    @Test
+    @DisplayName("GET /customers/export: Content-Dispositionヘッダーにファイル名が含まれる")
+    void exportCustomersToCSV_CheckFilename() throws Exception {
+        // モックの動作を定義
+        byte[] csvData = "test".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        when(customerService.exportCustomersToCSV(eq(null), eq(null), any())).thenReturn(csvData);
+
+        // テスト実行
+        mockMvc.perform(get("/customers/export"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", 
+                    org.hamcrest.Matchers.containsString("filename=\"customers_")))
+                .andExpect(header().string("Content-Disposition", 
+                    org.hamcrest.Matchers.containsString(".csv\"")));
+
+        verify(customerService, times(1)).exportCustomersToCSV(eq(null), eq(null), any());
+    }
+
+    @Test
     @DisplayName("GET /customers/{email}: 顧客詳細を表示する")
     void testShowCustomerDetail() throws Exception {
         // モックの動作を定義
@@ -348,81 +424,5 @@ class CustomerControllerTest {
                 .andExpect(model().attributeExists("customerPage"));
 
         verify(customerService, times(1)).getAllCustomersWithPagination(any());
-    }
-
-    @Test
-    @DisplayName("GET /customers/export: CSVをエクスポートできる")
-    void exportCustomersToCSV() throws Exception {
-        // モックの動作を定義
-        String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
-                           "\"test@example.com\",\"Test User\",\"2023-01-01\",\"1990-01-01\",\"123-4567\",\"Address\"";
-        byte[] csvData = csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        when(customerService.exportCustomersToCSV(eq(null), eq(null), any())).thenReturn(csvData);
-
-        // テスト実行
-        mockMvc.perform(get("/customers/export"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
-                .andExpect(header().exists("Content-Disposition"))
-                .andExpect(content().bytes(csvData));
-
-        verify(customerService, times(1)).exportCustomersToCSV(eq(null), eq(null), any());
-    }
-
-    @Test
-    @DisplayName("GET /customers/export: 検索条件付きでCSVをエクスポートできる")
-    void exportCustomersToCSV_WithSearchConditions() throws Exception {
-        // モックの動作を定義
-        String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
-                           "\"alice@example.com\",\"Alice\",\"2023-01-01\",\"1990-01-01\",\"111-1111\",\"Address1\"";
-        byte[] csvData = csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        when(customerService.exportCustomersToCSV(eq("Alice"), eq(null), any())).thenReturn(csvData);
-
-        // テスト実行
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("name", "Alice");
-        mockMvc.perform(get("/customers/export").params(params))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
-                .andExpect(content().bytes(csvData));
-
-        verify(customerService, times(1)).exportCustomersToCSV(eq("Alice"), eq(null), any());
-    }
-
-    @Test
-    @DisplayName("GET /customers/export: ソート条件付きでCSVをエクスポートできる")
-    void exportCustomersToCSV_WithSort() throws Exception {
-        // モックの動作を定義
-        String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
-                           "\"alice@example.com\",\"Alice\",\"2023-01-01\",\"1990-01-01\",\"111-1111\",\"Address1\"";
-        byte[] csvData = csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        when(customerService.exportCustomersToCSV(eq(null), eq(null), any())).thenReturn(csvData);
-
-        // テスト実行
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("sort", "name,asc");
-        mockMvc.perform(get("/customers/export").params(params))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"));
-
-        verify(customerService, times(1)).exportCustomersToCSV(eq(null), eq(null), any());
-    }
-
-    @Test
-    @DisplayName("GET /customers/export: Content-Dispositionヘッダーにファイル名が含まれる")
-    void exportCustomersToCSV_CheckFilename() throws Exception {
-        // モックの動作を定義
-        byte[] csvData = "test".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        when(customerService.exportCustomersToCSV(eq(null), eq(null), any())).thenReturn(csvData);
-
-        // テスト実行
-        mockMvc.perform(get("/customers/export"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", 
-                    org.hamcrest.Matchers.containsString("filename=\"customers_")))
-                .andExpect(header().string("Content-Disposition", 
-                    org.hamcrest.Matchers.containsString(".csv\"")));
-
-        verify(customerService, times(1)).exportCustomersToCSV(eq(null), eq(null), any());
     }
 }

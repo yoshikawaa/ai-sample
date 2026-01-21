@@ -151,6 +151,63 @@ List<Customer> findAllWithSort(@Param("sortColumn") String sortColumn,
   - データベースインデックスの活用
   - ネットワーク転送量の削減
 
+#### メソッドの配置順序
+
+リポジトリのメソッドは**機能ごとにグループ化**し、関連するメソッドを近接配置する：
+
+```java
+@Mapper
+public interface CustomerRepository {
+    // ========================================
+    // 全件取得系
+    // ========================================
+    
+    List<Customer> findAllWithSort(...);
+    List<Customer> findAllWithPagination(...);
+    long count();
+
+    // ========================================
+    // 検索系
+    // ========================================
+
+    List<Customer> searchWithSort(...);
+    List<Customer> searchWithPagination(...);
+    long countBySearch(...);
+
+    // ========================================
+    // 単一取得
+    // ========================================
+
+    Optional<Customer> findByEmail(String email);
+
+    // ========================================
+    // 登録
+    // ========================================
+
+    void save(Customer customer);
+
+    // ========================================
+    // 更新
+    // ========================================
+
+    void updatePassword(...);
+    void updateCustomerInfo(...);
+
+    // ========================================
+    // 削除
+    // ========================================
+
+    void deleteByEmail(String email);
+}
+```
+
+**重要**:
+- **機能ごとにセクションコメントで区切る**: 全件取得、検索、単一取得、登録、更新、削除
+- **関連メソッドを近接配置**: `findAllXxx`系、`searchXxx`系をそれぞれグループ化
+- **一貫性のあるパターン**: 各グループで「ソート → ページネーション → カウント」の順序
+- **CRUD操作の順序**: 取得（Read）→ 登録（Create）→ 更新（Update）→ 削除（Delete）
+- **可読性とメンテナンス性**: 関連するメソッドが離れていると理解しづらい
+
 ### 3. インポートとコードスタイル
 
 #### インポート規約
@@ -1075,6 +1132,71 @@ void testGetAllCustomersWithPagination_SortByRegistrationDateDesc() {
   - これを忘れるとクラスの閉じ括弧が欠けてコンパイルエラーになる
   - 適用対象: すべてのJavaクラス（Service、Controller、Repository、Testなど）
 - `@Test` アノテーションの重複に注意（コピー&ペーストミスを避ける）
+
+**テストメソッドの配置順序**:
+- **リポジトリテスト**: リポジトリメソッドの定義順と一致させる
+  - セクションコメント（`// ========================================`）で機能ごとにグループ化
+  - 全件取得系 → 検索系 → 単一取得 → 登録 → 更新 → 削除
+- **サービステスト**: サービスメソッドの実装順と一致させる
+  - 各メソッドに対応するテストをまとめて配置
+  - メソッドに複数のテストケースがある場合は近接配置
+  - 例: `getCustomerByEmail()` → `getCustomerByEmail_NotFound()`
+- **コントローラテスト**: コントローラメソッドの定義順と一致させる
+  - GETメソッドのテスト → POSTメソッドのテスト
+
+**例（リポジトリテスト）**:
+```java
+@MybatisTest
+@DisplayName("CustomerRepository のテスト")
+class CustomerRepositoryTest {
+    // ========================================
+    // 全件取得系
+    // ========================================
+    @Test
+    @DisplayName("findAllWithPagination: ページネーションで顧客を取得できる")
+    void testFindAllWithPagination() { }
+    
+    @Test
+    @DisplayName("count: 全顧客数を取得できる")
+    void testCount() { }
+    
+    // ========================================
+    // 検索系
+    // ========================================
+    @Test
+    @DisplayName("searchWithPagination: 検索条件でページネーション")
+    void testSearchWithPagination() { }
+}
+```
+
+**例（サービステスト）**:
+```java
+@SpringBootTest
+@DisplayName("CustomerService のテスト")
+class CustomerServiceTest {
+    // ========================================
+    // 単一取得
+    // ========================================
+    @Test
+    @DisplayName("getCustomerByEmail: メールアドレスで顧客を取得できる")
+    void testGetCustomerByEmail() { }
+    
+    @Test
+    @DisplayName("getCustomerByEmail: 存在しないメールアドレスの場合、例外をスローする")
+    void testGetCustomerByEmail_NotFound() { }
+    
+    // ========================================
+    // 全件取得+ページネーション
+    // ========================================
+    @Test
+    @DisplayName("getAllCustomersWithPagination: ページネーションで顧客を取得できる")
+    void testGetAllCustomersWithPagination() { }
+    
+    @Test
+    @DisplayName("getAllCustomersWithPagination: 名前で昇順ソートができる")
+    void testGetAllCustomersWithPagination_SortByNameAsc() { }
+}
+```
 
 ### 5. リポジトリテスト
 
