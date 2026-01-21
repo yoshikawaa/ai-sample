@@ -1,12 +1,8 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -18,12 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import com.opencsv.bean.ColumnPositionMappingStrategy;
-import com.opencsv.bean.StatefulBeanToCsv;
-import com.opencsv.bean.StatefulBeanToCsvBuilder;
-
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
-import io.github.yoshikawaa.example.ai_sample.model.CustomerCsvDto;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
 
@@ -32,10 +23,12 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CsvService csvService;
 
-    public CustomerService(CustomerRepository customerRepository, PasswordEncoder passwordEncoder) {
+    public CustomerService(CustomerRepository customerRepository, PasswordEncoder passwordEncoder, CsvService csvService) {
         this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
+        this.csvService = csvService;
     }
 
     public Customer getCustomerByEmail(String email) {
@@ -121,7 +114,7 @@ public class CustomerService {
             customers = customerRepository.findAllWithSort(sortInfo[0], sortInfo[1]);
         }
         
-        return generateCSV(customers);
+        return csvService.generateCustomerCsv(customers);
     }
 
     private boolean isUnderage(LocalDate birthDate) {
@@ -147,46 +140,5 @@ public class CustomerService {
             return new String[]{column, direction};
         }
         return new String[]{null, null};
-    }
-
-    private byte[] generateCSV(List<Customer> customers) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             OutputStreamWriter osw = new OutputStreamWriter(baos, StandardCharsets.UTF_8)) {
-            
-            // UTF-8 BOMを追加（Excelでの文字化け防止）
-            baos.write(0xEF);
-            baos.write(0xBB);
-            baos.write(0xBF);
-            
-            // ヘッダー行を明示的に書き込み（@CsvBindByNameのカラム名を@CsvBindByPositionの順序で出力）
-            osw.write("Email,Name,Registration Date,Birth Date,Phone Number,Address\n");
-            osw.flush();
-            
-            // CustomerエンティティをCustomerCsvDtoに変換
-            List<CustomerCsvDto> csvDtos = customers.stream()
-                .map(CustomerCsvDto::fromEntity)
-                .collect(Collectors.toList());
-            
-            // OpenCSVを使用してデータ行を生成（@CsvBindByPositionで順序制御）
-            ColumnPositionMappingStrategy<CustomerCsvDto> strategy = 
-                new ColumnPositionMappingStrategy<>();
-            strategy.setType(CustomerCsvDto.class);
-            
-            StatefulBeanToCsv<CustomerCsvDto> beanToCsv = new StatefulBeanToCsvBuilder<CustomerCsvDto>(osw)
-                .withMappingStrategy(strategy)
-                .withApplyQuotesToAll(false)
-                .build();
-            
-            beanToCsv.write(csvDtos);
-            osw.flush();
-            
-            return baos.toByteArray();
-        } catch (Exception e) {
-            // NOTE: このcatchブロックは防御的プログラミングのために存在します。
-            // ByteArrayOutputStreamとOpenCSVの通常動作では例外は発生しませんが、
-            // 予期しないランタイムエラー（OutOfMemoryError等）からの保護として残しています。
-            // テストでのカバレッジは困難ですが、本番環境での安全性のために必要です。
-            throw new RuntimeException("CSV生成中にエラーが発生しました", e);
-        }
     }
 }
