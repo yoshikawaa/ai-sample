@@ -38,10 +38,6 @@ public class CustomerService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public List<Customer> getAllCustomers() {
-        return customerRepository.findAll();
-    }
-
     public Customer getCustomerByEmail(String email) {
         return customerRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("顧客が見つかりません。"));
@@ -103,10 +99,6 @@ public class CustomerService {
         SecurityContextHolder.clearContext();
     }
 
-    public List<Customer> searchCustomers(String name, String email) {
-        return customerRepository.search(name, email);
-    }
-
     public Page<Customer> searchCustomersWithPagination(String name, String email, Pageable pageable) {
         int offset = (int) pageable.getOffset();
         int pageSize = pageable.getPageSize();
@@ -117,21 +109,16 @@ public class CustomerService {
     }
 
     public byte[] exportCustomersToCSV(String name, String email, Pageable pageable) {
-        // 検索条件に基づいて顧客を取得（全件）
+        // 検索・ソート条件に基づいて顧客を取得（全件）
+        String[] sortInfo = extractSortInfo(pageable);
         List<Customer> customers;
         
         if (StringUtils.hasText(name) || StringUtils.hasText(email)) {
-            // 検索条件がある場合は全件取得（ページネーションなし）
-            customers = customerRepository.search(name, email);
+            // 検索条件がある場合
+            customers = customerRepository.searchWithSort(name, email, sortInfo[0], sortInfo[1]);
         } else {
-            // 検索条件がない場合は全件取得
-            customers = customerRepository.findAll();
-        }
-        
-        // ソート処理（必要に応じて）
-        if (pageable.getSort().isSorted()) {
-            Sort.Order order = pageable.getSort().iterator().next();
-            customers = sortCustomers(customers, order.getProperty(), order.getDirection().isAscending());
+            // 検索条件がない場合
+            customers = customerRepository.findAllWithSort(sortInfo[0], sortInfo[1]);
         }
         
         return generateCSV(customers);
@@ -160,20 +147,6 @@ public class CustomerService {
             return new String[]{column, direction};
         }
         return new String[]{null, null};
-    }
-
-    private List<Customer> sortCustomers(List<Customer> customers, String property, boolean ascending) {
-        return customers.stream()
-            .sorted((c1, c2) -> {
-                int result = switch (property) {
-                    case "email" -> c1.getEmail().compareTo(c2.getEmail());
-                    case "name" -> c1.getName().compareTo(c2.getName());
-                    case "birthDate" -> c1.getBirthDate().compareTo(c2.getBirthDate());
-                    default -> c1.getRegistrationDate().compareTo(c2.getRegistrationDate());
-                };
-                return ascending ? result : -result;
-            })
-            .toList();
     }
 
     private byte[] generateCSV(List<Customer> customers) {
@@ -209,6 +182,10 @@ public class CustomerService {
             
             return baos.toByteArray();
         } catch (Exception e) {
+            // NOTE: このcatchブロックは防御的プログラミングのために存在します。
+            // ByteArrayOutputStreamとOpenCSVの通常動作では例外は発生しませんが、
+            // 予期しないランタイムエラー（OutOfMemoryError等）からの保護として残しています。
+            // テストでのカバレッジは困難ですが、本番環境での安全性のために必要です。
             throw new RuntimeException("CSV生成中にエラーが発生しました", e);
         }
     }

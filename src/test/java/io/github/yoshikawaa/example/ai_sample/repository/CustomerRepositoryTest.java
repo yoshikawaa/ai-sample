@@ -22,17 +22,6 @@ class CustomerRepositoryTest {
     private CustomerRepository customerRepository;
 
     @Test
-    @DisplayName("findAll: すべての顧客を取得できる")
-    void testFindAll() {
-        // データベースに登録されているすべての顧客を取得
-        List<Customer> customers = customerRepository.findAll();
-
-        // 検証
-        assertThat(customers).isNotEmpty();
-        assertThat(customers.size()).isGreaterThanOrEqualTo(15); // `data.sql` に基づく
-    }
-
-    @Test
     @DisplayName("findByEmail: 特定のメールアドレスで顧客を取得できる")
     void testFindByEmail() {
         // データベースから特定の顧客を取得
@@ -199,75 +188,6 @@ class CustomerRepositoryTest {
         // 顧客が存在しないことを確認
         Optional<Customer> customer = customerRepository.findByEmail("non-existent-delete@example.com");
         assertThat(customer).isNotPresent();
-    }
-
-    @Test
-    @DisplayName("search: 名前で検索できる")
-    void testSearch_名前のみ() {
-        // 名前で検索
-        List<Customer> customers = customerRepository.search("John", null);
-
-        // 検証
-        assertThat(customers).isNotEmpty();
-        assertThat(customers).anyMatch(c -> c.getName().contains("John"));
-    }
-
-    @Test
-    @DisplayName("search: メールアドレスで検索できる")
-    void testSearch_メールアドレスのみ() {
-        // メールアドレスで検索
-        List<Customer> customers = customerRepository.search(null, "jane");
-
-        // 検証
-        assertThat(customers).isNotEmpty();
-        assertThat(customers).anyMatch(c -> c.getEmail().contains("jane"));
-    }
-
-    @Test
-    @DisplayName("search: 名前とメールアドレスで検索できる")
-    void testSearch_名前とメールアドレス() {
-        // 名前とメールアドレスで検索
-        List<Customer> customers = customerRepository.search("Jane", "jane");
-
-        // 検証
-        assertThat(customers).isNotEmpty();
-        assertThat(customers).allMatch(c -> c.getName().contains("Jane") && c.getEmail().contains("jane"));
-    }
-
-    @Test
-    @DisplayName("search: 検索条件なしで全件取得")
-    void testSearch_検索条件なし() {
-        // 検索条件なしで全件取得
-        List<Customer> customers = customerRepository.search(null, null);
-
-        // 検証（全件取得）
-        assertThat(customers).isNotEmpty();
-        assertThat(customers.size()).isGreaterThanOrEqualTo(15);
-    }
-
-    @Test
-    @DisplayName("search: 該当なしの場合、空のリストを返す")
-    void testSearch_該当なし() {
-        // 存在しない条件で検索
-        List<Customer> customers = customerRepository.search("NonExistentName", "nonexistent@example.com");
-
-        // 検証（空のリスト）
-        assertThat(customers).isEmpty();
-    }
-
-    @Test
-    @DisplayName("search: 登録日の降順でソートされる")
-    void testSearch_登録日降順() {
-        // 全件検索
-        List<Customer> customers = customerRepository.search(null, null);
-
-        // 検証（登録日の降順）
-        assertThat(customers).isNotEmpty();
-        for (int i = 0; i < customers.size() - 1; i++) {
-            LocalDate current = customers.get(i).getRegistrationDate();
-            LocalDate next = customers.get(i + 1).getRegistrationDate();
-            assertThat(current.isAfter(next) || current.isEqual(next)).isTrue();
-        }
     }
 
     @Test
