@@ -184,6 +184,20 @@ import static org.mockito.ArgumentMatchers.*;
 - IDEの自動インポート機能を活用
 - 使用するメソッド・定数のみを明示的にインポート（コード可読性向上、IDE補完機能の活用）
 
+**コード作成・編集後の確認プロセス**:
+1. **ファイル編集後**: 必ずコンパイルエラーと未使用インポートをチェック
+2. **大規模変更後**（multi_replace_string_in_file使用時など）:
+   - 変更したすべてのファイルでインポートを確認
+   - 削除されたメソッド呼び出しに関連するインポートを削除
+   - 追加されたメソッド呼び出しに必要なインポートを追加
+3. **テスト実行前**: コンパイルエラーがないことを確認
+4. **コミット前**: 最終チェックとして全ファイルの未使用インポートを確認
+
+**未使用インポートのチェック方法**:
+- IDEのコード検査機能を使用（グレーアウトされたインポートを確認）
+- `get_errors`ツールでコンパイルエラーと警告を確認
+- 特にテストクラスでは、使われなくなったアサーションメソッド（`assertThrows`等）のインポートに注意
+
 #### FQCN（完全修飾クラス名）の使用禁止
 ```java
 // ✅ 推奨: インポートして短縮形を使用
@@ -338,6 +352,45 @@ public class CustomerService {
 - privateメソッドは実装の詳細であり、後に配置
 
 ### 4. サービス層
+
+#### 汎用的なサービス設計（ジェネリクスの活用）
+
+特定のエンティティに依存しない処理は、ジェネリクスを使用して汎用化する：
+
+```java
+@Service
+public class CsvService {
+    
+    /**
+     * 汎用的なCSV生成メソッド（任意のDTOクラスに対応）
+     */
+    public <T> byte[] generateCsv(List<T> dtos, Class<T> dtoClass, String header) {
+        // @CsvBindByPosition を使用した汎用的なCSV生成
+    }
+    
+    /**
+     * Customer特化のラッパーメソッド（後方互換性と利便性のため）
+     */
+    public byte[] generateCustomerCsv(List<Customer> customers) {
+        List<CustomerCsvDto> csvDtos = customers.stream()
+            .map(CustomerCsvDto::fromEntity)
+            .collect(Collectors.toList());
+        String header = "Email,Name,Registration Date,Birth Date,Phone Number,Address\n";
+        return generateCsv(csvDtos, CustomerCsvDto.class, header);
+    }
+}
+```
+
+**重要**:
+- **ジェネリクスで汎用化**: 特定のエンティティに依存しない設計
+- **ラッパーメソッドで利便性**: エンティティ特化のメソッドも残す
+- **将来の拡張性**: `Order`, `Product` などの他のエンティティにも対応可能
+- **単一責任**: CSV処理に特化したサービスとして分離
+
+**利点**:
+- コードの重複を防ぐ
+- 新しいエンティティのCSV対応が容易
+- テストが書きやすい（モック化しやすい）
 
 #### 認証情報の更新
 ```java
@@ -1116,9 +1169,13 @@ private byte[] generateCSV(List<Customer> customers) {
 
 **サービス（Service）**:
 - クラス名: `{機能名}Service`
-- 例: `CustomerService`, `EmailService`, `PasswordResetService`
+- 例: `CustomerService`, `EmailService`, `PasswordResetService`, `CsvService`
 - ファイル名: クラス名と同じ `.java`
 - テストクラス: `{クラス名}Test` → `CustomerServiceTest`
+- **将来の拡張性を考慮**: 
+  - ❌ `CsvExportService` → 輸出のみに限定される
+  - ✅ `CsvService` → 将来的にインポート、検証機能なども追加可能
+  - 方向性（Export/Import）や操作（Create/Read）を含めない汎用的な名前を推奨
 
 **リポジトリ（Repository）**:
 - クラス名: `{エンティティ名}Repository`
