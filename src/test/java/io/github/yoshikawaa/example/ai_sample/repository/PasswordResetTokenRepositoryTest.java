@@ -45,6 +45,34 @@ class PasswordResetTokenRepositoryTest {
     }
 
     @Test
+    @DisplayName("insert: 既存のメールアドレスで上書きできる")
+    void testInsert_既存のメールアドレスで上書き() {
+        // 最初のトークンを挿入
+        PasswordResetToken token1 = new PasswordResetToken();
+        token1.setEmail("john.doe@example.com");
+        token1.setResetToken("test-token-old");
+        token1.setTokenExpiry(System.currentTimeMillis() + 3600000);
+        passwordResetTokenRepository.insert(token1);
+
+        // 同じメールアドレスで新しいトークンを挿入（既存のトークンを削除してから挿入）
+        passwordResetTokenRepository.deleteByEmail("john.doe@example.com");
+        PasswordResetToken token2 = new PasswordResetToken();
+        token2.setEmail("john.doe@example.com");
+        token2.setResetToken("test-token-new");
+        token2.setTokenExpiry(System.currentTimeMillis() + 3600000);
+        passwordResetTokenRepository.insert(token2);
+
+        // 古いトークンが存在しないことを確認
+        PasswordResetToken oldToken = passwordResetTokenRepository.findByResetToken("test-token-old");
+        assertThat(oldToken).isNull();
+
+        // 新しいトークンが存在することを確認
+        PasswordResetToken newToken = passwordResetTokenRepository.findByResetToken("test-token-new");
+        assertThat(newToken).isNotNull();
+        assertThat(newToken.getEmail()).isEqualTo("john.doe@example.com");
+    }
+
+    @Test
     @DisplayName("findByResetToken: 存在するトークンを検索できる")
     void testFindByResetToken_存在するトークン() {
         // トークンを挿入
@@ -102,34 +130,6 @@ class PasswordResetTokenRepositoryTest {
         passwordResetTokenRepository.deleteByEmail("non-existent@example.com");
 
         // 例外が発生しないことを確認（このテストは正常に完了すべき）
-    }
-
-    @Test
-    @DisplayName("insert: 既存のメールアドレスで上書きできる")
-    void testInsert_既存のメールアドレスで上書き() {
-        // 最初のトークンを挿入
-        PasswordResetToken token1 = new PasswordResetToken();
-        token1.setEmail("john.doe@example.com");
-        token1.setResetToken("test-token-old");
-        token1.setTokenExpiry(System.currentTimeMillis() + 3600000);
-        passwordResetTokenRepository.insert(token1);
-
-        // 同じメールアドレスで新しいトークンを挿入（既存のトークンを削除してから挿入）
-        passwordResetTokenRepository.deleteByEmail("john.doe@example.com");
-        PasswordResetToken token2 = new PasswordResetToken();
-        token2.setEmail("john.doe@example.com");
-        token2.setResetToken("test-token-new");
-        token2.setTokenExpiry(System.currentTimeMillis() + 3600000);
-        passwordResetTokenRepository.insert(token2);
-
-        // 古いトークンが存在しないことを確認
-        PasswordResetToken oldToken = passwordResetTokenRepository.findByResetToken("test-token-old");
-        assertThat(oldToken).isNull();
-
-        // 新しいトークンが存在することを確認
-        PasswordResetToken newToken = passwordResetTokenRepository.findByResetToken("test-token-new");
-        assertThat(newToken).isNotNull();
-        assertThat(newToken.getEmail()).isEqualTo("john.doe@example.com");
     }
 
     @Test

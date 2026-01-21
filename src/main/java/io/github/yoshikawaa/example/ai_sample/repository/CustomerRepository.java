@@ -13,6 +13,10 @@ import io.github.yoshikawaa.example.ai_sample.model.Customer;
 
 @Mapper
 public interface CustomerRepository {
+    // ========================================
+    // 全件取得系
+    // ========================================
+    
     @Select("""
         <script>
         SELECT * FROM customer
@@ -48,31 +52,9 @@ public interface CustomerRepository {
     @Select("SELECT COUNT(*) FROM customer")
     long count();
 
-    @Select("SELECT * FROM customer WHERE email = #{email}")
-    Optional<Customer> findByEmail(String email);
-
-    @Insert("""
-        INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address)
-        VALUES (#{email}, #{password}, #{name}, #{registrationDate}, #{birthDate}, #{phoneNumber}, #{address})
-    """)
-    void save(Customer customer);
-
-    @Update("""
-        UPDATE customer
-        SET password = #{password}
-        WHERE email = #{email}
-    """)
-    void updatePassword(@Param("email") String email, @Param("password") String password);
-
-    @Update("""
-        UPDATE customer
-        SET name = #{name}, birth_date = #{birthDate}, phone_number = #{phoneNumber}, address = #{address}
-        WHERE email = #{email}
-    """)
-    void updateCustomerInfo(Customer customer);
-
-    @Update("DELETE FROM customer WHERE email = #{email}")
-    void deleteByEmail(String email);
+    // ========================================
+    // 検索系
+    // ========================================
 
     @Select("""
         <script>
@@ -138,4 +120,46 @@ public interface CustomerRepository {
         </script>
     """)
     long countBySearch(@Param("name") String name, @Param("email") String email);
+
+    // ========================================
+    // 単一取得
+    // ========================================
+
+    @Select("SELECT * FROM customer WHERE email = #{email}")
+    Optional<Customer> findByEmail(String email);
+
+    // ========================================
+    // 登録
+    // ========================================
+
+    @Insert("""
+        INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address)
+        VALUES (#{email}, #{password}, #{name}, #{registrationDate}, #{birthDate}, #{phoneNumber}, #{address})
+    """)
+    void save(Customer customer);
+
+    // ========================================
+    // 更新
+    // ========================================
+
+    @Update("""
+        UPDATE customer
+        SET password = #{password}
+        WHERE email = #{email}
+    """)
+    void updatePassword(@Param("email") String email, @Param("password") String password);
+
+    @Update("""
+        UPDATE customer
+        SET name = #{name}, birth_date = #{birthDate}, phone_number = #{phoneNumber}, address = #{address}
+        WHERE email = #{email}
+    """)
+    void updateCustomerInfo(Customer customer);
+
+    // ========================================
+    // 削除
+    // ========================================
+
+    @Update("DELETE FROM customer WHERE email = #{email}")
+    void deleteByEmail(String email);
 }
