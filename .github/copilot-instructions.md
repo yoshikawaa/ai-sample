@@ -1366,6 +1366,14 @@ private byte[] generateCSV(List<Customer> customers) {
 - 保存: `save({エンティティ})`
 - 更新: `update{項目}()` → `updatePassword()`, `updateCustomerInfo()`
 - 削除: `deleteBy{条件}()` → `deleteByEmail()`
+
+**テストメソッド**:
+- **必ず`test`プレフィックスで始める**: `test{テスト対象メソッド名}()` → `testGetAllCustomers()`, `testRegisterCustomer()`
+- バリエーション: `test{テスト対象メソッド名}_{条件}()` → `testGetCustomerByEmail_NotFound()`, `testExportCustomersToCSV_WithSort()`
+- **禁止**: `test`プレフィックスなしのメソッド名（例: `exportCustomersToCSV()`, `loadUserByUsername_Success()`）
+- **理由**: 統一された命名規則により、テストメソッドを即座に識別可能
+
+**その他**:
 - 定数: UPPER_SNAKE_CASE
 - パッケージ名: lowercase
 

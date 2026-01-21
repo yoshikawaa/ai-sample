@@ -223,7 +223,7 @@ class CustomerControllerTest {
 
     @Test
     @DisplayName("GET /customers/export: CSVをエクスポートできる")
-    void exportCustomersToCSV() throws Exception {
+    void testExportCustomersToCSV() throws Exception {
         // モックの動作を定義
         String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
                            "\"test@example.com\",\"Test User\",\"2023-01-01\",\"1990-01-01\",\"123-4567\",\"Address\"";
@@ -242,7 +242,7 @@ class CustomerControllerTest {
 
     @Test
     @DisplayName("GET /customers/export: 検索条件付きでCSVをエクスポートできる")
-    void exportCustomersToCSV_WithSearchConditions() throws Exception {
+    void testExportCustomersToCSV_WithSearchConditions() throws Exception {
         // モックの動作を定義
         String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
                            "\"alice@example.com\",\"Alice\",\"2023-01-01\",\"1990-01-01\",\"111-1111\",\"Address1\"";
@@ -262,7 +262,7 @@ class CustomerControllerTest {
 
     @Test
     @DisplayName("GET /customers/export: ソート条件付きでCSVをエクスポートできる")
-    void exportCustomersToCSV_WithSort() throws Exception {
+    void testExportCustomersToCSV_WithSort() throws Exception {
         // モックの動作を定義
         String csvContent = "\uFEFFEmail,Name,Registration Date,Birth Date,Phone Number,Address\n" +
                            "\"alice@example.com\",\"Alice\",\"2023-01-01\",\"1990-01-01\",\"111-1111\",\"Address1\"";
@@ -281,7 +281,7 @@ class CustomerControllerTest {
 
     @Test
     @DisplayName("GET /customers/export: Content-Dispositionヘッダーにファイル名が含まれる")
-    void exportCustomersToCSV_CheckFilename() throws Exception {
+    void testExportCustomersToCSV_CheckFilename() throws Exception {
         // モックの動作を定義
         byte[] csvData = "test".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         when(customerService.exportCustomersToCSV(eq(null), eq(null), any())).thenReturn(csvData);

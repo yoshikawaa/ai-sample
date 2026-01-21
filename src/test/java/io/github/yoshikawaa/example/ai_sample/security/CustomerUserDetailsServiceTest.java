@@ -45,7 +45,7 @@ class CustomerUserDetailsServiceTest {
 
     @Test
     @DisplayName("ユーザー名（メールアドレス）でユーザーを取得できる")
-    void loadUserByUsername_Success() {
+    void testLoadUserByUsername_Success() {
         // given
         when(customerRepository.findByEmail("test@example.com"))
             .thenReturn(Optional.of(testCustomer));
@@ -65,7 +65,7 @@ class CustomerUserDetailsServiceTest {
 
     @Test
     @DisplayName("存在しないユーザー名の場合UsernameNotFoundExceptionをスローする")
-    void loadUserByUsername_UserNotFound() {
+    void testLoadUserByUsername_UserNotFound() {
         // given
         when(customerRepository.findByEmail("nonexistent@example.com"))
             .thenReturn(Optional.empty());
