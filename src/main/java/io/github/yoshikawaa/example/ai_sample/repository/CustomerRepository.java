@@ -13,18 +13,32 @@ import io.github.yoshikawaa.example.ai_sample.model.Customer;
 
 @Mapper
 public interface CustomerRepository {
-    @Select("SELECT * FROM customer")
-    List<Customer> findAll();
+    @Select("""
+        <script>
+        SELECT * FROM customer
+        <choose>
+            <when test="sortColumn != null and sortColumn != ''">
+                ORDER BY ${sortColumn} ${sortDirection}
+            </when>
+            <otherwise>
+                ORDER BY registration_date DESC
+            </otherwise>
+        </choose>
+        </script>
+    """)
+    List<Customer> findAllWithSort(@Param("sortColumn") String sortColumn, @Param("sortDirection") String sortDirection);
 
     @Select("""
         <script>
         SELECT * FROM customer
-        <if test="sortColumn != null and sortColumn != ''">
-            ORDER BY ${sortColumn} ${sortDirection}
-        </if>
-        <if test="sortColumn == null or sortColumn == ''">
-            ORDER BY registration_date DESC
-        </if>
+        <choose>
+            <when test="sortColumn != null and sortColumn != ''">
+                ORDER BY ${sortColumn} ${sortDirection}
+            </when>
+            <otherwise>
+                ORDER BY registration_date DESC
+            </otherwise>
+        </choose>
         LIMIT #{limit} OFFSET #{offset}
         </script>
     """)
@@ -71,10 +85,18 @@ public interface CustomerRepository {
                 AND LOWER(email) LIKE LOWER(CONCAT('%', #{email}, '%'))
             </if>
         </where>
-        ORDER BY registration_date DESC
+        <choose>
+            <when test="sortColumn != null and sortColumn != ''">
+                ORDER BY ${sortColumn} ${sortDirection}
+            </when>
+            <otherwise>
+                ORDER BY registration_date DESC
+            </otherwise>
+        </choose>
         </script>
     """)
-    List<Customer> search(@Param("name") String name, @Param("email") String email);
+    List<Customer> searchWithSort(@Param("name") String name, @Param("email") String email,
+                                   @Param("sortColumn") String sortColumn, @Param("sortDirection") String sortDirection);
 
     @Select("""
         <script>
@@ -87,12 +109,14 @@ public interface CustomerRepository {
                 AND LOWER(email) LIKE LOWER(CONCAT('%', #{email}, '%'))
             </if>
         </where>
-        <if test="sortColumn != null and sortColumn != ''">
-            ORDER BY ${sortColumn} ${sortDirection}
-        </if>
-        <if test="sortColumn == null or sortColumn == ''">
-            ORDER BY registration_date DESC
-        </if>
+        <choose>
+            <when test="sortColumn != null and sortColumn != ''">
+                ORDER BY ${sortColumn} ${sortDirection}
+            </when>
+            <otherwise>
+                ORDER BY registration_date DESC
+            </otherwise>
+        </choose>
         LIMIT #{limit} OFFSET #{offset}
         </script>
     """)

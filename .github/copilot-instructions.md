@@ -36,6 +36,10 @@ io.github.yoshikawaa.example.ai_sample/
   - データベースとJavaオブジェクトのマッピング
   - データベース操作のインターフェース提供
 - **禁止事項**: ビジネスロジックを含めない
+- **設計原則**:
+  - **テストのためだけのメソッドは作らない**：本番コードで使用されないメソッドは実装しない
+  - **ページネーション/ソート機能を優先**：大量データを想定し、全件取得メソッド（`findAll()`）よりもページネーション対応メソッド（`findAllWithPagination()`）やソート対応メソッド（`findAllWithSort()`）を優先的に使用
+  - **実用的なメソッドのみ実装**：実際のユースケースに基づいてメソッドを設計
 
 ### サービス層（Service）
 - **責務**: ビジネスロジック層。業務ルールの実装を担当
@@ -45,6 +49,9 @@ io.github.yoshikawaa.example.ai_sample/
   - 複数のリポジトリの組み合わせ
   - 認証情報の更新（`SecurityContextHolder`）
 - **禁止事項**: HTTPリクエスト/レスポンスに依存しない
+- **設計原則**:
+  - **テストのためだけのメソッドは作らない**：コントローラから呼ばれないメソッドは実装しない
+  - **単純なラッパーメソッドは避ける**：リポジトリをそのまま呼ぶだけのメソッド（例：`getAllCustomers()` → `customerRepository.findAll()`）は不要
 
 ### コントローラ層（Controller）
 - **責務**: プレゼンテーション層。HTTPリクエストの処理を担当
@@ -113,6 +120,37 @@ public interface CustomerRepository {
 - 複数行SQLはテキストブロック（`"""`）を使用
 - 複数パラメータの場合は `@Param` を使用
 
+#### 動的SQL
+```java
+@Select("""
+    <script>
+    SELECT * FROM customer
+    <choose>
+        <when test="sortColumn != null and sortColumn != ''">
+            ORDER BY ${sortColumn} ${sortDirection}
+        </when>
+        <otherwise>
+            ORDER BY registration_date DESC
+        </otherwise>
+    </choose>
+    </script>
+""")
+List<Customer> findAllWithSort(@Param("sortColumn") String sortColumn, 
+                                @Param("sortDirection") String sortDirection);
+```
+
+**重要**:
+- 条件付きSQLには `<script>` タグを使用
+- 相互排他的な条件（if-else）は `<choose>` + `<when>` + `<otherwise>` を使用（`<if>` の連続ではなく）
+- 複数の独立した条件は `<if test>` を使用
+- `${変数名}` は文字列置換（ソートカラム名など）、`#{変数名}` はプレースホルダ（値のバインド）
+- null許容パラメータは `test="param != null and param != ''"` でチェック
+- `<otherwise>` でデフォルト動作を明示
+- **パフォーマンス重視**: 大量データの場合、Java側のソートではなくSQL側でソートを実装
+  - メモリ使用量削減
+  - データベースインデックスの活用
+  - ネットワーク転送量の削減
+
 ### 3. インポートとコードスタイル
 
 #### インポート規約
@@ -125,12 +163,26 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 // ❌ 禁止: ワイルドカードインポート
 import org.springframework.web.bind.annotation.*;
+
+// ✅ 推奨: 具体的なstaticインポート
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+
+// ❌ 禁止: staticワイルドカードインポート
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 ```
 
 **重要**:
 - ワイルドカードインポート（`import ....*;`）は使用しない
+- **staticワイルドカードインポート**（`import static ....*;`）も使用しない
 - 未使用のインポートは削除する
 - IDEの自動インポート機能を活用
+- 使用するメソッド・定数のみを明示的にインポート（コード可読性向上、IDE補完機能の活用）
 
 #### FQCN（完全修飾クラス名）の使用禁止
 ```java
@@ -901,6 +953,59 @@ class CustomerServiceTest {
 }
 ```
 
+#### Mockito ArgumentMatcher の使い分け
+
+```java
+// ✅ 推奨: any() - nullと非nullの両方にマッチ
+when(customerRepository.findAllWithSort(any(), any())).thenReturn(...);
+
+// ❌ 注意: anyString() - nullにはマッチしない（非nullの文字列のみ）
+when(customerRepository.findAllWithSort(anyString(), anyString())).thenReturn(...);  // nullパラメータで失敗
+
+// ✅ 推奨: eq() - 正確な値のマッチング
+when(customerRepository.search(eq("John"), eq("john@example.com"))).thenReturn(...);
+
+// ✅ 推奨: 混在可能
+when(customerRepository.searchWithSort(eq("John"), any(), any(), any())).thenReturn(...);
+```
+
+**重要**:
+- **`any()`**: null を含むすべての値にマッチ（null許容パラメータに使用）
+- **`anyString()`**: 非nullの文字列のみにマッチ（nullが渡されると失敗）
+- **`eq(value)`**: 正確な値のマッチング（特定の値を検証したい場合）
+- **nullが渡される可能性のあるパラメータ**: 必ず `any()` を使用（`anyString()` は使用禁止）
+- **複数のマッチャーを混在**: 一部を `eq()` で固定、残りを `any()` で柔軟にマッチ可能
+
+#### モックデータの順序
+
+```java
+@Test
+@DisplayName("getAllCustomersWithPagination: 登録日で降順ソートができる")
+void testGetAllCustomersWithPagination_SortByRegistrationDateDesc() {
+    Pageable pageable = PageRequest.of(0, 10, Sort.by("registrationDate").descending());
+    
+    // モックデータの順序はSQLの結果と一致させる（registration_date DESC）
+    when(customerRepository.findAllWithPagination(10, 0, "registration_date", "DESC")).thenReturn(Arrays.asList(
+        new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), ...),   // 2月（新しい）
+        new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), ...) // 1月（古い）
+    ));
+    
+    Page<Customer> result = customerService.getAllCustomersWithPagination(pageable);
+    
+    // 検証: モックデータと同じ順序で返される
+    assertThat(result.getContent().get(0).getEmail()).isEqualTo("bob@example.com");
+    assertThat(result.getContent().get(1).getEmail()).isEqualTo("alice@example.com");
+}
+```
+
+**重要**:
+- **モックデータの順序**: SQLクエリの結果と完全に一致させる
+- **ソート順の考慮**: ASC/DESCに応じてテストデータを並べ替える
+- **デフォルトソート**: ソート指定がない場合のデフォルト動作も考慮
+- **検証**: 期待する順序でデータが返されることをアサート
+- **誤った順序のモックデータ**: テストは成功してもバグが隠れる可能性がある
+```
+
 ### 4. テストメソッド追加時の注意事項
 
 **重要**:
@@ -949,7 +1054,41 @@ class CustomerRepositoryTest {
 - 新しいメソッドを追加した際は、必ず対応するテストを追加する
 - リポジトリとサービスのテストを忘れない
 - テスト追加後は `mvn clean test` で全テストを実行し、合格を確認する
-- カバレッジ目標: ビジネスロジック（Service、Controller）100%、リポジトリ層100%
+- カバレッジ目標: ビジネスロジック（Service、Controller）95-100%、リポジトリ層100%
+
+**カバレッジが困難なエラーハンドリング**:
+```java
+private byte[] generateCSV(List<Customer> customers) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         OutputStreamWriter osw = new OutputStreamWriter(baos, StandardCharsets.UTF_8)) {
+        
+        // CSV生成処理
+        
+        return baos.toByteArray();
+    } catch (Exception e) {
+        // NOTE: このcatchブロックは防御的プログラミングのために存在します。
+        // ByteArrayOutputStreamとOpenCSVの通常動作では例外は発生しませんが、
+        // 予期しないランタイムエラー（OutOfMemoryError等）からの保護として残しています。
+        // テストでのカバレッジは困難ですが、本番環境での安全性のために必要です。
+        throw new RuntimeException("CSV生成中にエラーが発生しました", e);
+    }
+}
+```
+
+**重要**:
+- 実際には発生しないが防御的に残すエラーハンドリングには、その意図をコメントで明記する
+- 「なぜテストできないのか」「なぜ残す必要があるのか」を説明する
+- 将来のメンテナーに対して、誤って削除されないようにする
+- カバレッジ100%を強制せず、95-98%を現実的な目標とする
+
+**メソッド削除時の必須確認事項**:
+- **全ての層でテストを確認する**：Repository層、Service層、Controller層の全てのテストファイルを確認
+- **削除したメソッドを使用しているテストを全て削除**：
+  - 例：`CustomerRepository.findAll()` を削除した場合
+    - ✅ `CustomerServiceTest` で `findAll()` を使用しているテストを削除
+    - ✅ `CustomerRepositoryTest` で `findAll()` をテストしているテストも削除（**忘れやすい**）
+- **削除後は必ずテストを実行**：不要なテストが残っていないか確認
+- **体系的なチェック**：削除対象メソッドを grep 検索し、全ての使用箇所（本番コード＋テストコード）を特定
 
 ## コードスタイル
 

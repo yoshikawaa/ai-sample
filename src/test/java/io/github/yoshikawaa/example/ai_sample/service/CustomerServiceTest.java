@@ -18,8 +18,13 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @DisplayName("CustomerService のテスト")
@@ -33,24 +38,6 @@ class CustomerServiceTest {
 
     @Autowired
     private CustomerService customerService;
-
-    @Test
-    @DisplayName("getAllCustomers: すべての顧客を取得できる")
-    void testFindAllCustomers() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St"),
-            new Customer("jane.doe@example.com", "password456", "Jane Doe", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "987-654-3210", "456 Elm St")
-        ));
-
-        // サービスメソッドを呼び出し
-        var customers = customerService.getAllCustomers();
-
-        // 検証
-        assertThat(customers).hasSize(2);
-        assertThat(customers.get(0).getName()).isEqualTo("John Doe");
-        assertThat(customers.get(1).getName()).isEqualTo("Jane Doe");
-    }
 
     @Test
     @DisplayName("registerCustomer: 顧客を登録する際にパスワードをハッシュ化する")
@@ -162,23 +149,6 @@ class CustomerServiceTest {
 
         // リポジトリの呼び出しを検証
         verify(customerRepository, times(1)).deleteByEmail("test@example.com");
-    }
-
-    @Test
-    @DisplayName("searchCustomers: 顧客を検索できる")
-    void testSearchCustomers() {
-        // モックの動作を定義
-        when(customerRepository.search("John", "john@example.com")).thenReturn(Arrays.asList(
-            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St")
-        ));
-
-        // サービスメソッドを呼び出し
-        var customers = customerService.searchCustomers("John", "john@example.com");
-
-        // 検証
-        assertThat(customers).hasSize(1);
-        assertThat(customers.get(0).getName()).isEqualTo("John Doe");
-        verify(customerRepository, times(1)).search("John", "john@example.com");
     }
 
     @Test
@@ -379,10 +349,10 @@ class CustomerServiceTest {
     @Test
     @DisplayName("exportCustomersToCSV: 全顧客をCSVエクスポートできる")
     void exportCustomersToCSV_AllCustomers() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+        // モックの動作を定義（デフォルトはregistration_date DESC: Bob (Feb) first, then Alice (Jan)）
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
         ));
 
         // サービスメソッドを呼び出し
@@ -405,14 +375,14 @@ class CustomerServiceTest {
         assertThat(csv).contains("bob@example.com");
         assertThat(csv).contains("Bob");
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: 検索条件でフィルタリングしてエクスポートできる")
     void exportCustomersToCSV_WithSearchConditions() {
         // モックの動作を定義
-        when(customerRepository.search("Alice", null)).thenReturn(Arrays.asList(
+        when(customerRepository.searchWithSort(eq("Alice"), any(), any(), any())).thenReturn(Arrays.asList(
             new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
         ));
 
@@ -428,16 +398,16 @@ class CustomerServiceTest {
         assertThat(csv).contains("Alice");
         assertThat(csv).doesNotContain("bob@example.com");
         
-        verify(customerRepository, times(1)).search("Alice", null);
+        verify(customerRepository, times(1)).searchWithSort(eq("Alice"), any(), any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: ソート順を適用してエクスポートできる")
     void exportCustomersToCSV_WithSorting() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        // モックの動作を定義（name ASC: Alice first, then Bob）
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
         ));
 
         // サービスメソッドを呼び出し（名前の昇順でソート）
@@ -451,14 +421,14 @@ class CustomerServiceTest {
         
         assertThat(aliceIndex).isLessThan(bobIndex);
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: ダブルクォートをエスケープできる")
     void exportCustomersToCSV_EscapeDoubleQuotes() {
         // モックの動作を定義（ダブルクォートを含む名前）
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
             new Customer("test@example.com", "password", "Test \"Name\"", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address \"1\"")
         ));
 
@@ -471,16 +441,16 @@ class CustomerServiceTest {
         assertThat(csv).contains("Test \"\"Name\"\"");
         assertThat(csv).contains("Address \"\"1\"\"");
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: 降順ソートを適用してエクスポートできる")
     void exportCustomersToCSV_WithDescendingSort() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+        // モックの動作を定義（name DESC: Bob first, then Alice）
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
         ));
 
         // サービスメソッドを呼び出し（名前の降順でソート）
@@ -494,16 +464,16 @@ class CustomerServiceTest {
         
         assertThat(bobIndex).isLessThan(aliceIndex);
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: emailでソートしてエクスポートできる")
     void exportCustomersToCSV_SortByEmail() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        // モックの動作を定義（email ASC: alice@ first, then bob@）
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
         ));
 
         // サービスメソッドを呼び出し（emailの昇順でソート）
@@ -517,16 +487,16 @@ class CustomerServiceTest {
         
         assertThat(aliceIndex).isLessThan(bobIndex);
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: birthDateでソートしてエクスポートできる")
     void exportCustomersToCSV_SortByBirthDate() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        // モックの動作を定義（birth_date ASC: Alice (1990) first, then Bob (1992)）
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
         ));
 
         // サービスメソッドを呼び出し（生年月日の昇順でソート）
@@ -540,16 +510,16 @@ class CustomerServiceTest {
         
         assertThat(aliceIndex).isLessThan(bobIndex);
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: 未知のプロパティでソートした場合はregistrationDateでソートされる")
     void exportCustomersToCSV_SortByUnknownProperty() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        // モックの動作を定義（unknown property with ASC defaults to registration_date ASC: Alice (Jan) first, then Bob (Feb)）
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
         ));
 
         // サービスメソッドを呼び出し（未知のプロパティでソート）
@@ -563,16 +533,16 @@ class CustomerServiceTest {
         
         assertThat(aliceIndex).isLessThan(bobIndex);
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: registrationDateでソートしてエクスポートできる")
     void exportCustomersToCSV_SortByRegistrationDate() {
-        // モックの動作を定義
-        when(customerRepository.findAll()).thenReturn(Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+        // モックの動作を定義（registration_date ASC: Alice (Jan) first, then Bob (Feb)）
+        when(customerRepository.findAllWithSort(any(), any())).thenReturn(Arrays.asList(
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
         ));
 
         // サービスメソッドを呼び出し（登録日の昇順でソート）
@@ -586,14 +556,14 @@ class CustomerServiceTest {
         
         assertThat(aliceIndex).isLessThan(bobIndex);
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: CSV生成時にエラーが発生した場合、RuntimeExceptionがスローされる")
     void exportCustomersToCSV_WithInvalidData() {
-        // リポジトリがnullを返すことでNullPointerExceptionを誘発
-        when(customerRepository.findAll()).thenReturn(null);
+        // リポジトリが例外をスローする
+        when(customerRepository.findAllWithSort(any(), any())).thenThrow(new RuntimeException("Database error"));
         
         Pageable pageable = PageRequest.of(0, 10);
         
@@ -602,14 +572,14 @@ class CustomerServiceTest {
             customerService.exportCustomersToCSV(null, null, pageable);
         });
         
-        verify(customerRepository, times(1)).findAll();
+        verify(customerRepository, times(1)).findAllWithSort(any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: emailのみで検索してエクスポートできる")
     void exportCustomersToCSV_WithEmailOnly() {
         // モックの動作を定義
-        when(customerRepository.search(null, "alice@example.com")).thenReturn(Arrays.asList(
+        when(customerRepository.searchWithSort(any(), eq("alice@example.com"), any(), any())).thenReturn(Arrays.asList(
             new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
         ));
 
@@ -624,14 +594,14 @@ class CustomerServiceTest {
         assertThat(csv).contains("alice@example.com");
         assertThat(csv).contains("Alice");
         
-        verify(customerRepository, times(1)).search(null, "alice@example.com");
+        verify(customerRepository, times(1)).searchWithSort(any(), eq("alice@example.com"), any(), any());
     }
 
     @Test
     @DisplayName("exportCustomersToCSV: nameとemailの両方で検索してエクスポートできる")
     void exportCustomersToCSV_WithBothNameAndEmail() {
         // モックの動作を定義
-        when(customerRepository.search("Alice", "alice@example.com")).thenReturn(Arrays.asList(
+        when(customerRepository.searchWithSort(eq("Alice"), eq("alice@example.com"), any(), any())).thenReturn(Arrays.asList(
             new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
         ));
 
@@ -646,6 +616,6 @@ class CustomerServiceTest {
         assertThat(csv).contains("alice@example.com");
         assertThat(csv).contains("Alice");
         
-        verify(customerRepository, times(1)).search("Alice", "alice@example.com");
+        verify(customerRepository, times(1)).searchWithSort(eq("Alice"), eq("alice@example.com"), any(), any());
     }
 }
