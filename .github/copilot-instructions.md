@@ -201,7 +201,41 @@ io.github.yoshikawaa.example.ai_sample/
 - 複数の機能を一度にコミット
 - テスト失敗状態でのコミット
 
-### 5. エラーハンドリングのアーキテクチャ
+### 5. ガイドライン更新時のプロセス
+
+**新しいルールをガイドラインに追加した場合、既存コードの整合性チェックが必須**：
+
+**必須プロセス**:
+1. **既存コード全体をレビュー**：grep検索等で新ルールに違反している箇所を特定
+2. **違反箇所を修正**：新ルールに準拠するようにコードを更新
+3. **テスト実行**：すべてのテストが通ることを確認
+4. **コミット**：ガイドライン更新と既存コード修正を同じPRに含める
+
+**具体例**:
+
+```bash
+# ログ出力ルールを追加した場合
+# → 機密情報のログ出力を検索
+grep -r "log.info.*token\|log.info.*password\|log.warn.*token" src/
+
+# 命名規則を追加した場合
+# → 既存のクラス名/メソッド名がルールに準拠しているか確認
+find src/ -name "*.java" | xargs grep -l "class.*Service"
+
+# 例外処理パターンを追加した場合
+# → 既存の例外ハンドリングが新パターンに従っているか確認
+grep -r "@ExceptionHandler" src/
+```
+
+**重要**:
+- ❌ ガイドライン追加後に新規コードのみ適用し、既存コードを放置すると、不整合が発生する
+- ✅ ガイドライン更新と同時に既存コード全体を新ルールに準拠させることで、一貫性を保つ
+- ガイドラインは「理想の姿」ではなく「現在のコードベースが従うべきルール」である
+
+**教訓**:
+このプロセスを怠ると、ガイドラインで禁止したはずのパターン（例：機密情報のログ出力）が既存コードに残り続け、新規開発者や将来の自分が混乱する原因となる。
+
+### 6. エラーハンドリングのアーキテクチャ
 
 Spring Bootアプリケーションでは、**@ControllerAdvice**、**コントローラ内@ExceptionHandler**、**ErrorController**を適切に使い分ける。
 
@@ -328,13 +362,13 @@ public class GlobalExceptionHandler {
 - `AbstractErrorController`を拡張（推奨）
 - エラー属性の取得ユーティリティを活用
 - ステータスコードに応じたテンプレート選択
+- **ログレベルの使い分け**: 404→INFO、5xx→ERROR、その他→WARN
 
 **例**:
 ```java
+@Slf4j
 @Controller
 public class CustomErrorController extends AbstractErrorController {
-    
-    private static final Logger logger = LoggerFactory.getLogger(CustomErrorController.class);
     
     public CustomErrorController(ErrorAttributes errorAttributes) {
         super(errorAttributes);
@@ -347,9 +381,23 @@ public class CustomErrorController extends AbstractErrorController {
             ErrorAttributeOptions.of(ErrorAttributeOptions.Include.MESSAGE, 
                                     ErrorAttributeOptions.Include.EXCEPTION));
         
-        // 詳細なログ記録
-        logger.error("Error occurred: status={}, path={}, message={}", 
-            status.value(), errorAttributes.get("path"), errorAttributes.get("message"));
+        String path = (String) errorAttributes.get("path");
+        String message = (String) errorAttributes.get("message");
+        String exceptionType = (String) errorAttributes.get("exception");
+        
+        // ログレベルの使い分け
+        if (status.is5xxServerError()) {
+            // システムエラー: ERROR
+            log.error("Server error occurred: status={}, path={}, message={}, exception={}", 
+                status.value(), path, message, exceptionType);
+        } else if (status == HttpStatus.NOT_FOUND) {
+            // 404エラー: INFO（favicon等の正常な動作とユーザーの誤操作の両方を記録）
+            log.info("Resource not found: path={}", path);
+        } else {
+            // その他のクライアントエラー: WARN
+            log.warn("Client error: status={}, path={}, message={}", 
+                status.value(), path, message);
+        }
         
         model.addAllAttributes(errorAttributes);
         
@@ -363,6 +411,11 @@ public class CustomErrorController extends AbstractErrorController {
     }
 }
 ```
+
+**重要**:
+- **404エラーはINFOレベル**: ブラウザのfaviconリクエスト（正常）とユーザーの誤操作（存在しないURL）の両方が発生。path情報を含めることで後から分析可能
+- **5xxエラーはERRORレベル**: サーバー側の問題は即座に対応が必要
+- **その他のクライアントエラー（400番台）はWARNレベル**: ユーザーの不正な操作や入力
 
 #### 使い分けの原則
 
@@ -529,7 +582,234 @@ public class GreenMailConfig {
 - `matchIfMissing = true` でデフォルト動作を明示
 - カスタムプロパティは `META-INF/additional-spring-configuration-metadata.json` にメタデータを追加し、IDEでの補完とドキュメント表示を可能にする
 
-### 2. リポジトリ層（MyBatis）
+### 2. ログ出力
+
+#### ロガーの実装方法
+
+**必須**: すべてのクラスで `@Slf4j` アノテーションを使用する
+
+```java
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+public class CustomerService {
+    
+    public void registerCustomer(Customer customer) {
+        log.info("顧客登録開始: email={}", customer.getEmail());
+        // ビジネスロジック
+        customerRepository.save(customer);
+        log.info("顧客登録完了: email={}", customer.getEmail());
+    }
+}
+```
+
+**禁止**: `Logger` の手動宣言は使用しない
+
+```java
+// ❌ 禁止: 手動でLoggerを宣言
+private static final Logger logger = LoggerFactory.getLogger(CustomerService.class);
+
+// ✅ 推奨: @Slf4jを使用
+@Slf4j
+public class CustomerService { ... }
+```
+
+#### ログレベルの使い分け
+
+**ERROR**: システムエラー、予期しない例外
+```java
+try {
+    emailService.sendEmail(to, subject, body);
+} catch (Exception e) {
+    log.error("メール送信失敗: to={}, subject={}", to, subject, e);
+    throw new EmailSendException("メール送信に失敗しました", e);
+}
+```
+
+**WARN**: ビジネス例外、セキュリティイベント、異常な操作
+```java
+// セキュリティイベント（列挙攻撃試行）
+log.warn("パスワードリセット試行: 存在しないメールアドレス {}", email);
+
+// ビジネス例外
+log.warn("未成年の顧客登録試行: email={}, birthDate={}", email, birthDate);
+
+// 無効なトークン
+log.warn("無効なパスワードリセットトークン: token={}", token);
+```
+
+**INFO**: 重要な業務処理の開始・完了、状態変更
+```java
+// 顧客登録
+log.info("顧客登録開始: email={}", customer.getEmail());
+log.info("顧客登録完了: email={}", customer.getEmail());
+
+// 顧客情報更新
+log.info("顧客情報更新: email={}, name={}", customer.getEmail(), customer.getName());
+
+// パスワード変更
+log.info("パスワード変更完了: email={}", email);
+
+// ログイン成功
+log.info("ログイン成功: email={}", email);
+
+// ログアウト
+log.info("ログアウト: email={}", email);
+
+// CSV エクスポート
+log.info("CSV エクスポート実行: 件数={}, ユーザー={}", count, userEmail);
+```
+
+**DEBUG**: 開発・デバッグ用の詳細情報
+```java
+log.debug("検索条件: name={}, email={}, page={}, size={}", name, email, page, size);
+log.debug("SQL実行: sortColumn={}, sortDirection={}", sortColumn, sortDirection);
+```
+
+#### ログ出力が必要な操作
+
+**セキュリティ（必須）**:
+- ✅ ログイン成功（AuthenticationSuccessHandler）
+- ✅ ログイン失敗（AuthenticationFailureHandler）
+- ✅ ログアウト（LogoutSuccessHandler）
+- ✅ アクセス拒否（AccessDeniedHandler）
+- ✅ セッションタイムアウト
+
+**サービス層（必須）**:
+- ✅ 顧客登録（registerCustomer）
+- ✅ 顧客情報更新（updateCustomerInfo）
+- ✅ 顧客削除（deleteCustomer）
+- ✅ パスワード変更（changePassword）
+- ✅ パスワードリセット（sendResetLink, updatePassword）
+- ✅ CSVエクスポート（exportCustomersToCSV）
+
+**コントローラ層（例外ハンドラのみ）**:
+- ✅ @ExceptionHandlerメソッド内でのログ記録
+- ❌ 通常のリクエストハンドラではログ不要（サービス層に任せる）
+
+**エラーハンドラ**:
+- ✅ GlobalExceptionHandler（@ControllerAdvice）
+- ✅ CustomErrorController（ErrorController）
+- ✅ コントローラ内の@ExceptionHandler
+
+#### ログメッセージのフォーマット
+
+**推奨形式**:
+```java
+// ✅ 推奨: 操作 + キー情報 + プレースホルダー
+log.info("顧客登録開始: email={}", customer.getEmail());
+log.info("顧客情報更新: email={}, name={}", customer.getEmail(), customer.getName());
+log.warn("未成年の顧客登録試行: email={}, age={}", email, age);
+log.error("CSV生成失敗: 件数={}", customers.size(), exception);
+```
+
+**禁止事項**:
+```java
+// ❌ 禁止: 文字列連結（パフォーマンス低下、例外情報の欠落）
+log.info("顧客登録開始: email=" + customer.getEmail());
+
+// ❌ 禁止: プレースホルダーなし（構造化ログが困難）
+log.info("Customer registered: " + customer.getEmail());
+
+// ❌ 禁止: 詳細すぎる情報（パスワード等の機密情報）
+log.info("顧客登録: email={}, password={}", email, password);  // パスワードは絶対にログに出力しない
+```
+
+#### 機密情報の取り扱い
+
+**絶対にログに出力してはいけない情報**:
+- ❌ パスワード（平文、ハッシュ化後も含む）
+- ❌ クレジットカード番号
+- ❌ セキュリティトークン（パスワードリセットトークン等）の値
+- ❌ 個人を特定できる詳細情報（住所、電話番号の全桁）
+
+**ログに出力可能な情報**:
+- ✅ メールアドレス（ビジネスキー）
+- ✅ 顧客名
+- ✅ 生年月日
+- ✅ 操作の成功・失敗
+- ✅ トークンの存在有無（値ではなく）
+
+**例**:
+```java
+// ✅ 推奨
+log.info("パスワード変更完了: email={}", email);
+log.warn("無効なトークン: トークンが期限切れです");
+
+// ❌ 禁止
+log.info("パスワード変更: email={}, newPassword={}", email, newPassword);
+log.warn("無効なトークン: token={}", token);  // トークンの値を出力しない
+```
+
+**例外: 開発環境でのデバッグ**:
+開発環境でのデバッグ目的の場合、**DEBUGレベル**でトークン値を出力可能：
+
+```java
+// ✅ 許容される（開発環境のみ）
+public void sendResetLink(String email) {
+    // ... トークン生成 ...
+    
+    log.info("パスワードリセットリンク送信: email={}", email);  // 本番でも出力
+    log.debug("リセットリンク：{}", resetLink);  // 開発環境のみ出力
+}
+```
+
+**条件**:
+- 本番環境ではDEBUGログが無効化されることを前提
+- コメントで開発用であることを明記
+- INFOレベルでは操作の事実のみを記録（トークン値は含めない）
+
+#### テストコードでのログ出力
+
+テストクラスにはログ出力を追加しない。プロダクションコードのログで十分。
+
+```java
+// ❌ テストクラスに@Slf4jは不要
+@Slf4j  // 削除
+@SpringBootTest
+class CustomerServiceTest { ... }
+
+// ✅ テストクラスではログ出力しない
+@SpringBootTest
+class CustomerServiceTest { ... }
+```
+
+#### ログ出力のテスト
+
+**ログ出力はテストでアサートしない**。理由：
+
+1. **テストの脆弱性**: ログメッセージの文言変更でテストが壊れる
+2. **保守コストの増加**: ログフォーマット変更の度にテストを修正
+3. **本質的な振る舞いではない**: ログは副作用であり、ビジネスロジックの本質ではない
+4. **テストの複雑化**: ログキャプチャ（LogCaptor、@Captor等）の設定が複雑になる
+
+```java
+// ❌ 禁止: ログ出力をアサート
+@Test
+void testRegisterCustomer() {
+    customerService.registerCustomer(customer);
+    
+    // ログキャプチャしてアサート（不要）
+    verify(logger).info("顧客登録開始: email={}", customer.getEmail());
+}
+
+// ✅ 推奨: ビジネスロジックの結果のみアサート
+@Test
+void testRegisterCustomer() {
+    customerService.registerCustomer(customer);
+    
+    // ビジネスロジックの結果を検証
+    verify(customerRepository).save(any(Customer.class));
+}
+```
+
+**例外**: 以下のケースではログ出力が重要な要件となるため、アサート可能
+- 監査ログ（法的要件）
+- セキュリティログ（インシデント対応）
+- ただし、これらは専用の監査システムで管理すべきで、通常のログ出力とは別扱い
+
+### 3. リポジトリ層（MyBatis）
 
 #### マッパーインターフェース
 ```java
@@ -883,6 +1163,34 @@ public class CustomerController {
 **重要（コントローラ固有）**:
 - **publicメソッドの配置順序**: リクエストハンドラメソッド → @ExceptionHandlerメソッド
 - @ExceptionHandlerは例外処理の詳細であり、最後に配置
+
+**設定クラスの追加ルール**:
+```java
+@Configuration
+public class SecurityConfig {
+    
+    // 1. フィールド（ある場合）
+    
+    // 2. メイン設定Bean（クラスの中心的な責務）
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) { }
+    
+    // 3. サポートBean（メイン設定をサポートする実装の詳細）
+    @Bean
+    public AuthenticationSuccessHandler authenticationSuccessHandler() { }
+    
+    @Bean
+    public AuthenticationFailureHandler authenticationFailureHandler() { }
+    
+    @Bean
+    public LogoutSuccessHandler logoutSuccessHandler() { }
+}
+```
+
+**重要（設定クラス固有）**:
+- **メイン設定Beanを最初に配置**: クラスの中心的な責務（例: SecurityFilterChain）
+- **サポートBeanは後に配置**: メイン設定で使用されるハンドラーやヘルパーBean
+- **可読性の向上**: 「何を設定しているか」→「どう実装しているか」の順序
 
 #### ロジックの共通化と重複排除
 
@@ -1897,6 +2205,35 @@ private byte[] generateCSV(List<Customer> customers) {
 - 将来のメンテナーに対して、誤って削除されないようにする
 - カバレッジ100%を強制せず、95-98%を現実的な目標とする
 
+**実用的でない防御的プログラミングの削除**:
+```java
+// ❌ 禁止: 実際の運用で発生しない防御的コード
+@Bean
+public LogoutSuccessHandler logoutSuccessHandler() {
+    return (request, response, authentication) -> {
+        if (authentication != null) {  // 認証済みユーザーのみがログアウトするため、常に非null
+            log.info("ログアウト: email={}", authentication.getName());
+        }
+        response.sendRedirect("/");
+    };
+}
+
+// ✅ 推奨: 実用的な実装
+@Bean
+public LogoutSuccessHandler logoutSuccessHandler() {
+    return (request, response, authentication) -> {
+        log.info("ログアウト: email={}", authentication.getName());
+        response.sendRedirect("/");
+    };
+}
+```
+
+**重要**:
+- 実際の運用で発生しないケースに対する防御的なnullチェックは削除する
+- フレームワークの標準的な動作（例: Spring Securityは認証済みユーザーのログアウトを想定）に準拠する
+- 過剰な防御コードはコードの複雑性を増し、テストカバレッジを低下させる
+- 必要な防御（OutOfMemoryError等の予期しないエラー）と不要な防御（正常フローでは発生しないnullチェック）を区別する
+
 **メソッド削除時の必須確認事項**:
 - **全ての層でテストを確認する**：Repository層、Service層、Controller層の全てのテストファイルを確認
 - **削除したメソッドを使用しているテストを全て削除**：
@@ -2132,6 +2469,35 @@ class CustomErrorControllerTest {
 - Mockitoの過度な使用を避ける（@SpringBootTestの利点を活かす）
 - MockMvc経由では404/500エラーが正しくErrorControllerに到達しない
 - 定数の使用については「コードスタイル > 定数の使用」を参照
+
+## 静的リソース
+
+### Favicon
+
+プロジェクトには必ずfaviconを追加する。faviconがないとブラウザが自動的に`/favicon.ico`をリクエストし、404エラーログが発生する。
+
+**配置場所**:
+- `src/main/resources/static/favicon.ico` （従来型、全ブラウザ対応）
+- `src/main/resources/static/favicon.svg` （モダンブラウザ、SVG形式）
+
+**作成方法**:
+1. **既存の画像から変換**:
+   - ImageMagickを使用: `magick convert input.png -resize 32x32 favicon.ico`
+   - オンラインツール: [Favicon Generator](https://favicon.io/), [RealFaviconGenerator](https://realfavicongenerator.net/)
+
+2. **シンプルなSVGアイコン**:
+   ```xml
+   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+     <rect width="100" height="100" fill="#4F46E5"/>
+     <text x="50" y="70" font-size="60" text-anchor="middle" fill="white" 
+           font-family="Arial, sans-serif" font-weight="bold">C</text>
+   </svg>
+   ```
+
+**重要**:
+- faviconは初期プロジェクトセットアップ時に追加
+- 404エラーログのノイズを防ぐ
+- ブランディングとユーザー体験の向上
 
 ## 参考資料
 

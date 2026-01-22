@@ -3,8 +3,7 @@ package io.github.yoshikawaa.example.ai_sample.controller;
 import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetForm;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,11 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+@Slf4j
 @Controller
 @RequestMapping("/password-reset") // クラスレベルで共通のパスを設定
 public class PasswordResetController {
 
-    private static final Logger logger = LoggerFactory.getLogger(PasswordResetController.class);
     private final PasswordResetService passwordResetService;
 
     public PasswordResetController(PasswordResetService passwordResetService) {
@@ -69,7 +68,7 @@ public class PasswordResetController {
     @ExceptionHandler(InvalidTokenException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String handleInvalidTokenException(InvalidTokenException ex, Model model) {
-        logger.warn("Invalid password reset token: {}", ex.getMessage());
+        log.warn("Invalid password reset token: {}", ex.getMessage());
         model.addAttribute("errorMessage", ex.getMessage());
         model.addAttribute("errorCode", "400");
         return "password-reset-error";

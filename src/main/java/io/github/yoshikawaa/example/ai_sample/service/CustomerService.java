@@ -19,7 +19,9 @@ import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerExceptio
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class CustomerService {
 
@@ -48,6 +50,8 @@ public class CustomerService {
     }
 
     public void registerCustomer(Customer customer) {
+        log.info("顧客登録開始: email={}", customer.getEmail());
+        
         // 未成年チェック
         if (isUnderage(customer.getBirthDate())) {
             throw new UnderageCustomerException();
@@ -58,9 +62,13 @@ public class CustomerService {
 
         // 顧客情報を登録
         customerRepository.save(customer);
+        
+        log.info("顧客登録完了: email={}", customer.getEmail());
     }
 
     public void changePassword(Customer customer, String newPassword) {
+        log.info("パスワード変更開始: email={}", customer.getEmail());
+        
         // 新しいパスワードをハッシュ化
         String hashedPassword = passwordEncoder.encode(newPassword);
 
@@ -73,9 +81,13 @@ public class CustomerService {
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(updatedUserDetails, null, updatedUserDetails.getAuthorities())
         );
+        
+        log.info("パスワード変更完了: email={}", customer.getEmail());
     }
 
     public void updateCustomerInfo(Customer customer) {
+        log.info("顧客情報更新開始: email={}, name={}", customer.getEmail(), customer.getName());
+        
         // 顧客情報を更新
         customerRepository.updateCustomerInfo(customer);
 
@@ -84,14 +96,20 @@ public class CustomerService {
         SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken(updatedUserDetails, null, updatedUserDetails.getAuthorities())
         );
+        
+        log.info("顧客情報更新完了: email={}", customer.getEmail());
     }
 
     public void deleteCustomer(String email) {
+        log.info("顧客削除開始: email={}", email);
+        
         // 顧客を削除
         customerRepository.deleteByEmail(email);
 
         // 認証情報をクリア
         SecurityContextHolder.clearContext();
+        
+        log.info("顧客削除完了: email={}", email);
     }
 
     public Page<Customer> searchCustomersWithPagination(String name, String email, Pageable pageable) {
@@ -115,6 +133,8 @@ public class CustomerService {
             // 検索条件がない場合
             customers = customerRepository.findAllWithSort(sortInfo[0], sortInfo[1]);
         }
+        
+        log.info("CSVエクスポート実行: 件数={}, 検索条件(name={}, email={})", customers.size(), name, email);
         
         return csvService.generateCustomerCsv(customers);
     }

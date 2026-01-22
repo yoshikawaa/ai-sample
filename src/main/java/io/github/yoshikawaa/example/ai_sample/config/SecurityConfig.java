@@ -1,12 +1,17 @@
 package io.github.yoshikawaa.example.ai_sample.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
+@Slf4j
 @Configuration
 public class SecurityConfig {
 
@@ -30,15 +35,40 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginPage("/login") // カスタムログイン画面
-                .defaultSuccessUrl("/mypage", true) // ログイン成功後の遷移先
-                .failureUrl("/login?error") // 認証失敗時のリダイレクト先
+                .successHandler(authenticationSuccessHandler()) // ログイン成功ハンドラー
+                .failureHandler(authenticationFailureHandler()) // ログイン失敗ハンドラー
                 .permitAll()
             )
             .logout(logout -> logout
                 .logoutUrl("/logout")
-                .logoutSuccessUrl("/") // ログアウト後の遷移先
+                .logoutSuccessHandler(logoutSuccessHandler()) // ログアウト成功ハンドラー
                 .permitAll()
             );
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationSuccessHandler authenticationSuccessHandler() {
+        return (request, response, authentication) -> {
+            log.info("ログイン成功: email={}", authentication.getName());
+            response.sendRedirect("/mypage");
+        };
+    }
+
+    @Bean
+    public AuthenticationFailureHandler authenticationFailureHandler() {
+        return (request, response, exception) -> {
+            String username = request.getParameter("username");
+            log.warn("ログイン失敗: email={}, reason={}", username, exception.getMessage());
+            response.sendRedirect("/login?error");
+        };
+    }
+
+    @Bean
+    public LogoutSuccessHandler logoutSuccessHandler() {
+        return (request, response, authentication) -> {
+            log.info("ログアウト: email={}", authentication.getName());
+            response.sendRedirect("/");
+        };
     }
 }
