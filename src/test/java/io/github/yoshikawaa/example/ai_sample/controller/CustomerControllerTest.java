@@ -12,7 +12,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import io.github.yoshikawaa.example.ai_sample.config.GlobalExceptionHandler;
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -27,7 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CustomerController.class)
-@Import(SecurityConfig.class) // セキュリティ設定をインポート
+@Import({SecurityConfig.class, GlobalExceptionHandler.class}) // セキュリティ設定とエラーハンドラーをインポート
 @DisplayName("CustomerController のテスト")
 class CustomerControllerTest {
 
@@ -328,14 +330,14 @@ class CustomerControllerTest {
     void testShowCustomerDetail_NotFound() throws Exception {
         // モックの動作を定義
         when(customerService.getCustomerByEmail("nonexistent@example.com"))
-            .thenThrow(new IllegalArgumentException("顧客が見つかりません。"));
+            .thenThrow(new CustomerNotFoundException("nonexistent@example.com"));
 
         // テスト実行
         mockMvc.perform(get("/customers/{email}", "nonexistent@example.com"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("customer-error"))
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error"))
                 .andExpect(model().attributeExists("errorMessage"))
-                .andExpect(model().attribute("errorMessage", "顧客が見つかりません。"));
+                .andExpect(model().attribute("errorCode", "404"));
 
         // サービス呼び出しの検証
         verify(customerService, times(1)).getCustomerByEmail("nonexistent@example.com");

@@ -1,5 +1,6 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,29 +54,10 @@ class PasswordResetControllerTest {
     }
 
     @Test
-    @DisplayName("POST /password-reset/request: メールアドレスが存在しない場合、エラーメッセージを表示する")
-    void testHandleResetRequest_メールアドレスが存在しない() throws Exception {
-        // Arrange
-        doThrow(new IllegalArgumentException("メールアドレスが見つかりません。"))
-                .when(passwordResetService).sendResetLink("nonexistent@example.com");
-
-        // Act & Assert
-        mockMvc.perform(post("/password-reset/request")
-                        .param("email", "nonexistent@example.com")
-                        .with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(view().name("password-reset-request"))
-                .andExpect(model().attributeExists("error"))
-                .andExpect(model().attribute("error", "メールアドレスが見つかりません。"));
-
-        verify(passwordResetService).sendResetLink("nonexistent@example.com");
-    }
-
-    @Test
     @DisplayName("GET /password-reset/confirm: 有効なトークンでフォーム画面を表示する")
     void testShowResetForm_有効なトークン() throws Exception {
         // Arrange
-        when(passwordResetService.validateResetToken("valid-token")).thenReturn(true);
+        doNothing().when(passwordResetService).validateResetToken("valid-token");
 
         // Act & Assert
         mockMvc.perform(get("/password-reset/confirm")
@@ -92,12 +74,13 @@ class PasswordResetControllerTest {
     @DisplayName("GET /password-reset/confirm: 無効なトークンでエラー画面を表示する")
     void testShowResetForm_無効なトークン() throws Exception {
         // Arrange
-        when(passwordResetService.validateResetToken("invalid-token")).thenReturn(false);
+        doThrow(new InvalidTokenException("無効または期限切れのトークンです。"))
+                .when(passwordResetService).validateResetToken("invalid-token");
 
         // Act & Assert
         mockMvc.perform(get("/password-reset/confirm")
                         .param("token", "invalid-token"))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(view().name("password-reset-error"))
                 .andExpect(model().attributeExists("errorMessage"))
                 .andExpect(model().attribute("errorMessage", "無効または期限切れのトークンです。"));
@@ -109,11 +92,12 @@ class PasswordResetControllerTest {
     @DisplayName("GET /password-reset/confirm: トークンがnullの場合、エラー画面を表示する")
     void testShowResetForm_トークンがNull() throws Exception {
         // Arrange
-        when(passwordResetService.validateResetToken(null)).thenReturn(false);
+        doThrow(new InvalidTokenException("無効または期限切れのトークンです。"))
+                .when(passwordResetService).validateResetToken(null);
 
         // Act & Assert
         mockMvc.perform(get("/password-reset/confirm"))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(view().name("password-reset-error"))
                 .andExpect(model().attributeExists("errorMessage"));
 
@@ -124,7 +108,6 @@ class PasswordResetControllerTest {
     @DisplayName("POST /password-reset/reset: 正常にパスワードをリセットする")
     void testResetPassword_正常系() throws Exception {
         // Arrange
-        when(passwordResetService.validateResetToken("valid-token")).thenReturn(true);
         doNothing().when(passwordResetService).updatePassword("valid-token", "newPassword123");
 
         // Act & Assert
@@ -136,7 +119,6 @@ class PasswordResetControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/password-reset/complete"));
 
-        verify(passwordResetService).validateResetToken("valid-token");
         verify(passwordResetService).updatePassword("valid-token", "newPassword123");
     }
 
@@ -195,7 +177,8 @@ class PasswordResetControllerTest {
     @DisplayName("POST /password-reset/reset: 無効なトークンでエラー画面を表示する")
     void testResetPassword_無効なトークン() throws Exception {
         // Arrange
-        when(passwordResetService.validateResetToken("invalid-token")).thenReturn(false);
+        doThrow(new InvalidTokenException("無効または期限切れのトークンです。"))
+                .when(passwordResetService).updatePassword("invalid-token", "newPassword123");
 
         // Act & Assert
         mockMvc.perform(post("/password-reset/reset")
@@ -203,36 +186,12 @@ class PasswordResetControllerTest {
                         .param("newPassword", "newPassword123")
                         .param("confirmPassword", "newPassword123")
                         .with(csrf()))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(view().name("password-reset-error"))
                 .andExpect(model().attributeExists("errorMessage"))
                 .andExpect(model().attribute("errorMessage", "無効または期限切れのトークンです。"));
 
-        verify(passwordResetService).validateResetToken("invalid-token");
-        verify(passwordResetService, never()).updatePassword(anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("POST /password-reset/reset: パスワード更新中に例外が発生した場合、エラー画面を表示する")
-    void testResetPassword_更新中に例外発生() throws Exception {
-        // Arrange
-        when(passwordResetService.validateResetToken("valid-token")).thenReturn(true);
-        doThrow(new RuntimeException("データベースエラー"))
-                .when(passwordResetService).updatePassword("valid-token", "newPassword123");
-
-        // Act & Assert
-        mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "valid-token")
-                        .param("newPassword", "newPassword123")
-                        .param("confirmPassword", "newPassword123")
-                        .with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(view().name("password-reset-error"))
-                .andExpect(model().attributeExists("errorMessage"))
-                .andExpect(model().attribute("errorMessage", "パスワードリセット中にエラーが発生しました。"));
-
-        verify(passwordResetService).validateResetToken("valid-token");
-        verify(passwordResetService).updatePassword("valid-token", "newPassword123");
+        verify(passwordResetService).updatePassword("invalid-token", "newPassword123");
     }
 
     @Test
@@ -258,5 +217,28 @@ class PasswordResetControllerTest {
         mockMvc.perform(get("/password-reset/complete"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("password-reset-complete"));
+    }
+
+    @Test
+    @DisplayName("InvalidTokenException が発生した場合、password-reset-error.html を表示する")
+    void testHandleInvalidTokenException() throws Exception {
+        // Arrange: updatePassword()内でInvalidTokenExceptionをスロー
+        doThrow(new InvalidTokenException("無効または期限切れのトークンです。"))
+                .when(passwordResetService).updatePassword("expiring-token", "newPassword123");
+
+        // Act & Assert
+        mockMvc.perform(post("/password-reset/reset")
+                        .param("token", "expiring-token")
+                        .param("newPassword", "newPassword123")
+                        .param("confirmPassword", "newPassword123")
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(view().name("password-reset-error"))
+                .andExpect(model().attributeExists("errorMessage"))
+                .andExpect(model().attribute("errorMessage", "無効または期限切れのトークンです。"))
+                .andExpect(model().attributeExists("errorCode"))
+                .andExpect(model().attribute("errorCode", "400"));
+
+        verify(passwordResetService).updatePassword("expiring-token", "newPassword123");
     }
 }

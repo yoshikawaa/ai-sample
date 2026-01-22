@@ -1,20 +1,27 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetForm;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @Controller
 @RequestMapping("/password-reset") // クラスレベルで共通のパスを設定
 public class PasswordResetController {
 
+    private static final Logger logger = LoggerFactory.getLogger(PasswordResetController.class);
     private final PasswordResetService passwordResetService;
 
     public PasswordResetController(PasswordResetService passwordResetService) {
@@ -28,25 +35,16 @@ public class PasswordResetController {
 
     @PostMapping("/request")
     public String handleResetRequest(@RequestParam(required = true) String email, Model model) {
-        try {
-            passwordResetService.sendResetLink(email);
-            model.addAttribute("message", "パスワードリセットリンクを送信しました。");
-        } catch (Exception e) {
-            model.addAttribute("error", e.getMessage());
-        }
+        passwordResetService.sendResetLink(email);
+        model.addAttribute("message", "パスワードリセットリンクを送信しました。");
         return "password-reset-request";
     }
 
     @GetMapping("/confirm")
     public String showResetForm(@RequestParam(required = false) String token, PasswordResetForm passwordResetForm, Model model) {
-        boolean isValid = passwordResetService.validateResetToken(token);
-        if (isValid) {
-            model.addAttribute("token", token);
-            return "password-reset-form"; // Thymeleaf テンプレート名
-        } else {
-            model.addAttribute("errorMessage", "無効または期限切れのトークンです。");
-            return "password-reset-error";
-        }
+        passwordResetService.validateResetToken(token);
+        model.addAttribute("token", token);
+        return "password-reset-form";
     }
 
     @PostMapping("/reset")
@@ -55,23 +53,25 @@ public class PasswordResetController {
             return "password-reset-form";
         }
 
-        boolean isValid = passwordResetService.validateResetToken(passwordResetForm.getToken());
-        if (isValid) {
-            try {
-                passwordResetService.updatePassword(passwordResetForm.getToken(), passwordResetForm.getNewPassword());
-                return "redirect:/password-reset/complete";
-            } catch (Exception e) {
-                model.addAttribute("errorMessage", "パスワードリセット中にエラーが発生しました。");
-                return "password-reset-error";
-            }
-        } else {
-            model.addAttribute("errorMessage", "無効または期限切れのトークンです。");
-            return "password-reset-error";
-        }
+        passwordResetService.updatePassword(passwordResetForm.getToken(), passwordResetForm.getNewPassword());
+        return "redirect:/password-reset/complete";
     }
 
     @GetMapping("/complete")
     public String showResetCompletePage() {
         return "password-reset-complete"; // パスワードリセット完了画面
+    }
+
+    /**
+     * 無効なパスワードリセットトークンの場合のハンドラー
+     * パスワードリセットエラー画面を表示し、リクエスト画面に戻れるようにする
+     */
+    @ExceptionHandler(InvalidTokenException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String handleInvalidTokenException(InvalidTokenException ex, Model model) {
+        logger.warn("Invalid password reset token: {}", ex.getMessage());
+        model.addAttribute("errorMessage", ex.getMessage());
+        model.addAttribute("errorCode", "400");
+        return "password-reset-error";
     }
 }

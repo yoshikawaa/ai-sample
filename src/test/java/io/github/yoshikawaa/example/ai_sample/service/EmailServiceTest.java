@@ -2,6 +2,7 @@ package io.github.yoshikawaa.example.ai_sample.service;
 
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
+import io.github.yoshikawaa.example.ai_sample.exception.EmailSendException;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -93,7 +94,7 @@ class EmailServiceTest {
     }
 
     @Test
-    @DisplayName("sendEmail: MailException が発生した場合、IllegalStateException をスローする")
+    @DisplayName("sendEmail: MailException が発生した場合、EmailSendException をスローする")
     void testSendEmail_MailException発生時() {
         // Arrange
         doThrow(new MailSendException("SMTP接続エラー"))
@@ -101,7 +102,7 @@ class EmailServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> emailService.sendEmail("test@example.com", "件名", "本文"))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(EmailSendException.class)
                 .hasMessage("メール送信中にエラーが発生しました")
                 .hasCauseInstanceOf(MailException.class);
 

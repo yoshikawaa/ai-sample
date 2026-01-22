@@ -1,5 +1,7 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
+import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
+import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -79,11 +81,11 @@ class CustomerServiceTest {
         when(customerRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
 
         // 例外がスローされることを検証
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+        CustomerNotFoundException exception = assertThrows(CustomerNotFoundException.class, () -> {
             customerService.getCustomerByEmail("nonexistent@example.com");
         });
 
-        assertThat(exception.getMessage()).isEqualTo("顧客が見つかりません。");
+        assertThat(exception.getMessage()).contains("nonexistent@example.com");
         verify(customerRepository, times(1)).findByEmail("nonexistent@example.com");
     }
 
@@ -249,7 +251,7 @@ class CustomerServiceTest {
         );
 
         // 例外がスローされることを検証
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(UnderageCustomerException.class, () -> {
             customerService.registerCustomer(underageCustomer);
         });
     }

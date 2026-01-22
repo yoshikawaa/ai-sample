@@ -1,6 +1,8 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import io.github.yoshikawaa.example.ai_sample.config.GlobalExceptionHandler;
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CustomerRegistrationController.class)
-@Import(SecurityConfig.class) // セキュリティ設定をインポート
+@Import({SecurityConfig.class, GlobalExceptionHandler.class}) // セキュリティ設定とグローバルエラーハンドラーをインポート
 @DisplayName("CustomerRegistrationController のテスト")
 class CustomerRegistrationControllerTest {
 
@@ -157,10 +159,10 @@ class CustomerRegistrationControllerTest {
     }
 
     @Test
-    @DisplayName("POST /customers/register: ビジネスエラーの場合エラー画面を表示する")
-    void testHandleBusinessError() throws Exception {
-        // モックの設定: CustomerService が IllegalArgumentException をスロー
-        doThrow(new IllegalArgumentException("ビジネスエラーが発生しました"))
+    @DisplayName("POST /register/register: 未成年エラーの場合、顧客登録エラー画面を表示する")
+    void testHandleUnderageCustomerError() throws Exception {
+        // モックの設定: CustomerService が UnderageCustomerException をスロー
+        doThrow(new UnderageCustomerException())
                 .when(customerService).registerCustomer(any());
 
         // テストデータ
@@ -177,9 +179,10 @@ class CustomerRegistrationControllerTest {
         mockMvc.perform(post("/register/register")
                 .params(validCustomerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
-                .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
+                .andExpect(status().isBadRequest()) // HTTP ステータスが 400 Bad Request であることを確認
                 .andExpect(view().name("customer-registration-error")) // ビュー名が "customer-registration-error" であることを確認
-                .andExpect(model().attribute("errorMessage", "ビジネスエラーが発生しました")); // モデルにエラーメッセージが含まれていることを確認
+                .andExpect(model().attributeExists("errorMessage")) // モデルにエラーメッセージが含まれていることを確認
+                .andExpect(model().attribute("errorCode", "400")); // エラーコードが含まれていることを確認
     }
 
     @Test

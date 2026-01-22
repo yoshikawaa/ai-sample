@@ -1,5 +1,6 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
+import io.github.yoshikawaa.example.ai_sample.exception.EmailSendException;
 import org.springframework.lang.NonNull;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -29,7 +30,7 @@ public class EmailService {
 
             mailSender.send(message);
         } catch (MailException | MessagingException e) {
-            throw new IllegalStateException("メール送信中にエラーが発生しました", e);
+            throw new EmailSendException("メール送信中にエラーが発生しました", e);
         }
     }
 }
