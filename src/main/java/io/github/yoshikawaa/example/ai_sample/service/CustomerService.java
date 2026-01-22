@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
+@Transactional
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
@@ -35,11 +37,13 @@ public class CustomerService {
         this.csvService = csvService;
     }
 
+    @Transactional(readOnly = true)
     public Customer getCustomerByEmail(String email) {
         return customerRepository.findByEmail(email)
             .orElseThrow(() -> new CustomerNotFoundException(email));
     }
 
+    @Transactional(readOnly = true)
     public Page<Customer> getAllCustomersWithPagination(Pageable pageable) {
         int offset = (int) pageable.getOffset();
         int pageSize = pageable.getPageSize();
@@ -112,6 +116,7 @@ public class CustomerService {
         log.info("顧客削除完了: email={}", email);
     }
 
+    @Transactional(readOnly = true)
     public Page<Customer> searchCustomersWithPagination(String name, String email, Pageable pageable) {
         int offset = (int) pageable.getOffset();
         int pageSize = pageable.getPageSize();
@@ -121,6 +126,7 @@ public class CustomerService {
         return new PageImpl<>(customers, pageable, total);
     }
 
+    @Transactional(readOnly = true)
     public byte[] exportCustomersToCSV(String name, String email, Pageable pageable) {
         // 検索・ソート条件に基づいて顧客を取得（全件）
         String[] sortInfo = extractSortInfo(pageable);

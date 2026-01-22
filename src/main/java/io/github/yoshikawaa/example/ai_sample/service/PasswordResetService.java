@@ -9,11 +9,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Slf4j
 @Service
+@Transactional
 public class PasswordResetService {
 
     private final CustomerRepository customerRepository;
@@ -57,6 +59,7 @@ public class PasswordResetService {
         log.debug("リセットリンク：{}", resetLink);
     }
 
+    @Transactional(readOnly = true)
     public void validateResetToken(String token) {
         getValidatedToken(token);
     }
