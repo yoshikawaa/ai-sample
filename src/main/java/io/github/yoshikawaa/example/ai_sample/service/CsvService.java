@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import com.opencsv.bean.ColumnPositionMappingStrategy;
@@ -21,6 +22,7 @@ import io.github.yoshikawaa.example.ai_sample.model.CustomerCsvDto;
  * 顧客データのCSVエクスポート機能を提供します。
  * 将来的にはCSVインポート機能なども追加可能です。
  */
+@Slf4j
 @Service
 public class CsvService {
 
@@ -85,6 +87,7 @@ public class CsvService {
             // ByteArrayOutputStreamとOpenCSVの通常動作では例外は発生しませんが、
             // 予期しないランタイムエラー（OutOfMemoryError等）からの保護として残しています。
             // テストでのカバレッジは困難ですが、本番環境での安全性のために必要です。
+            log.error("CSV生成中にエラーが発生しました: dtoClass={}", dtoClass.getSimpleName(), e);
             throw new CsvGenerationException("CSV生成中にエラーが発生しました", e);
         }
     }

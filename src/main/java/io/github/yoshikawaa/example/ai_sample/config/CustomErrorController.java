@@ -1,8 +1,7 @@
 package io.github.yoshikawaa.example.ai_sample.config;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.web.servlet.error.AbstractErrorController;
 import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
@@ -17,10 +16,9 @@ import java.util.Map;
  * カスタムエラーコントローラー
  * HTTPステータスエラー（404、500等）を処理し、適切なエラーページを表示します
  */
+@Slf4j
 @Controller
 public class CustomErrorController extends AbstractErrorController {
-
-    private static final Logger logger = LoggerFactory.getLogger(CustomErrorController.class);
 
     public CustomErrorController(ErrorAttributes errorAttributes) {
         super(errorAttributes);
@@ -45,12 +43,13 @@ public class CustomErrorController extends AbstractErrorController {
         String exceptionType = (String) errorAttributes.get("exception");
 
         if (status.is5xxServerError()) {
-            logger.error("Server error occurred: status={}, path={}, message={}, exception={}", 
+            log.error("Server error occurred: status={}, path={}, message={}, exception={}", 
                 status.value(), path, message, exceptionType);
         } else if (status == HttpStatus.NOT_FOUND) {
-            logger.warn("Resource not found: path={}", path);
+            // 404エラーはINFOレベル（favicon等の正常な動作とユーザーの誤操作の両方を記録）
+            log.info("Resource not found: path={}", path);
         } else {
-            logger.warn("Client error: status={}, path={}, message={}", 
+            log.warn("Client error: status={}, path={}, message={}", 
                 status.value(), path, message);
         }
 

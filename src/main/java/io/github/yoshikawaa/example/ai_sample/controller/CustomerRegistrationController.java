@@ -4,8 +4,7 @@ import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerExceptio
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.model.CustomerForm;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,11 +19,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.time.LocalDate;
 
+@Slf4j
 @Controller
 @RequestMapping("/register")
 public class CustomerRegistrationController {
 
-    private static final Logger logger = LoggerFactory.getLogger(CustomerRegistrationController.class);
     private final CustomerService customerService;
 
     public CustomerRegistrationController(CustomerService customerService) {
@@ -97,7 +96,7 @@ public class CustomerRegistrationController {
     @ExceptionHandler(UnderageCustomerException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String handleUnderageCustomerException(UnderageCustomerException ex, Model model) {
-        logger.warn("Underage customer registration attempt: {}", ex.getMessage());
+        log.warn("Underage customer registration attempt: {}", ex.getMessage());
         model.addAttribute("errorMessage", ex.getMessage());
         model.addAttribute("errorCode", "400");
         return "customer-registration-error";

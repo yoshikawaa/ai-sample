@@ -50,7 +50,11 @@ public class PasswordResetService {
 
         String resetLink = "http://localhost:8080/password-reset/confirm?token=" + token;
         emailService.sendEmail(email, "パスワードリセット", "以下のリンクをクリックしてパスワードをリセットしてください: " + resetLink);
-        log.info("リセットリンク：{}", resetLink);
+        
+        // パスワードリセットリンク送信を記録
+        log.info("パスワードリセットリンク送信: email={}", email);
+        // 開発環境でのデバッグ用（本番環境では出力されない）
+        log.debug("リセットリンク：{}", resetLink);
     }
 
     public void validateResetToken(String token) {
