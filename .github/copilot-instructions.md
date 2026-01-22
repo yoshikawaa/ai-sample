@@ -1309,7 +1309,97 @@ public void updateCustomerInfo(Customer customer) {
 
 **重要**:
 - 顧客情報更新時は必ず `SecurityContextHolder` も更新
-- トランザクション管理が必要な場合は `@Transactional` を付与
+
+#### トランザクション管理
+
+**@Transactionalの付与ルール（例外なし）**:
+
+**原則**: SQL操作を含むすべてのメソッドに`@Transactional`を付与する
+- 書き込み操作（INSERT/UPDATE/DELETE）: `@Transactional`
+- 読み取り専用（SELECTのみ）: `@Transactional(readOnly = true)`
+- **「付けない」という選択肢はない**
+
+**クラスレベル vs メソッドレベル**:
+
+1. **クラスレベルでの付与（推奨）**:
+   - すべてのpublicメソッドが書き込み操作を含む場合
+   - クラスレベルで`@Transactional`を付与し、読み取り専用メソッドのみ個別に`@Transactional(readOnly = true)`でオーバーライド
+
+2. **メソッドレベルでの付与**:
+   - 一部のメソッドのみが書き込み操作を含む場合
+   - 該当メソッドに個別に`@Transactional`を付与
+
+**アノテーションの順序**: `@Service` → `@Transactional` → クラス宣言
+
+**例（クラスレベル）**:
+```java
+@Slf4j
+@Service
+@Transactional  // すべてのpublicメソッドに適用
+public class CustomerService {
+    
+    // 書き込み操作: デフォルトで@Transactional適用
+    public void registerCustomer(Customer customer) {
+        customerRepository.save(customer);
+    }
+    
+    public void updateCustomerInfo(Customer customer) {
+        customerRepository.updateCustomerInfo(customer);
+        // SecurityContextHolder更新
+    }
+    
+    public void deleteCustomer(String email) {
+        customerRepository.deleteByEmail(email);
+    }
+    
+    // 読み取り専用: readOnlyでオーバーライド
+    @Transactional(readOnly = true)
+    public Customer getCustomerByEmail(String email) {
+        return customerRepository.findByEmail(email)
+            .orElseThrow(() -> new CustomerNotFoundException(email));
+    }
+    
+    @Transactional(readOnly = true)
+    public Page<Customer> getAllCustomersWithPagination(Pageable pageable) {
+        // ...
+    }
+}
+```
+
+**例（メソッドレベル）**:
+```java
+@Slf4j
+@Service
+public class PasswordResetService {
+    
+    // 書き込み操作のみ個別に付与
+    @Transactional
+    public void sendResetLink(String email) {
+        passwordResetTokenRepository.insert(resetToken);
+        emailService.sendEmail(...);
+    }
+    
+    @Transactional
+    public void updatePassword(String token, String newPassword) {
+        customerRepository.updatePassword(email, hashedPassword);  // UPDATE
+        passwordResetTokenRepository.deleteByEmail(email);         // DELETE
+        // 複数SQL操作 → トランザクション必須
+    }
+    
+    // 読み取り専用: 必ず@Transactional(readOnly = true)を付与
+    @Transactional(readOnly = true)
+    public void validateResetToken(String token) {
+        getValidatedToken(token);  // SELECTのみ
+    }
+}
+```
+
+**重要**:
+- **判断に迷わない**: SQL操作がある = @Transactional必須
+- **付け忘れ防止**: 「付けない」選択肢を排除
+- **トランザクション境界の明確化**: すべてのSQL操作でトランザクション管理
+- **複数SQL操作**: 途中で例外が発生した場合、すべての変更がロールバックされる
+- **単一SQL操作でも付与**: トランザクション境界を明確にし、将来の拡張に備える
 
 ### 5. コントローラ層
 
