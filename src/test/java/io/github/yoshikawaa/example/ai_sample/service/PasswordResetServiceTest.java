@@ -3,6 +3,7 @@ package io.github.yoshikawaa.example.ai_sample.service;
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
+import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetToken;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.repository.PasswordResetTokenRepository;
@@ -21,6 +22,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -93,17 +96,16 @@ class PasswordResetServiceTest {
     }
 
     @Test
-    @DisplayName("sendResetLink: メールアドレスが存在しない場合、例外をスローする")
+    @DisplayName("sendResetLink: メールアドレスが存在しない場合、何もせず正常終了する（セキュリティ対策）")
     void testSendResetLink_メールアドレスが存在しない() {
         // Arrange
         when(customerRepository.findByEmail("nonexistent@example.com"))
                 .thenReturn(Optional.empty());
 
-        // Act & Assert
-        assertThatThrownBy(() -> passwordResetService.sendResetLink("nonexistent@example.com"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("メールアドレスが見つかりません。");
+        // Act & Assert - 例外をスローせず正常終了
+        assertDoesNotThrow(() -> passwordResetService.sendResetLink("nonexistent@example.com"));
 
+        // トークン生成やメール送信は行われない
         verify(passwordResetTokenRepository, never()).insert(any());
         verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
     }
@@ -133,8 +135,8 @@ class PasswordResetServiceTest {
     }
 
     @Test
-    @DisplayName("validateResetToken: 有効なトークンの場合、trueを返す")
-    void testValidateResetToken_有効なトークン() {
+    @DisplayName("validateResetToken: 有効なトークンの場合、例外をスローしない")
+    void testValidateResetToken_正常系() {
         // Arrange
         PasswordResetToken validToken = new PasswordResetToken();
         validToken.setEmail("test@example.com");
@@ -144,30 +146,25 @@ class PasswordResetServiceTest {
         when(passwordResetTokenRepository.findByResetToken("valid-token"))
                 .thenReturn(validToken);
 
-        // Act
-        boolean result = passwordResetService.validateResetToken("valid-token");
-
-        // Assert
-        assertThat(result).isTrue();
+        // Act & Assert
+        assertDoesNotThrow(() -> passwordResetService.validateResetToken("valid-token"));
         verify(passwordResetTokenRepository).findByResetToken("valid-token");
     }
 
     @Test
-    @DisplayName("validateResetToken: 存在しないトークンの場合、falseを返す")
+    @DisplayName("validateResetToken: 存在しないトークンの場合、InvalidTokenExceptionをスローする")
     void testValidateResetToken_存在しないトークン() {
         // Arrange
         when(passwordResetTokenRepository.findByResetToken("nonexistent-token"))
                 .thenReturn(null);
 
-        // Act
-        boolean result = passwordResetService.validateResetToken("nonexistent-token");
-
-        // Assert
-        assertThat(result).isFalse();
+        // Act & Assert
+        assertThrows(InvalidTokenException.class, 
+            () -> passwordResetService.validateResetToken("nonexistent-token"));
     }
 
     @Test
-    @DisplayName("validateResetToken: 有効期限切れのトークンの場合、falseを返す")
+    @DisplayName("validateResetToken: 有効期限切れのトークンの場合、InvalidTokenExceptionをスローする")
     void testValidateResetToken_有効期限切れ() {
         // Arrange
         PasswordResetToken expiredToken = new PasswordResetToken();
@@ -178,11 +175,9 @@ class PasswordResetServiceTest {
         when(passwordResetTokenRepository.findByResetToken("expired-token"))
                 .thenReturn(expiredToken);
 
-        // Act
-        boolean result = passwordResetService.validateResetToken("expired-token");
-
-        // Assert
-        assertThat(result).isFalse();
+        // Act & Assert
+        assertThrows(InvalidTokenException.class, 
+            () -> passwordResetService.validateResetToken("expired-token"));
     }
 
     @Test
@@ -219,8 +214,7 @@ class PasswordResetServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> passwordResetService.updatePassword("nonexistent-token", "newPassword123"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid or expired token");
+                .isInstanceOf(InvalidTokenException.class);
 
         verify(passwordEncoder, never()).encode(anyString());
         verify(customerRepository, never()).updatePassword(anyString(), anyString());
@@ -241,8 +235,7 @@ class PasswordResetServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> passwordResetService.updatePassword("expired-token", "newPassword123"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid or expired token");
+                .isInstanceOf(InvalidTokenException.class);
 
         verify(passwordEncoder, never()).encode(anyString());
         verify(customerRepository, never()).updatePassword(anyString(), anyString());

@@ -1,5 +1,6 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
+import io.github.yoshikawaa.example.ai_sample.exception.CsvGenerationException;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
@@ -84,7 +85,7 @@ public class CsvService {
             // ByteArrayOutputStreamとOpenCSVの通常動作では例外は発生しませんが、
             // 予期しないランタイムエラー（OutOfMemoryError等）からの保護として残しています。
             // テストでのカバレッジは困難ですが、本番環境での安全性のために必要です。
-            throw new RuntimeException("CSV生成中にエラーが発生しました", e);
+            throw new CsvGenerationException("CSV生成中にエラーが発生しました", e);
         }
     }
 }

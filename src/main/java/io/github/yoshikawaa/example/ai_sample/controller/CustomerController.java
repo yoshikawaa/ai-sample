@@ -84,13 +84,8 @@ public class CustomerController {
 
     @GetMapping("/{email}")
     public String showCustomerDetail(@PathVariable String email, Model model) {
-        try {
-            Customer customer = customerService.getCustomerByEmail(email);
-            model.addAttribute("customer", customer);
-            return "customer-detail";
-        } catch (IllegalArgumentException e) {
-            model.addAttribute("errorMessage", e.getMessage());
-            return "customer-error";
-        }
+        Customer customer = customerService.getCustomerByEmail(email);
+        model.addAttribute("customer", customer);
+        return "customer-detail";
     }
 }

@@ -72,6 +72,444 @@ io.github.yoshikawaa.example.ai_sample/
   - 認証情報の表示（`#authentication`）
 - **禁止事項**: ビジネスロジックを含めない（条件分岐は表示制御のみ）
 
+## 開発ワークフロー
+
+### 1. 大規模変更時の事前計画
+
+**対象となる変更**:
+- 複数のファイル（5ファイル以上）に影響する変更
+- 新しいパッケージやクラスの追加
+- アーキテクチャレベルの変更（エラーハンドリング統一、認証機能追加等）
+- 既存の機能の大幅なリファクタリング
+
+**必須プロセス**:
+1. **変更計画を提示**
+2. **ユーザーの承認を待つ**
+3. 承認後に実装開始
+
+**計画に含める内容**:
+```markdown
+## 変更計画
+
+### 目的
+- 何を実現するか
+
+### 影響範囲
+- 新規作成: X個のファイル（パッケージ/クラス名をリスト）
+- 修正: Y個のファイル（ファイル名をリスト）
+- 削除: Z個のファイル（ファイル名をリスト）
+
+### 実装アプローチ
+1. ステップ1: 説明
+2. ステップ2: 説明
+3. ...
+
+### リスクと注意点
+- 潜在的な問題点
+- 既存機能への影響
+
+### テスト戦略
+- どのようにテストするか
+- 影響を受けるテストクラス
+```
+
+**重要**: 計画なしで大規模変更を開始しない。ユーザーが全体像を把握し、承認してから実装する。
+
+### 2. コンパイルエラーチェックの徹底
+
+**必須チェックポイント**:
+
+✅ **ファイル編集直後**
+- 特にインポート追加・削除時
+- クラス名変更時
+- メソッドシグネチャ変更時
+
+✅ **multi_replace_string_in_file実行後**
+- 複数ファイルを一括編集した場合は必須
+
+✅ **テスト実行前**（最重要）
+- `runTests`を実行する前に必ず`get_errors`でコンパイルエラーがないことを確認
+- コンパイルエラーがある状態でテストを実行しない（時間の無駄）
+
+**効率的なワークフロー**:
+```
+1. コード修正
+2. get_errors でコンパイルエラーチェック ⬅️ 必須
+3. エラーや警告があれば、その場で修正
+   - コンパイルエラー（型の不一致、未実装メソッド等）
+   - 未使用インポート警告
+   - その他の警告
+4. 再度 get_errors でチェック
+5. エラー・警告なし確認後に runTests 実行 ⬅️ 1回のテスト実行で完了
+```
+
+**重要**: 
+- ❌ 警告を無視してテスト実行 → テスト成功 → 警告修正 → 再テスト実行（非効率）
+- ✅ 警告をその場で修正 → テスト実行 → 1回で完了（効率的）
+- `runTests`を実行する前に必ず`get_errors`でコンパイルエラーがないことを確認
+- コンパイルエラーがある状態でテストを実行しない（時間の無駄）
+
+**禁止事項**:
+- ❌ コンパイルエラーの確認なしにテスト実行
+- ❌ エラーメッセージや警告を無視して次の作業に進む
+- ❌ 「多分大丈夫」という前提で作業を進める
+
+**良い例**:
+```
+1. 6個の例外クラス作成
+2. get_errors でチェック → OK
+3. GlobalExceptionHandler作成
+4. get_errors でチェック → OK
+5. 4個のサービス修正
+6. get_errors でチェック → インポート不足を発見・修正
+7. get_errors でチェック → OK
+8. テスト修正
+9. get_errors でチェック → OK
+10. runTests 実行 → 全テスト成功
+```
+
+**悪い例**:
+```
+1. 複数ファイルを一括修正
+2. runTests 実行 → コンパイルエラーで失敗（時間の無駄）
+3. エラー修正
+4. runTests 実行 → 別のコンパイルエラーで失敗
+5. 繰り返し...
+```
+
+### 3. インポート文の管理
+
+**ファイル編集後の必須確認**:
+1. `get_errors`でコンパイルエラーをチェック
+2. 未使用インポートの警告を確認
+3. 不足しているインポートを追加
+4. 未使用のインポートを削除
+
+**特に注意が必要なケース**:
+- メソッド削除後（使われなくなったインポートが残る）
+- 例外クラス変更後（古い例外クラスのインポートが残る）
+- テストメソッド削除後（アサーションメソッドのインポートが残る）
+
+### 4. 段階的なコミット
+
+**推奨**:
+- 機能の一区切りごとにコミット
+- コミット前に必ず全テストを実行
+- コミットメッセージは明確に（例: `#51 add custom exception classes`）
+
+**避けるべき**:
+- 複数の機能を一度にコミット
+- テスト失敗状態でのコミット
+
+### 5. エラーハンドリングのアーキテクチャ
+
+Spring Bootアプリケーションでは、**@ControllerAdvice**、**コントローラ内@ExceptionHandler**、**ErrorController**を適切に使い分ける。
+
+#### 例外の分類
+
+**ビジネス例外（BusinessException）**:
+- ユーザーの入力やビジネスルールに関連
+- HTTPステータス: 400（Bad Request）、404（Not Found）
+- ユーザーに具体的な対処方法を提示可能
+- 例: UnderageCustomerException、InvalidTokenException、CustomerNotFoundException
+
+**システムエラー（RuntimeException）**:
+- 技術的な問題（インフラ、外部システム連携）
+- HTTPステータス: 500（Internal Server Error）
+- ユーザーには「システムエラーが発生しました」と表示
+- 例: EmailSendException、CsvGenerationException
+
+**判断基準**:
+```java
+// ✅ ビジネス例外: ユーザーの操作で回避可能
+public class UnderageCustomerException extends BusinessException {
+    // 18歳未満は登録できない → ユーザーに「18歳以上が必要」と伝える
+}
+
+// ✅ システムエラー: 技術的な問題
+public class EmailSendException extends RuntimeException {
+    // メールサーバーとの通信失敗 → ユーザーには回避不可、システム管理者が対応
+}
+```
+
+#### コントローラ内@ExceptionHandlerの使用
+
+**対象**:
+- **特定のコントローラでしか発生しない例外**
+- コントローラ固有のビジネスロジック例外
+
+**例**:
+```java
+@Controller
+@RequestMapping("/register")
+public class CustomerRegistrationController {
+    
+    /**
+     * 未成年の顧客を登録しようとした場合のハンドラー
+     * 顧客登録エラー画面を表示し、入力画面に戻れるようにする
+     */
+    @ExceptionHandler(UnderageCustomerException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String handleUnderageCustomerException(UnderageCustomerException ex, Model model) {
+        logger.warn("Underage customer registration attempt: {}", ex.getMessage());
+        model.addAttribute("errorMessage", ex.getMessage());
+        model.addAttribute("errorCode", "400");
+        return "customer-registration-error";  // 専用エラー画面
+    }
+}
+```
+
+**重要**:
+- コントローラ固有の例外は@ControllerAdviceではなく、コントローラ内で処理
+- 専用のビジネスエラー画面を用意し、適切な戻り先（入力画面等）を提供
+- UXを考慮: 確認画面→エラー→確認画面という複雑なフローを避ける
+
+#### @ControllerAdvice（GlobalExceptionHandler）の使用
+
+**対象**:
+- **複数のコントローラで共通するビジネス例外**
+- アプリケーション全体で統一的に処理すべき例外
+
+**例**:
+```java
+@ControllerAdvice
+public class GlobalExceptionHandler {
+    
+    @ExceptionHandler(CustomerNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public String handleCustomerNotFoundException(CustomerNotFoundException ex, Model model) {
+        logger.warn("Customer not found: {}", ex.getMessage());
+        model.addAttribute("errorMessage", ex.getMessage());
+        model.addAttribute("errorCode", "404");
+        return "error";  // 汎用エラー画面
+    }
+}
+```
+
+**重要**:
+- コントローラ固有の例外は含めない
+- 複数の機能で発生する可能性のある例外のみを処理
+
+**セキュリティ上の注意**:
+- **Enumeration Attack（列挙攻撃）に注意**：ユーザーの存在確認を許す例外処理は避ける
+- 例：パスワードリセット、ユーザー登録などの認証・登録機能
+- **悪い例**：
+  ```java
+  // ❌ セキュリティリスク: メールアドレスの存在有無が外部に漏れる
+  public void sendResetLink(String email) {
+      customerRepository.findByEmail(email)
+          .orElseThrow(() -> new CustomerNotFoundException(email));  // 404エラー
+      // トークン生成・メール送信
+  }
+  ```
+- **良い例**：
+  ```java
+  // ✅ セキュリティ対策: 存在しないメールでも成功と同じ動作
+  public void sendResetLink(String email) {
+      var customerOpt = customerRepository.findByEmail(email);
+      if (customerOpt.isEmpty()) {
+          log.warn("パスワードリセット試行: 存在しないメールアドレス {}", email);
+          return;  // 成功と同じ動作（例外をスローしない）
+      }
+      // トークン生成・メール送信
+  }
+  ```
+- **原則**：認証・登録機能では、ユーザーの存在有無を外部に漏らさない（タイミング攻撃も考慮）
+
+#### ErrorController の使用
+
+**対象**:
+- HTTPステータスエラー（404、500等）
+- Spring MVCがキャッチできない低レベルエラー
+- システムエラー（RuntimeExceptionをキャッチされずに到達）
+- 詳細なエラーログが必要な場合
+
+**実装方法**:
+- `AbstractErrorController`を拡張（推奨）
+- エラー属性の取得ユーティリティを活用
+- ステータスコードに応じたテンプレート選択
+
+**例**:
+```java
+@Controller
+public class CustomErrorController extends AbstractErrorController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(CustomErrorController.class);
+    
+    public CustomErrorController(ErrorAttributes errorAttributes) {
+        super(errorAttributes);
+    }
+    
+    @RequestMapping("/error")
+    public String handleError(HttpServletRequest request, Model model) {
+        HttpStatus status = getStatus(request);
+        Map<String, Object> errorAttributes = getErrorAttributes(request, 
+            ErrorAttributeOptions.of(ErrorAttributeOptions.Include.MESSAGE, 
+                                    ErrorAttributeOptions.Include.EXCEPTION));
+        
+        // 詳細なログ記録
+        logger.error("Error occurred: status={}, path={}, message={}", 
+            status.value(), errorAttributes.get("path"), errorAttributes.get("message"));
+        
+        model.addAllAttributes(errorAttributes);
+        
+        // ステータスコードに応じたテンプレート選択
+        if (status == HttpStatus.NOT_FOUND) {
+            return "error/404";
+        } else if (status.is5xxServerError()) {
+            return "error/500";
+        }
+        return "error/error";
+    }
+}
+```
+
+#### 使い分けの原則
+
+| エラー種類 | 処理方法 | 遷移先 | 理由 |
+|-----------|---------|--------|------|
+| コントローラ固有のビジネス例外 | コントローラ内@ExceptionHandler | 専用ビジネスエラー画面 | UX重視、適切な戻り先を提供 |
+| 共通のビジネス例外 | @ControllerAdvice | 汎用エラー画面 | 複数機能で共通処理 |
+| システムエラー（RuntimeException） | ErrorController | error/500.html | 技術的問題、詳細ログ |
+| HTTPステータスエラー（404等） | ErrorController | error/404.html | HTTPレベルのエラー |
+
+**具体例**:
+```
+UnderageCustomerException（顧客登録時のみ）
+  → CustomerRegistrationController@ExceptionHandler
+  → customer-registration-error.html
+  → /register/input（入力画面に戻る）
+
+InvalidTokenException（パスワードリセット時のみ）
+  → PasswordResetController@ExceptionHandler
+  → password-reset-error.html
+  → /password-reset/request（リクエスト画面に戻る）
+
+CustomerNotFoundException（複数機能で発生）
+  → @ControllerAdvice
+  → error.html（汎用エラー画面）
+
+EmailSendException（システムエラー）
+  → ErrorController
+  → error/500.html（システムエラー画面）
+
+CsvGenerationException（システムエラー）
+  → ErrorController
+  → error/500.html（システムエラー画面）
+```
+
+#### 例外クラスの設計
+
+**ビジネス例外**:
+```java
+// 基底クラス
+public class BusinessException extends RuntimeException {
+    public BusinessException(String message) {
+        super(message);
+    }
+}
+
+// 派生クラス
+public class UnderageCustomerException extends BusinessException {
+    public UnderageCustomerException() {
+        super("18歳未満のお客様は登録できません。");
+    }
+}
+```
+
+**システムエラー**:
+```java
+// RuntimeExceptionを直接継承
+public class EmailSendException extends RuntimeException {
+    public EmailSendException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+```
+
+**重要**:
+- ビジネス例外はBusinessExceptionを継承
+- システムエラーはRuntimeExceptionを直接継承
+- BusinessExceptionをシステムエラーの基底クラスとして使用しない
+
+#### 禁止事項
+
+- ❌ `spring.mvc.throw-exception-if-no-handler-found` の使用（Spring Boot 3.0で非推奨）
+- ❌ `spring.web.resources.add-mappings: false` の使用（静的リソースが無効化される）
+- ❌ HTTPステータスエラーを@ControllerAdviceで処理（責務の混在）
+- ❌ BasicErrorControllerの拡張（過剰に複雑）
+- ❌ コントローラ固有の例外を@ControllerAdviceで処理（責務の分散）
+- ❌ システムエラー（500）をBusinessExceptionから継承（例外分類の混在）
+- ❌ コントローラで例外をキャッチして再スロー（不要なtry-catch）
+- ❌ 広範な`catch (Exception e)`ブロック（適切な層に任せる）
+
+**コントローラでの例外処理の原則**:
+```java
+// ❌ 禁止: 不要なtry-catch
+@PostMapping("/request")
+public String handleResetRequest(@RequestParam String email) {
+    try {
+        passwordResetService.sendResetLink(email);
+        return "password-reset-request";
+    } catch (Exception e) {
+        // この例外は適切な層で処理すべき
+        throw e;  // 単に再スローするだけなら不要
+    }
+}
+
+// ✅ 推奨: 例外を適切な層に任せる
+@PostMapping("/request")
+public String handleResetRequest(@RequestParam String email) {
+    passwordResetService.sendResetLink(email);
+    return "password-reset-request";
+}
+```
+
+**重要**:
+- コントローラは例外をキャッチせず、適切な層（@ExceptionHandler、@ControllerAdvice、ErrorController）に任せる
+- `catch (Exception e)`で再スローするだけの無駄なコードは避ける
+- 例外処理が必要な場合は、コントローラ内の@ExceptionHandlerメソッドとして実装する
+
+#### ビジネスエラー画面の設計
+
+**原則**:
+- ビジネス例外には専用のエラー画面を用意
+- 汎用エラー画面（error.html）ではなく、機能固有のエラー画面を使用
+- 適切な戻り先を提供（入力画面、リクエスト画面等）
+- エラーメッセージは動的に表示（`th:text="${errorMessage}"`）
+
+**例**:
+```html
+<!-- customer-registration-error.html -->
+<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" 
+     role="alert" th:text="${errorMessage}">
+    エラーメッセージ
+</div>
+<a th:href="@{/register/input}" class="bg-blue-500 text-white px-4 py-2 rounded">
+    Back to Registration
+</a>
+```
+
+#### Thymeleafエラーテンプレート
+
+**規約ベースのテンプレート配置**:
+```
+src/main/resources/templates/
+  ├── customer-registration-error.html  # ビジネスエラー（顧客登録）
+  ├── password-reset-error.html         # ビジネスエラー（パスワードリセット）
+  ├── error.html                        # 汎用エラー（共通ビジネス例外）
+  └── error/
+      ├── 404.html                      # 404エラー専用
+      ├── 500.html                      # 500エラー専用（システムエラー）
+      ├── 4xx.html                      # 400番台のフォールバック
+      └── 5xx.html                      # 500番台のフォールバック
+```
+
+**重要**:
+- ビジネスエラー画面: templates/直下に配置（機能名-error.html）
+- システムエラー画面: templates/error/配置（Spring Boot規約）
+- Spring Bootは自動的にHTTPステータスコードに応じてerror/配下のテンプレートを選択
+
 ## コーディング規約
 
 ### 1. 設定クラス（@Configuration）
@@ -380,6 +818,18 @@ spring:
 - Spring Boot は両方の形式をサポートするが、警告を避けるため角括弧を使用
 
 #### メソッド配置順序
+
+**すべてのクラスに共通する配置順序**:
+1. フィールド
+2. コンストラクタ
+3. publicメソッド（クラスの公開インターフェース）
+4. privateメソッド（実装の詳細）
+
+**重要**:
+- publicメソッドを先に配置することで可読性が向上
+- privateメソッドは実装の詳細であり、後に配置
+
+**サービス・リポジトリクラスの例**:
 ```java
 @Service
 public class CustomerService {
@@ -403,10 +853,97 @@ public class CustomerService {
 }
 ```
 
+**コントローラクラスの追加ルール**:
+```java
+@Controller
+@RequestMapping("/customers")
+public class CustomerController {
+    
+    // 1. フィールド
+    private final CustomerService customerService;
+    
+    // 2. コンストラクタ
+    public CustomerController(CustomerService customerService) {
+        this.customerService = customerService;
+    }
+    
+    // 3. リクエストハンドラメソッド
+    @GetMapping
+    public String showCustomers() { }
+    
+    @PostMapping
+    public String registerCustomer() { }
+    
+    // 4. @ExceptionHandlerメソッド（最後に配置）
+    @ExceptionHandler(InvalidTokenException.class)
+    public String handleInvalidTokenException() { }
+}
+```
+
+**重要（コントローラ固有）**:
+- **publicメソッドの配置順序**: リクエストハンドラメソッド → @ExceptionHandlerメソッド
+- @ExceptionHandlerは例外処理の詳細であり、最後に配置
+
+#### ロジックの共通化と重複排除
+
+同じ検証・処理ロジックを複数のメソッドで実装している場合は、privateメソッドに抽出して共通化する。**この原則はすべてのレイヤー（サービス層、コントローラ層、リポジトリ層など）に適用される**：
+
+```java
+@Service
+public class PasswordResetService {
+    
+    // ✅ 推奨: 共通のロジックをprivateメソッドに抽出
+    public void validateResetToken(String token) {
+        getValidatedToken(token);
+    }
+
+    public void updatePassword(String token, String newPassword) {
+        PasswordResetToken resetToken = getValidatedToken(token);
+        String email = resetToken.getEmail();
+        
+        String hashedPassword = passwordEncoder.encode(newPassword);
+        customerRepository.updatePassword(email, hashedPassword);
+        passwordResetTokenRepository.deleteByEmail(email);
+    }
+
+    /**
+     * トークンを検証し、有効なPasswordResetTokenを返す
+     */
+    private PasswordResetToken getValidatedToken(String token) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByResetToken(token);
+        if (resetToken == null || resetToken.getTokenExpiry() < System.currentTimeMillis()) {
+            throw new InvalidTokenException();
+        }
+        return resetToken;
+    }
+}
+```
+
+```java
+// ❌ 非推奨: 同じロジックを複数のメソッドで重複実装
+public void validateResetToken(String token) {
+    PasswordResetToken resetToken = passwordResetTokenRepository.findByResetToken(token);
+    if (resetToken == null || resetToken.getTokenExpiry() < System.currentTimeMillis()) {
+        throw new InvalidTokenException();
+    }
+}
+
+public void updatePassword(String token, String newPassword) {
+    // 同じ検証ロジックを再実装（DRY原則違反）
+    PasswordResetToken resetToken = passwordResetTokenRepository.findByResetToken(token);
+    if (resetToken == null || resetToken.getTokenExpiry() < System.currentTimeMillis()) {
+        throw new InvalidTokenException();
+    }
+    // パスワード更新処理
+}
+```
+
 **重要**:
-- **メソッドの配置順序**: publicメソッド → privateメソッド
-- publicメソッドはクラスの公開インターフェースであり、先に配置することで可読性が向上
-- privateメソッドは実装の詳細であり、後に配置
+- **DRY原則（Don't Repeat Yourself）**: 同じロジックを複数箇所に書かない
+- **保守性**: ロジック変更時に1箇所を修正すれば全体に反映される
+- **効率性**: DB呼び出しなどを1回にまとめられる
+- **メソッド呼び出しの最適化**: 同じメソッド呼び出し（例: `resetToken.getEmail()`）を複数回実行する場合は、変数に格納して再利用する
+- **適用範囲**: サービス層、コントローラ層、リポジトリ層など、すべてのレイヤーで適用
 
 ### 4. サービス層
 
@@ -984,6 +1521,62 @@ static class TestConfig {
 - `@ActiveProfiles` は使用しない（不要）
 - テストクラス内に static inner class として定義
 
+#### テスト用コントローラの定義
+```java
+@SpringBootTest
+@AutoConfigureMockMvc
+@DisplayName("GlobalExceptionHandler のテスト")
+class GlobalExceptionHandlerTest {
+    
+    @TestConfiguration
+    static class TestConfig {
+        
+        @Controller
+        @RequestMapping("/test")
+        static class TestController {
+            
+            @Autowired
+            private CustomerService customerService;
+            
+            @GetMapping("/customer-not-found")
+            public String throwCustomerNotFoundException() {
+                customerService.getCustomerByEmail("nonexistent@example.com");
+                return "success";
+            }
+        }
+    }
+    
+    @Autowired
+    private MockMvc mockMvc;
+    
+    @MockitoBean
+    private CustomerService customerService;
+    
+    @Test
+    @DisplayName("CustomerNotFoundException が発生した場合、error.html を表示する")
+    void testCustomerNotFoundException() throws Exception {
+        when(customerService.getCustomerByEmail("nonexistent@example.com"))
+            .thenThrow(new CustomerNotFoundException("Customer not found"));
+        
+        mockMvc.perform(get("/test/customer-not-found"))
+            .andExpect(status().isNotFound())
+            .andExpect(view().name("error"));
+    }
+}
+```
+
+**重要**:
+- **テスト用コントローラは `@TestConfiguration` 内に static nested class として定義**
+- **独立したファイル（例: TestController.java）として作成しない**
+- `@Controller` アノテーションを付与してSpringに認識させる
+- テストしたいエンドポイントだけを定義
+- サービスは `@Autowired` でインジェクション（テストクラスで `@MockitoBean` を使用）
+- **利点**:
+  - テストとテスト用コントローラの結合度が高く、意図が明確
+  - テストファイルを開けば全ての関連コードが見える
+  - 不要なファイルの散在を防ぐ
+  - Spring Testing の推奨パターン
+
 ### 2. コントローラテスト
 
 ```java
@@ -1218,18 +1811,66 @@ class CustomerRepositoryTest {
 }
 ```
 
+### 6. 例外クラステスト
+
+**すべての例外クラスにテストを作成する**：
+
+```java
+@DisplayName("BusinessException のテスト")
+class BusinessExceptionTest {
+
+    @Test
+    @DisplayName("メッセージ付きコンストラクタで例外を生成できる")
+    void testConstructorWithMessage() {
+        // Given
+        String message = "テストエラーメッセージ";
+
+        // When
+        BusinessException exception = new BusinessException(message);
+
+        // Then
+        assertThat(exception.getMessage()).isEqualTo(message);
+    }
+
+    @Test
+    @DisplayName("メッセージと原因付きコンストラクタで例外を生成できる")
+    void testConstructorWithMessageAndCause() {
+        // Given
+        String message = "テストエラーメッセージ";
+        Throwable cause = new RuntimeException("原因の例外");
+
+        // When
+        BusinessException exception = new BusinessException(message, cause);
+
+        // Then
+        assertThat(exception.getMessage()).isEqualTo(message);
+        assertThat(exception.getCause()).isEqualTo(cause);
+    }
+}
+```
+
+**重要**:
+- すべてのコンストラクタをテストする
+- メッセージが正しく設定されることを確認
+- 原因（cause）が正しく設定されることを確認
+- デフォルトメッセージが正しいことを確認
+- `@SpringBootTest` は不要（純粋なPOJOテスト）
+```
+
 ### 6. テスト実施の必須事項
 
 **新機能実装時の必須テスト**:
 - リポジトリ層のテスト（`@MybatisTest`）
 - サービス層のテスト（`@SpringBootTest`）
 - コントローラ層のテスト（`@WebMvcTest` または `@SpringBootTest` + `@AutoConfigureMockMvc`）
+- 例外クラスのテスト（純粋なPOJOテスト）
 
 **重要**:
 - 新しいメソッドを追加した際は、必ず対応するテストを追加する
 - リポジトリとサービスのテストを忘れない
+- 例外クラスを追加した際も、必ずテストを作成する
 - テスト追加後は `mvn clean test` で全テストを実行し、合格を確認する
-- カバレッジ目標: ビジネスロジック（Service、Controller）95-100%、リポジトリ層100%
+- カバレッジ目標: ビジネスロジック（Service、Controller）95-100%、リポジトリ層100%、例外クラス100%
 
 **カバレッジが困難なエラーハンドリング**:
 ```java
@@ -1267,13 +1908,34 @@ private byte[] generateCSV(List<Customer> customers) {
 
 ## コードスタイル
 
-### 1. インポート
+### 1. 定数の使用
+
+既存の定数が提供されている場合は必ず使用し、マジックナンバーや文字列リテラルの直接実装を避ける。
+
+```java
+// ✅ 推奨: 定数を使用
+request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 404);
+return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+// ❌ 禁止: マジックナンバーや文字列リテラル
+request.setAttribute("jakarta.servlet.error.status_code", 404);
+return ResponseEntity.status(404).build();
+response.setContentType("application/json");
+```
+
+**重要**:
+- Jakarta EE、Spring Framework、Java標準ライブラリが提供する定数を優先
+- IDEの補完機能を活用して定数を発見
+- 定数を使うことでタイポを防ぎ、リファクタリングが容易になる
+
+### 2. インポート
 - ワイルドカードインポート（`import ....*;`）は使用しない
 - 不要なインポートは削除する
 - 使用していないアノテーションのインポートも削除
 - IDE のコードフォーマッターを使用
 
-### 2. 命名規則
+### 3. 命名規則
 
 #### Javaクラス・ファイル
 - **クラス名**: PascalCase
@@ -1424,8 +2086,52 @@ private byte[] generateCSV(List<Customer> customers) {
 
 - ビジネスロジック（Service、Controller）: 100%
 - リポジトリ層: 100%
-- 設定クラス: 除外可能
+- **例外クラス**: 100%（すべてのコンストラクタをテスト）
+- **ErrorController**: 100%（エラーハンドリングは必須）
+- **ControllerAdvice**: 100%（例外ハンドリングは必須）
+- 設定クラス（@Configuration）: 除外可能
 - main メソッド: 除外可能
+
+**重要な注意事項**:
+- `config`パッケージにあっても、`@Controller`、`@RestController`、`@ControllerAdvice`が付いているクラスは**必ずテストを実装する**
+- 「設定クラス」とは`@Configuration`アノテーション付きのクラスのみを指す
+- ErrorControllerやControllerAdviceのテストを省略すると、実装ミスが本番環境で発覚するリスクがある
+
+### ErrorController / ControllerAdvice のテスト方法
+
+**通常のコントローラと異なり、MockMvc経由ではエラーハンドリングフローが正しく動作しません。**
+
+```java
+@SpringBootTest
+@DisplayName("CustomErrorController のテスト")
+class CustomErrorControllerTest {
+
+    @Autowired
+    private CustomErrorController customErrorController;
+
+    @Test
+    @DisplayName("404エラーの場合、error/404.html を表示する")
+    void testNotFoundError() {
+        // Given
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 404);
+        Model model = new ExtendedModelMap();
+
+        // When
+        String viewName = customErrorController.handleError(request, model);
+
+        // Then
+        assertThat(viewName).isEqualTo("error/404");
+        assertThat(model.getAttribute("status")).isEqualTo(404);
+    }
+}
+```
+
+**重要**:
+- `MockHttpServletRequest`と`ExtendedModelMap`を使用（Springが提供するテストオブジェクト）
+- Mockitoの過度な使用を避ける（@SpringBootTestの利点を活かす）
+- MockMvc経由では404/500エラーが正しくErrorControllerに到達しない
+- 定数の使用については「コードスタイル > 定数の使用」を参照
 
 ## 参考資料
 

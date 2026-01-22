@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
+import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
@@ -33,7 +35,7 @@ public class CustomerService {
 
     public Customer getCustomerByEmail(String email) {
         return customerRepository.findByEmail(email)
-            .orElseThrow(() -> new IllegalArgumentException("顧客が見つかりません。"));
+            .orElseThrow(() -> new CustomerNotFoundException(email));
     }
 
     public Page<Customer> getAllCustomersWithPagination(Pageable pageable) {
@@ -48,7 +50,7 @@ public class CustomerService {
     public void registerCustomer(Customer customer) {
         // 未成年チェック
         if (isUnderage(customer.getBirthDate())) {
-            throw new IllegalArgumentException("未成年の登録はできません。");
+            throw new UnderageCustomerException();
         }
 
         // パスワードをハッシュ化

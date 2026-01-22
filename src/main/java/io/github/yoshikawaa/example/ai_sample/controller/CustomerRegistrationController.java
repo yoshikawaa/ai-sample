@@ -1,8 +1,12 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.model.CustomerForm;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -12,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.time.LocalDate;
 
@@ -19,6 +24,7 @@ import java.time.LocalDate;
 @RequestMapping("/register")
 public class CustomerRegistrationController {
 
+    private static final Logger logger = LoggerFactory.getLogger(CustomerRegistrationController.class);
     private final CustomerService customerService;
 
     public CustomerRegistrationController(CustomerService customerService) {
@@ -84,10 +90,16 @@ public class CustomerRegistrationController {
         return "customer-complete";
     }
 
-    // ビジネスエラーのハンドリング
-    @ExceptionHandler(IllegalArgumentException.class)
-    public String handleBusinessError(IllegalArgumentException ex, Model model) {
+    /**
+     * 未成年の顧客を登録しようとした場合のハンドラー
+     * 顧客登録エラー画面を表示し、入力画面に戻れるようにする
+     */
+    @ExceptionHandler(UnderageCustomerException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String handleUnderageCustomerException(UnderageCustomerException ex, Model model) {
+        logger.warn("Underage customer registration attempt: {}", ex.getMessage());
         model.addAttribute("errorMessage", ex.getMessage());
+        model.addAttribute("errorCode", "400");
         return "customer-registration-error";
     }
 }
