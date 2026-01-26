@@ -55,6 +55,9 @@ class PasswordResetServiceTest {
     @MockitoBean
     private PasswordEncoder passwordEncoder;
 
+    @MockitoBean
+    private LoginAttemptService loginAttemptService;
+
     @Autowired
     private PasswordResetService passwordResetService;
 
@@ -181,7 +184,7 @@ class PasswordResetServiceTest {
     }
 
     @Test
-    @DisplayName("updatePassword: 有効なトークンの場合、パスワードを更新しトークンを削除する")
+    @DisplayName("updatePassword: 有効なトークンの場合、パスワードを更新しログイン試行記録をリセットし、トークンを削除する")
     void testUpdatePassword_正常系() {
         // Arrange
         PasswordResetToken validToken = new PasswordResetToken();
@@ -194,6 +197,7 @@ class PasswordResetServiceTest {
         when(passwordEncoder.encode("newPassword123"))
                 .thenReturn("hashedNewPassword");
         doNothing().when(customerRepository).updatePassword(anyString(), anyString());
+        doNothing().when(loginAttemptService).resetAttempts(anyString());
         doNothing().when(passwordResetTokenRepository).deleteByEmail(anyString());
 
         // Act
@@ -202,6 +206,7 @@ class PasswordResetServiceTest {
         // Assert
         verify(passwordEncoder).encode("newPassword123");
         verify(customerRepository).updatePassword("test@example.com", "hashedNewPassword");
+        verify(loginAttemptService).resetAttempts("test@example.com");
         verify(passwordResetTokenRepository).deleteByEmail("test@example.com");
     }
 
@@ -218,6 +223,7 @@ class PasswordResetServiceTest {
 
         verify(passwordEncoder, never()).encode(anyString());
         verify(customerRepository, never()).updatePassword(anyString(), anyString());
+        verify(loginAttemptService, never()).resetAttempts(anyString());
         verify(passwordResetTokenRepository, never()).deleteByEmail(anyString());
     }
 
@@ -239,6 +245,7 @@ class PasswordResetServiceTest {
 
         verify(passwordEncoder, never()).encode(anyString());
         verify(customerRepository, never()).updatePassword(anyString(), anyString());
+        verify(loginAttemptService, never()).resetAttempts(anyString());
         verify(passwordResetTokenRepository, never()).deleteByEmail(anyString());
     }
 
@@ -256,6 +263,7 @@ class PasswordResetServiceTest {
         when(passwordEncoder.encode("rawPassword"))
                 .thenReturn("encodedPassword123");
         doNothing().when(customerRepository).updatePassword(anyString(), anyString());
+        doNothing().when(loginAttemptService).resetAttempts(anyString());
         doNothing().when(passwordResetTokenRepository).deleteByEmail(anyString());
 
         // Act
@@ -285,6 +293,7 @@ class PasswordResetServiceTest {
         when(passwordEncoder.encode(anyString()))
                 .thenReturn("hashedPassword");
         doNothing().when(customerRepository).updatePassword(anyString(), anyString());
+        doNothing().when(loginAttemptService).resetAttempts(anyString());
         doNothing().when(passwordResetTokenRepository).deleteByEmail(anyString());
 
         // Act
