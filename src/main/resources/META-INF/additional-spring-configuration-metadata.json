@@ -1,5 +1,17 @@
-{"properties": [{
-  "name": "app.greenmail.enabled",
-  "type": "java.lang.String",
-  "description": "A description for 'app.greenmail.enabled'"
-}]}
+{"properties": [
+  {
+    "name": "app.greenmail.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'app.greenmail.enabled'"
+  },
+  {
+    "name": "app.security.login.attempt.max",
+    "type": "java.lang.Integer",
+    "description": "ログイン失敗によるアカウントロックの最大試行回数（デフォルト: 5）"
+  },
+  {
+    "name": "app.security.login.attempt.lock-duration-ms",
+    "type": "java.lang.Long",
+    "description": "アカウントロックの継続時間（ミリ秒, デフォルト: 1800000=30分）"
+  }
+]}

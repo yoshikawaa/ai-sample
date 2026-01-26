@@ -2,6 +2,25 @@
 
 このプロジェクトは Spring Boot 3.x ベースの顧客管理アプリケーションです。以下のガイドラインに従ってコードを生成・編集してください。
 
+## **重要** AIアシスタント（GPT-4）への命令
+### 作業方針
+
+- **タスク完了まで停止しない**：Agent実行時はコードの提案、編集、エラーチェックの完了まで、タスクを中断せずに続行してください。
+- **ツールの積極的な活用**：不確かな情報や不足しているデータがある場合は、ツールを使用して情報を取得し、推測や誤った回答を避けてください。
+- **計画的な思考と反省**：各アクションの前に計画を立て、アクション後には結果を反省してください。これにより、より効果的な問題解決が可能となります。
+- **段階的な問題解決**：複雑な問題は小さなステップに分解し、順を追って解決してください。
+- **明確で一貫した出力**：出力は明確で一貫性を保ち、ユーザーが容易に理解できるようにしてください。
+- **エラー処理の実装**：予期しない状況やエラーが発生した場合は、適切なエラーハンドリングを行い、ユーザーに通知してください。
+
+#### 基本の作業フロー
+
+1. **タスクの理解**：与えられたタスクを正確に理解し、必要な情報を収集します。
+2. **計画の立案**：タスクを達成するための具体的な計画を立てます。
+3. **ツールの使用**：必要に応じて、ツールを使用して情報を取得したり、データを操作したりします。
+4. **コードの提案・編集**：必要なコードを提案し、編集を行います。
+5. **テストと検証**：提案したコードのエラーをチェックし、必要に応じて修正します。
+6. **結果の反省**：実行したアクションの結果を反省し、次のステップを計画します。
+
 ## プロジェクト構成
 
 ### 技術スタック
@@ -42,6 +61,7 @@ io.github.yoshikawaa.example.ai_sample/
   - **実用的なメソッドのみ実装**：実際のユースケースに基づいてメソッドを設計
 
 ### サービス層（Service）
+
 - **責務**: ビジネスロジック層。業務ルールの実装を担当
 - **役割**:
   - ビジネスルールの実装（未成年チェック、パスワード暗号化等）
@@ -563,9 +583,57 @@ src/main/resources/templates/
 - システムエラー画面: templates/error/配置（Spring Boot規約）
 - Spring Bootは自動的にHTTPステータスコードに応じてerror/配下のテンプレートを選択
 
+### 7. 認証とロックのアーキテクチャ
+
+#### 責務分離と設計原則
+- 認証（Spring Security）とロック判定はサービス層で一貫して管理する。
+- ロック判定・副作用（DB更新）は同一トランザクション内で完結させ、即時性・一貫性を担保する。
+
+#### 認証フロー
+- 認証は `CustomerUserDetailsService`（カスタムUserDetailsService）で取得した `CustomerUserDetails`（カスタムUserDetails）を用いて行う。
+- 認証処理の流れは `CustomerUserDetailsService#loadUserByUsername` でユーザー情報・ロック状態を取得し、Spring Securityが `CustomerUserDetails` を元に認証判定を行う。
+- ロック状態はUserDetails取得時に判定し、失敗時は即座にロック処理を実行。
+
+#### ロック判定・画面遷移
+- ログイン成功・失敗・ログアウト時の画面遷移やロック判定は、`SecurityConfig`で定義したカスタムハンドラー（`authenticationSuccessHandler`, `authenticationFailureHandler`, `logoutSuccessHandler`）で制御する。
+- `authenticationSuccessHandler`では、ログイン成功時に試行回数をリセットし、マイページへリダイレクトする。
+- `authenticationFailureHandler`では、失敗時に`LoginAttemptService#handleFailedLoginAttempt`で失敗回数・ロック判定を行い、ロック状態なら即座に`/account-locked`画面へ遷移する。通常失敗時はログイン画面へ戻す。
+- ロック中のログイン試行は`LockedException`を判定し、専用画面へ遷移する。
+- `logoutSuccessHandler`では、ログアウト後にトップページへ遷移する。
+- これらのハンドラーにより、認証・ロック判定・画面遷移の責務分離と即時性・一貫性を担保する。
+
+#### 実装例・注意点
+- サービス層で @Transactional を付与し、DB更新・ロック判定を一括管理。
+- コントローラ層はサービスの戻り値でロック状態を判定し、画面遷移を制御。
+- ロック判定ロジックはDRY原則で共通化。
+
 ## コーディング規約
 
-### 1. 設定クラス（@Configuration）
+### 1. 全般
+- 設定やコードの追加・編集時は、原則として既存内容を消さずに追加・併記すること。
+- ただし、要件変更や仕様変更時は既存設定の書き換え・削除も許容される。
+- その場合は影響範囲を十分に確認し、意図しない副作用が出ないよう注意する。
+
+#### 命名規則
+- クラス・メソッド・変数名は、その責務・役割が一目で分かるように命名する。
+- 動詞＋目的語（registerCustomer, updatePassword など）や、状態・属性を表す名詞（Customer, LoginAttempt など）を基本とする。
+- 単純なラッパーや中間処理には「wrap」「delegate」などの動詞を避け、実際の業務・ドメイン用語を使う。
+- 責務が拡大・複合する場合は「handle」「process」など包括的な動詞を用いる。
+- ドメイン固有の意味を明確にするため、用途を冠する（例: LoginAttempt, PasswordResetToken など）。
+
+##### 【例】ログイン失敗・ロック管理の命名規則
+- ログイン失敗記録＋ロック判定など複数の責務を持つ場合は、`handleFailedLoginAttempt`や`processFailedLoginAttempt`のように包括的な動詞を用いる。
+- `recordFailedAttempt`のような単なる記録名は避ける（責務拡大時に不適切となるため）。
+- LoginAttempt, LoginAttemptService, handleFailedLoginAttempt など「Login」を冠し、他用途（登録・リセット等）と明確に区別する。
+
+#### コメント・Javadocの具体性
+- 「ログイン失敗時の処理」など抽象的な説明ではなく、「失敗回数を記録し、閾値到達時はロックしてtrueを返す」など具体的な責務を明記する。
+
+#### テスト・リファクタリングの注意
+- メソッド名変更時は全呼び出し・テストも一括修正する（IDEやgrepで全参照を洗い出し、漏れなく修正）。
+- テスト名・DisplayNameも実装名に合わせて修正し、説明も実装の責務・命名と一致させる。
+
+### 2. 設定クラス（@Configuration）
 
 #### プロパティベースの条件付きBean登録
 ```java
@@ -582,7 +650,81 @@ public class GreenMailConfig {
 - `matchIfMissing = true` でデフォルト動作を明示
 - カスタムプロパティは `META-INF/additional-spring-configuration-metadata.json` にメタデータを追加し、IDEでの補完とドキュメント表示を可能にする
 
-### 2. ログ出力
+#### アプリケーション設定値の外部化（@ConfigurationProperties + application.yaml）
+
+**原則**:
+- アプリケーションの設定値（閾値、時間、パス、フラグ等）は、必ず`@ConfigurationProperties`クラスと`application.yaml`で外部化する。
+- 設定値をコードにハードコーディングしない。
+- デフォルト値は`@ConfigurationProperties`クラスのフィールドに指定し、`application.yaml`にも同じ値を記載する（両方に記載することで安全性・可読性を高める）。
+- 設定値のプレフィックスは`app.`で始める。
+- 設定値を追加した場合は`META-INF/additional-spring-configuration-metadata.json`にも必ずメタデータを追加する。
+
+**実装例**:
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ConfigurationProperties(prefix = "app.security.login.attempt")
+public class LoginAttemptProperties {
+    /** 最大試行回数 */
+    private int max = 5;
+    /** ロック時間（ミリ秒） */
+    private long lockDurationMs = 30 * 60 * 1000L;
+}
+```
+```yaml
+# application.yaml
+app:
+    security:
+        login:
+            attempt:
+                max: 5
+                lock-duration-ms: 1800000
+```
+
+**重要**:
+- 設定値のデフォルトは「コード（@ConfigurationProperties）」と「application.yaml」の両方に記載する（どちらか一方の記載漏れによる事故を防ぐため）。
+- 設定値の変更はapplication.yamlのみで完結できるようにする。
+- 設定値の利用は必ず`@ConfigurationProperties`クラス経由で行い、`@Value`や`Environment`の直接利用は避ける。
+- 設定値の説明・型・デフォルト値は`additional-spring-configuration-metadata.json`でIDE補完・ドキュメント化する。
+
+**補足**:
+@ConfigurationProperties クラスを main クラス（@SpringBootApplication）配下以外のパッケージに配置する場合は、
+`@ConfigurationPropertiesScan` を main クラス等に付与し、スキャン対象パッケージを明示してください。
+標準構成（main クラス配下）では明示的な指定は不要です。
+
+**テストでプロパティ値を切り替える場合の注意**:
+- `@ConfigurationProperties`の値をテストごとに変更したい場合、**テストクラス全体に`@SpringBootTest(properties = {...})`を付与する**か、
+  **プロパティを変更しないテストと変更するテストを`@Nested`クラスで分離し、それぞれの内部クラスに`@SpringBootTest`を付与する**必要があります。
+- 1つのテストクラス内で`@SpringBootTest`の`properties`属性を切り替えることはできません。
+- `@Nested`クラスごとに`@SpringBootTest(properties = {...})`を付与することで、異なるプロパティセットでの動作検証が可能です。
+- 例:
+```java
+@DisplayName("LoginAttemptService のテスト")
+class LoginAttemptServiceTest {
+
+    @Nested
+    @DisplayName("デフォルトプロパティでの動作検証")
+    @SpringBootTest
+    class DefaultTest {
+        // ... 通常のテスト ...
+    }
+
+    @Nested
+    @DisplayName("プロパティ変更時の動作検証")
+    @SpringBootTest(properties = {
+        "app.security.login.attempt.max=3",
+        "app.security.login.attempt.lock-duration-ms=60000"
+    })
+    class LoginAttemptPropertiesChangeTest {
+        // ... プロパティ変更時のテスト ...
+    }
+}
+```
+
+このように、**テストごとにプロパティ値を切り替えたい場合は、`@SpringBootTest`の付与単位に注意してください。**
+
+### 3. ログ出力
 
 #### ロガーの実装方法
 
@@ -809,7 +951,7 @@ void testRegisterCustomer() {
 - セキュリティログ（インシデント対応）
 - ただし、これらは専用の監査システムで管理すべきで、通常のログ出力とは別扱い
 
-### 3. リポジトリ層（MyBatis）
+### 4. リポジトリ層（MyBatis）
 
 #### マッパーインターフェース
 ```java
@@ -926,7 +1068,7 @@ public interface CustomerRepository {
 - **CRUD操作の順序**: 取得（Read）→ 登録（Create）→ 更新（Update）→ 削除（Delete）
 - **可読性とメンテナンス性**: 関連するメソッドが離れていると理解しづらい
 
-### 3. インポートとコードスタイル
+### 5. インポートとコードスタイル
 
 #### インポート規約
 ```java
@@ -1015,6 +1157,27 @@ if ((name != null && !name.isEmpty()) || (email != null && !email.isEmpty())) {
 - 可読性が向上し、Spring Frameworkの標準パターンに準拠
 
 #### コード簡潔化のベストプラクティス
+
+##### if文のネスト回避・ガード節の推奨
+
+- **原則**: if文のネストは極力避け、ガード節（早期return）で分岐をフラットにする。
+- **理由**: 可読性・保守性の向上、バグ混入リスクの低減。
+- **例**:
+    ```java
+    // ✅ 推奨: ガード節で早期return
+    if (error) {
+        handleError();
+        return;
+    }
+    // 通常処理
+
+    // ❌ 非推奨: ネストが深い分岐
+    if (condition1) {
+        if (condition2) {
+            // ...
+        }
+    }
+    ```
 
 ##### 冗長な条件チェックの削減
 ```java
@@ -1253,7 +1416,7 @@ public void updatePassword(String token, String newPassword) {
 - **メソッド呼び出しの最適化**: 同じメソッド呼び出し（例: `resetToken.getEmail()`）を複数回実行する場合は、変数に格納して再利用する
 - **適用範囲**: サービス層、コントローラ層、リポジトリ層など、すべてのレイヤーで適用
 
-### 4. サービス層
+### 6. サービス層
 
 #### 汎用的なサービス設計（ジェネリクスの活用）
 
@@ -1401,7 +1564,11 @@ public class PasswordResetService {
 - **複数SQL操作**: 途中で例外が発生した場合、すべての変更がロールバックされる
 - **単一SQL操作でも付与**: トランザクション境界を明確にし、将来の拡張に備える
 
-### 5. コントローラ層
+**補足**:
+- Spring SecurityのUserDetailsService等、フレームワークが提供する特殊なサービス実装（例: CustomerUserDetailsService#loadUserByUsername）も、サービス層の一部として例外なく@Transactional（readOnly = true）を付与すること。インターフェース実装や認証系の特殊クラスでも、DBアクセスがあれば必ず付与する。
+- 実装時・レビュー時は「サービス層のpublicメソッドはすべて@Transactional付きか」を必ず確認すること。
+
+### 7. コントローラ層
 
 #### リクエストマッピング
 ```java
@@ -1532,7 +1699,7 @@ public class CustomerController {
 - CRUD操作は GET → POST → PUT → DELETE の順
 - 可読性とメンテナンス性を重視
 
-### 6. モデルクラス
+### 8. モデルクラス
 
 #### フォームクラス
 ```java
@@ -1685,7 +1852,7 @@ private byte[] generateCSV(List<Customer> customers) {
 - ❌ カスタムMappingStrategyで完全自動化を試みない（データ行が出力されない）
 - ❌ 手動でCSVエスケープ処理を実装しない（OpenCSVに任せる）
 
-### 7. テンプレート（Thymeleaf）
+### 9. テンプレート（Thymeleaf）
 
 #### 基本構成
 ```html
@@ -1875,13 +2042,6 @@ private byte[] generateCSV(List<Customer> customers) {
 - **新規作成**: `bg-green-500 hover:bg-green-600`（必要に応じて使用）
 - **危険な操作**: `bg-red-500 hover:bg-red-600`（削除の確認ボタンなど）
 
-**アイコン表示について**:
-- アイコンは **Heroicons** のインラインSVGを使用
-- 外部ライブラリやCDN不要（SVGをHTML内に直接記述）
-- TailwindCSSクラスでサイズと色を制御: `h-16 w-16 text-green-500` または `text-red-500`
-- 完了画面: チェックマーク付き円（`M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z`）
-- エラー画面: ×マーク付き円（`M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z`）
-
 ## テストコード
 
 ### 1. テスト用設定
@@ -1964,16 +2124,10 @@ class GlobalExceptionHandlerTest {
 ```
 
 **重要**:
-- **テスト用コントローラは `@TestConfiguration` 内に static nested class として定義**
-- **独立したファイル（例: TestController.java）として作成しない**
-- `@Controller` アノテーションを付与してSpringに認識させる
-- テストしたいエンドポイントだけを定義
-- サービスは `@Autowired` でインジェクション（テストクラスで `@MockitoBean` を使用）
-- **利点**:
-  - テストとテスト用コントローラの結合度が高く、意図が明確
-  - テストファイルを開けば全ての関連コードが見える
-  - 不要なファイルの散在を防ぐ
-  - Spring Testing の推奨パターン
+- `MockHttpServletRequest`と`ExtendedModelMap`を使用（Springが提供するテストオブジェクト）
+- Mockitoの過度な使用を避ける（@SpringBootTestの利点を活かす）
+- MockMvc経由では404/500エラーが正しくErrorControllerに到達しない
+- 定数の使用については「コードスタイル > 定数の使用」を参照
 
 ### 2. コントローラテスト
 
@@ -2021,7 +2175,6 @@ class CustomerEditControllerTest {
 **重要**:
 - `@MockitoBean` でリポジトリ・サービスをモック化
 - `@WithUserDetails` で認証ユーザーを設定
-- `setupBefore = TestExecutionEvent.TEST_EXECUTION` を指定
 - CSRF トークンは `.with(csrf())` で付与
 - `@DisplayName` で日本語のテスト名を記述
 - **リクエストパラメータは `MultiValueMap` と `.params()` を使用**（`.param()` の連鎖は避ける）
@@ -2105,493 +2258,3 @@ void testGetAllCustomersWithPagination_SortByRegistrationDateDesc() {
 - **デフォルトソート**: ソート指定がない場合のデフォルト動作も考慮
 - **検証**: 期待する順序でデータが返されることをアサート
 - **誤った順序のモックデータ**: テストは成功してもバグが隠れる可能性がある
-```
-
-### 4. テストメソッド追加時の注意事項
-
-**重要**:
-- テストクラス名はテスト対象のコントローラ/サービス/リポジトリ名に対応させる
-- 例: `MyPageController` → `MyPageControllerTest`
-- 1つのクラスに対して1つのテストクラス
-- 重複したテストクラスは作成しない
-- **`@Test` には必ず `@DisplayName` を付けて日本語でテスト内容を記述する**
-  - 例: `@DisplayName("顧客情報を更新できる")`
-  - テストの目的が一目でわかるようにする
-- **クラスの最後に新しいメソッドを追加する場合の重要なルール**
-  - `oldString` には既存の最後のメソッドの閉じ括弧からクラスの閉じ括弧まで（`}\n}`）を含める
-  - `newString` には既存の最後のメソッドの閉じ括弧 + 新しいメソッド全体 + クラスの閉じ括弧（`}\n\n    // 新メソッド...\n}`）を含める
-  - これを忘れるとクラスの閉じ括弧が欠けてコンパイルエラーになる
-  - 適用対象: すべてのJavaクラス（Service、Controller、Repository、Testなど）
-- `@Test` アノテーションの重複に注意（コピー&ペーストミスを避ける）
-
-**テストメソッドの配置順序**:
-- **リポジトリテスト**: リポジトリメソッドの定義順と一致させる
-  - セクションコメント（`// ========================================`）で機能ごとにグループ化
-  - 全件取得系 → 検索系 → 単一取得 → 登録 → 更新 → 削除
-- **サービステスト**: サービスメソッドの実装順と一致させる
-  - 各メソッドに対応するテストをまとめて配置
-  - メソッドに複数のテストケースがある場合は近接配置
-  - 例: `getCustomerByEmail()` → `getCustomerByEmail_NotFound()`
-- **コントローラテスト**: コントローラメソッドの定義順と一致させる
-  - GETメソッドのテスト → POSTメソッドのテスト
-
-**例（リポジトリテスト）**:
-```java
-@MybatisTest
-@DisplayName("CustomerRepository のテスト")
-class CustomerRepositoryTest {
-    // ========================================
-    // 全件取得系
-    // ========================================
-    @Test
-    @DisplayName("findAllWithPagination: ページネーションで顧客を取得できる")
-    void testFindAllWithPagination() { }
-    
-    @Test
-    @DisplayName("count: 全顧客数を取得できる")
-    void testCount() { }
-    
-    // ========================================
-    // 検索系
-    // ========================================
-    @Test
-    @DisplayName("searchWithPagination: 検索条件でページネーション")
-    void testSearchWithPagination() { }
-}
-```
-
-**例（サービステスト）**:
-```java
-@SpringBootTest
-@DisplayName("CustomerService のテスト")
-class CustomerServiceTest {
-    // ========================================
-    // 単一取得
-    // ========================================
-    @Test
-    @DisplayName("getCustomerByEmail: メールアドレスで顧客を取得できる")
-    void testGetCustomerByEmail() { }
-    
-    @Test
-    @DisplayName("getCustomerByEmail: 存在しないメールアドレスの場合、例外をスローする")
-    void testGetCustomerByEmail_NotFound() { }
-    
-    // ========================================
-    // 全件取得+ページネーション
-    // ========================================
-    @Test
-    @DisplayName("getAllCustomersWithPagination: ページネーションで顧客を取得できる")
-    void testGetAllCustomersWithPagination() { }
-    
-    @Test
-    @DisplayName("getAllCustomersWithPagination: 名前で昇順ソートができる")
-    void testGetAllCustomersWithPagination_SortByNameAsc() { }
-}
-```
-
-### 5. リポジトリテスト
-
-```java
-@MybatisTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@DisplayName("CustomerRepository のテスト")
-class CustomerRepositoryTest {
-
-    @Autowired
-    private CustomerRepository customerRepository;
-
-    @Test
-    @DisplayName("メールアドレスで顧客を検索できる")
-    void findByEmail() {
-        Optional<Customer> customer = customerRepository.findByEmail("test@example.com");
-        assertThat(customer).isPresent();
-    }
-}
-```
-
-### 6. 例外クラステスト
-
-**すべての例外クラスにテストを作成する**：
-
-```java
-@DisplayName("BusinessException のテスト")
-class BusinessExceptionTest {
-
-    @Test
-    @DisplayName("メッセージ付きコンストラクタで例外を生成できる")
-    void testConstructorWithMessage() {
-        // Given
-        String message = "テストエラーメッセージ";
-
-        // When
-        BusinessException exception = new BusinessException(message);
-
-        // Then
-        assertThat(exception.getMessage()).isEqualTo(message);
-    }
-
-    @Test
-    @DisplayName("メッセージと原因付きコンストラクタで例外を生成できる")
-    void testConstructorWithMessageAndCause() {
-        // Given
-        String message = "テストエラーメッセージ";
-        Throwable cause = new RuntimeException("原因の例外");
-
-        // When
-        BusinessException exception = new BusinessException(message, cause);
-
-        // Then
-        assertThat(exception.getMessage()).isEqualTo(message);
-        assertThat(exception.getCause()).isEqualTo(cause);
-    }
-}
-```
-
-**重要**:
-- すべてのコンストラクタをテストする
-- メッセージが正しく設定されることを確認
-- 原因（cause）が正しく設定されることを確認
-- デフォルトメッセージが正しいことを確認
-- `@SpringBootTest` は不要（純粋なPOJOテスト）
-```
-
-### 6. テスト実施の必須事項
-
-**新機能実装時の必須テスト**:
-- リポジトリ層のテスト（`@MybatisTest`）
-- サービス層のテスト（`@SpringBootTest`）
-- コントローラ層のテスト（`@WebMvcTest` または `@SpringBootTest` + `@AutoConfigureMockMvc`）
-- 例外クラスのテスト（純粋なPOJOテスト）
-
-**重要**:
-- 新しいメソッドを追加した際は、必ず対応するテストを追加する
-- リポジトリとサービスのテストを忘れない
-- 例外クラスを追加した際も、必ずテストを作成する
-- テスト追加後は `mvn clean test` で全テストを実行し、合格を確認する
-- カバレッジ目標: ビジネスロジック（Service、Controller）95-100%、リポジトリ層100%、例外クラス100%
-
-**カバレッジが困難なエラーハンドリング**:
-```java
-private byte[] generateCSV(List<Customer> customers) {
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-         OutputStreamWriter osw = new OutputStreamWriter(baos, StandardCharsets.UTF_8)) {
-        
-        // CSV生成処理
-        
-        return baos.toByteArray();
-    } catch (Exception e) {
-        // NOTE: このcatchブロックは防御的プログラミングのために存在します。
-        // ByteArrayOutputStreamとOpenCSVの通常動作では例外は発生しませんが、
-        // 予期しないランタイムエラー（OutOfMemoryError等）からの保護として残しています。
-        // テストでのカバレッジは困難ですが、本番環境での安全性のために必要です。
-        throw new RuntimeException("CSV生成中にエラーが発生しました", e);
-    }
-}
-```
-
-**重要**:
-- 実際には発生しないが防御的に残すエラーハンドリングには、その意図をコメントで明記する
-- 「なぜテストできないのか」「なぜ残す必要があるのか」を説明する
-- 将来のメンテナーに対して、誤って削除されないようにする
-- カバレッジ100%を強制せず、95-98%を現実的な目標とする
-
-**実用的でない防御的プログラミングの削除**:
-```java
-// ❌ 禁止: 実際の運用で発生しない防御的コード
-@Bean
-public LogoutSuccessHandler logoutSuccessHandler() {
-    return (request, response, authentication) -> {
-        if (authentication != null) {  // 認証済みユーザーのみがログアウトするため、常に非null
-            log.info("ログアウト: email={}", authentication.getName());
-        }
-        response.sendRedirect("/");
-    };
-}
-
-// ✅ 推奨: 実用的な実装
-@Bean
-public LogoutSuccessHandler logoutSuccessHandler() {
-    return (request, response, authentication) -> {
-        log.info("ログアウト: email={}", authentication.getName());
-        response.sendRedirect("/");
-    };
-}
-```
-
-**重要**:
-- 実際の運用で発生しないケースに対する防御的なnullチェックは削除する
-- フレームワークの標準的な動作（例: Spring Securityは認証済みユーザーのログアウトを想定）に準拠する
-- 過剰な防御コードはコードの複雑性を増し、テストカバレッジを低下させる
-- 必要な防御（OutOfMemoryError等の予期しないエラー）と不要な防御（正常フローでは発生しないnullチェック）を区別する
-
-**メソッド削除時の必須確認事項**:
-- **全ての層でテストを確認する**：Repository層、Service層、Controller層の全てのテストファイルを確認
-- **削除したメソッドを使用しているテストを全て削除**：
-  - 例：`CustomerRepository.findAll()` を削除した場合
-    - ✅ `CustomerServiceTest` で `findAll()` を使用しているテストを削除
-    - ✅ `CustomerRepositoryTest` で `findAll()` をテストしているテストも削除（**忘れやすい**）
-- **削除後は必ずテストを実行**：不要なテストが残っていないか確認
-- **体系的なチェック**：削除対象メソッドを grep 検索し、全ての使用箇所（本番コード＋テストコード）を特定
-
-## コードスタイル
-
-### 1. 定数の使用
-
-既存の定数が提供されている場合は必ず使用し、マジックナンバーや文字列リテラルの直接実装を避ける。
-
-```java
-// ✅ 推奨: 定数を使用
-request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 404);
-return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-// ❌ 禁止: マジックナンバーや文字列リテラル
-request.setAttribute("jakarta.servlet.error.status_code", 404);
-return ResponseEntity.status(404).build();
-response.setContentType("application/json");
-```
-
-**重要**:
-- Jakarta EE、Spring Framework、Java標準ライブラリが提供する定数を優先
-- IDEの補完機能を活用して定数を発見
-- 定数を使うことでタイポを防ぎ、リファクタリングが容易になる
-
-### 2. インポート
-- ワイルドカードインポート（`import ....*;`）は使用しない
-- 不要なインポートは削除する
-- 使用していないアノテーションのインポートも削除
-- IDE のコードフォーマッターを使用
-
-### 3. 命名規則
-
-#### Javaクラス・ファイル
-- **クラス名**: PascalCase
-- **メソッド名**: camelCase
-- **定数**: UPPER_SNAKE_CASE
-- **パッケージ名**: lowercase
-
-#### レイヤー別の命名規則
-
-**コントローラ（Controller）**:
-- クラス名: `{機能名}Controller`
-- 例: `CustomerController`, `MyPageController`, `PasswordResetController`
-- ファイル名: クラス名と同じ `.java`
-- テストクラス: `{クラス名}Test` → `CustomerControllerTest`
-
-**サービス（Service）**:
-- クラス名: `{機能名}Service`
-- 例: `CustomerService`, `EmailService`, `PasswordResetService`, `CsvService`
-- ファイル名: クラス名と同じ `.java`
-- テストクラス: `{クラス名}Test` → `CustomerServiceTest`
-- **将来の拡張性を考慮**: 
-  - ❌ `CsvExportService` → 輸出のみに限定される
-  - ✅ `CsvService` → 将来的にインポート、検証機能なども追加可能
-  - 方向性（Export/Import）や操作（Create/Read）を含めない汎用的な名前を推奨
-
-**リポジトリ（Repository）**:
-- クラス名: `{エンティティ名}Repository`
-- 例: `CustomerRepository`, `PasswordResetTokenRepository`
-- ファイル名: クラス名と同じ `.java`
-- テストクラス: `{クラス名}Test` → `CustomerRepositoryTest`
-
-**モデル（Model）**:
-- エンティティ: `{エンティティ名}` → `Customer`, `PasswordResetToken`
-- フォーム: `{機能名}Form` → `CustomerForm`, `CustomerEditForm`, `ChangePasswordForm`
-- ファイル名: クラス名と同じ `.java`
-
-**設定（Config）**:
-- クラス名: `{機能名}Config`
-- 例: `SecurityConfig`, `GreenMailConfig`
-- ファイル名: クラス名と同じ `.java`
-
-**バリデーション（Validation）**:
-- アノテーション: `@{検証名}` → `@CurrentPassword`
-- バリデータ: `{検証名}Validator` → `CurrentPasswordValidator`
-
-**セキュリティ（Security）**:
-- UserDetails実装: `{エンティティ名}UserDetails` → `CustomerUserDetails`
-- UserDetailsService実装: `{エンティティ名}UserDetailsService` → `CustomerUserDetailsService`
-
-#### HTMLテンプレート
-
-**命名パターン**:
-- 単一画面: `{機能名}.html` → `home.html`, `login.html`, `mypage.html`
-- 一覧画面: `{エンティティ名}-list.html` → `customer-list.html`
-- 入力画面: `{エンティティ名}-input.html` または `{機能名}-{操作}.html`
-  - 例: `customer-input.html`, `customer-edit.html`, `change-password.html`
-- 確認画面: `{機能名}-confirm.html` → `customer-confirm.html`, `customer-edit-confirm.html`
-- 完了画面: `{機能名}-complete.html` → `customer-complete.html`, `change-password-complete.html`
-- エラー画面: `{機能名}-error.html` → `customer-error.html`, `customer-registration-error.html`
-
-**重要な原則**:
-- **機能に基づく命名**: ファイル名は機能や業務を明確に表す
-- **汎用的な名前は避ける**: `business-error.html`, `common-error.html` などの抽象的な名前は使用しない
-- **既存ファイルの見直し**: 新規作成時に既存の類似ファイルがガイドラインに沿っているか確認する
-- **一貫性の維持**: 同じパターンを繰り返し適用する
-
-**リクエストとの対応**:
-- リクエスト: `POST /customers/register` → 完了画面: `customer-complete.html`
-- リクエスト: `POST /mypage/edit-confirm` → 確認画面: `customer-edit-confirm.html`
-- ハイフン区切りで複数単語を表現
-
-#### メソッド命名規則
-
-**コントローラメソッド**:
-- GET（画面表示）: `show{画面名}Page()` → `showMyPage()`, `showEditPage()`
-- POST（処理実行）: `{動詞}{処理名}()` → `registerCustomer()`, `updateCustomer()`, `deleteCustomer()`
-- POST（確認画面表示）: `show{機能名}ConfirmPage()` → `showEditConfirmPage()`
-- POST（Backボタン）: `handleBackTo{画面名}()` → `handleBackToEdit()`
-
-**サービスメソッド**:
-- 取得: `get{対象}()` → `getAllCustomers()`
-- 登録: `register{対象}()` → `registerCustomer()`
-- 更新: `update{対象}()` または `change{対象}()` → `updateCustomerInfo()`, `changePassword()`
-- 削除: `delete{対象}()` → `deleteCustomer()`
-- 送信: `send{対象}()` → `sendResetLink()`
-
-**リポジトリメソッド**:
-- 全件取得: `findAll()`
-- 条件検索: `findBy{条件}()` → `findByEmail()`, `findByToken()`
-- 保存: `save({エンティティ})`
-- 更新: `update{項目}()` → `updatePassword()`, `updateCustomerInfo()`
-- 削除: `deleteBy{条件}()` → `deleteByEmail()`
-
-**テストメソッド**:
-- **必ず`test`プレフィックスで始める**: `test{テスト対象メソッド名}()` → `testGetAllCustomers()`, `testRegisterCustomer()`
-- バリエーション: `test{テスト対象メソッド名}_{条件}()` → `testGetCustomerByEmail_NotFound()`, `testExportCustomersToCSV_WithSort()`
-- **禁止**: `test`プレフィックスなしのメソッド名（例: `exportCustomersToCSV()`, `loadUserByUsername_Success()`）
-- **理由**: 統一された命名規則により、テストメソッドを即座に識別可能
-
-**その他**:
-- 定数: UPPER_SNAKE_CASE
-- パッケージ名: lowercase
-
-### 3. コメント
-- JavaDoc は public メソッドに記述
-- 複雑なロジックには適切なコメントを追加
-- 日本語コメント可
-
-## プロジェクト設定
-
-### VSCode設定（.vscode/settings.json）
-
-```json
-{
-  "java.configuration.updateBuildConfiguration": "interactive",
-  "java.dependency.packagePresentation": "flat",
-  "java.compile.nullAnalysis.mode": "disabled"
-}
-```
-
-**重要**:
-- `java.compile.nullAnalysis.mode` は `"disabled"` に設定
-- Eclipse JDTのnull安全性チェックはSpring TestやHamcrestなどの外部ライブラリで多数の誤検知を生む
-- null安全性は実行時テストとコードレビューで担保
-
-## 禁止事項
-
-1. **@ActiveProfiles の使用禁止**
-   - `application.yml` と `@ConditionalOnProperty` で制御
-
-2. **@Profile の使用を避ける**
-   - `@ConditionalOnProperty` を優先
-
-3. **XMLマッパーの使用禁止**
-   - アノテーションベースのSQL定義を使用
-
-4. **重複したテスト設定の禁止**
-   - 共通設定は `application.yml` に集約
-
-5. **不要なインポートを残さない**
-   - コードレビュー前に必ず確認
-
-6. **Thymeleafのリンクは必ずth:hrefを使用**
-   - `th:href="@{/path}"` を使用（推奨）
-   - `href="/path"` は禁止
-
-## カバレッジ目標
-
-- ビジネスロジック（Service、Controller）: 100%
-- リポジトリ層: 100%
-- **例外クラス**: 100%（すべてのコンストラクタをテスト）
-- **ErrorController**: 100%（エラーハンドリングは必須）
-- **ControllerAdvice**: 100%（例外ハンドリングは必須）
-- 設定クラス（@Configuration）: 除外可能
-- main メソッド: 除外可能
-
-**重要な注意事項**:
-- `config`パッケージにあっても、`@Controller`、`@RestController`、`@ControllerAdvice`が付いているクラスは**必ずテストを実装する**
-- 「設定クラス」とは`@Configuration`アノテーション付きのクラスのみを指す
-- ErrorControllerやControllerAdviceのテストを省略すると、実装ミスが本番環境で発覚するリスクがある
-
-### ErrorController / ControllerAdvice のテスト方法
-
-**通常のコントローラと異なり、MockMvc経由ではエラーハンドリングフローが正しく動作しません。**
-
-```java
-@SpringBootTest
-@DisplayName("CustomErrorController のテスト")
-class CustomErrorControllerTest {
-
-    @Autowired
-    private CustomErrorController customErrorController;
-
-    @Test
-    @DisplayName("404エラーの場合、error/404.html を表示する")
-    void testNotFoundError() {
-        // Given
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 404);
-        Model model = new ExtendedModelMap();
-
-        // When
-        String viewName = customErrorController.handleError(request, model);
-
-        // Then
-        assertThat(viewName).isEqualTo("error/404");
-        assertThat(model.getAttribute("status")).isEqualTo(404);
-    }
-}
-```
-
-**重要**:
-- `MockHttpServletRequest`と`ExtendedModelMap`を使用（Springが提供するテストオブジェクト）
-- Mockitoの過度な使用を避ける（@SpringBootTestの利点を活かす）
-- MockMvc経由では404/500エラーが正しくErrorControllerに到達しない
-- 定数の使用については「コードスタイル > 定数の使用」を参照
-
-## 静的リソース
-
-### Favicon
-
-プロジェクトには必ずfaviconを追加する。faviconがないとブラウザが自動的に`/favicon.ico`をリクエストし、404エラーログが発生する。
-
-**配置場所**:
-- `src/main/resources/static/favicon.ico` （従来型、全ブラウザ対応）
-- `src/main/resources/static/favicon.svg` （モダンブラウザ、SVG形式）
-
-**作成方法**:
-1. **既存の画像から変換**:
-   - ImageMagickを使用: `magick convert input.png -resize 32x32 favicon.ico`
-   - オンラインツール: [Favicon Generator](https://favicon.io/), [RealFaviconGenerator](https://realfavicongenerator.net/)
-
-2. **シンプルなSVGアイコン**:
-   ```xml
-   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-     <rect width="100" height="100" fill="#4F46E5"/>
-     <text x="50" y="70" font-size="60" text-anchor="middle" fill="white" 
-           font-family="Arial, sans-serif" font-weight="bold">C</text>
-   </svg>
-   ```
-
-**重要**:
-- faviconは初期プロジェクトセットアップ時に追加
-- 404エラーログのノイズを防ぐ
-- ブランディングとユーザー体験の向上
-
-## 参考資料
-
-- [Spring Boot Reference Documentation](https://docs.spring.io/spring-boot/docs/current/reference/html/)
-- [MyBatis Documentation](https://mybatis.org/mybatis-3/)
-- [Thymeleaf Documentation](https://www.thymeleaf.org/documentation.html)
-- [Spring Security Reference](https://docs.spring.io/spring-security/reference/)

@@ -10,9 +10,15 @@ import io.github.yoshikawaa.example.ai_sample.model.Customer;
 public class CustomerUserDetails implements UserDetails {
 
     private final Customer customer;
+    private final boolean locked;
 
     public CustomerUserDetails(Customer customer) {
+        this(customer, false);
+    }
+
+    public CustomerUserDetails(Customer customer, boolean locked) {
         this.customer = customer;
+        this.locked = locked;
     }
 
     public Customer getCustomer() {
@@ -41,7 +47,7 @@ public class CustomerUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return !locked;
     }
 
     @Override

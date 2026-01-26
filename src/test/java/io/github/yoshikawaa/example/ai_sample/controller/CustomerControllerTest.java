@@ -1,5 +1,8 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import java.time.LocalDate;
+import java.util.Arrays;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -17,10 +21,7 @@ import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
-import java.time.LocalDate;
-import java.util.Arrays;
+import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -38,6 +39,9 @@ class CustomerControllerTest {
 
     @MockitoBean
     private CustomerService customerService;
+
+    @MockitoBean
+    private LoginAttemptService loginAttemptService;
 
     @Test
     @DisplayName("GET /customers: 顧客一覧を表示する（デフォルトページネーション）")

@@ -1,10 +1,5 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
-import io.github.yoshikawaa.example.ai_sample.config.GlobalExceptionHandler;
-import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
-import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
-import io.github.yoshikawaa.example.ai_sample.model.Customer;
-import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +9,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+
+import io.github.yoshikawaa.example.ai_sample.config.GlobalExceptionHandler;
+import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
+import io.github.yoshikawaa.example.ai_sample.model.Customer;
+import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -31,6 +33,9 @@ class CustomerRegistrationControllerTest {
 
     @MockitoBean
     private CustomerService customerService;
+
+    @MockitoBean
+    private LoginAttemptService loginAttemptService;
 
     @Autowired
     private MockMvc mockMvc;
