@@ -22,15 +22,18 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttemptService;
 
     public PasswordResetService(CustomerRepository customerRepository,
                                 PasswordResetTokenRepository passwordResetTokenRepository,
                                 EmailService emailService,
-                                PasswordEncoder passwordEncoder) {
+                                PasswordEncoder passwordEncoder,
+                                LoginAttemptService loginAttemptService) {
         this.customerRepository = customerRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
+        this.loginAttemptService = loginAttemptService;
     }
 
     public void sendResetLink(@NonNull String email) {
@@ -73,6 +76,9 @@ public class PasswordResetService {
 
         // ハッシュ化されたパスワードを保存
         customerRepository.updatePassword(email, hashedPassword);
+
+        // ログイン試行記録・ロック状態をリセット
+        loginAttemptService.resetAttempts(email);
 
         // トークンを削除
         passwordResetTokenRepository.deleteByEmail(email);
