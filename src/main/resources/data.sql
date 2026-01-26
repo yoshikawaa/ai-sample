@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS login_attempt;
 DROP TABLE IF EXISTS password_reset_tokens;
 DROP TABLE IF EXISTS customer;
 
@@ -17,6 +18,13 @@ CREATE TABLE password_reset_tokens (
     reset_token VARCHAR(255) NOT NULL,
     token_expiry BIGINT NOT NULL,
     FOREIGN KEY (email) REFERENCES customer(email) ON DELETE CASCADE
+);
+
+CREATE TABLE login_attempt (
+    email VARCHAR(255) PRIMARY KEY,
+    attempt_count INT NOT NULL DEFAULT 0,
+    locked_until BIGINT,
+    last_attempt_time BIGINT NOT NULL
 );
 
 INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address) VALUES

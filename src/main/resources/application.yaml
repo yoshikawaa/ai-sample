@@ -27,3 +27,15 @@ spring:
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
+
+
+app:
+  security:
+    login:
+      attempt:
+        max: 5
+        lock-duration-ms: 1800000 # 30分
+logging:
+  level:
+    "[io.github.yoshikawaa.example.ai_sample]": DEBUG
+    "[io.github.yoshikawaa.example.ai_sample.repository]": INFO

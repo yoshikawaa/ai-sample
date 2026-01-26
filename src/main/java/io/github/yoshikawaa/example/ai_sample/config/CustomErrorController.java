@@ -56,7 +56,7 @@ public class CustomErrorController extends AbstractErrorController {
         // モデルにエラー情報を追加
         model.addAttribute("status", status.value());
         model.addAttribute("error", status.getReasonPhrase());
-        model.addAttribute("message", message != null ? message : status.getReasonPhrase());
+        model.addAttribute("message", message);
         model.addAttribute("path", path);
 
         // ステータスコードに応じたテンプレート選択
