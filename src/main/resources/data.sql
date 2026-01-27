@@ -1,32 +1,3 @@
-DROP TABLE IF EXISTS login_attempt;
-DROP TABLE IF EXISTS password_reset_tokens;
-DROP TABLE IF EXISTS customer;
-
-CREATE TABLE customer (
-    email VARCHAR(255) PRIMARY KEY,
-    password VARCHAR(255),
-    name VARCHAR(255),
-    registration_date DATE,
-    birth_date DATE,
-    phone_number VARCHAR(20),
-    address VARCHAR(255)
-);
-
-CREATE TABLE password_reset_tokens (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    reset_token VARCHAR(255) NOT NULL,
-    token_expiry BIGINT NOT NULL,
-    FOREIGN KEY (email) REFERENCES customer(email) ON DELETE CASCADE
-);
-
-CREATE TABLE login_attempt (
-    email VARCHAR(255) PRIMARY KEY,
-    attempt_count INT NOT NULL DEFAULT 0,
-    locked_until BIGINT,
-    last_attempt_time BIGINT NOT NULL
-);
-
 INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address) VALUES
 ('john.doe@example.com', 'hashed_password123', 'John Doe', '2023-01-01', '1990-05-15', '123-456-7890', '123 Main St'),
 ('jane.doe@example.com', 'hashed_password456', 'Jane Doe', '2023-02-01', '2000-08-20', '987-654-3210', '456 Elm St'),

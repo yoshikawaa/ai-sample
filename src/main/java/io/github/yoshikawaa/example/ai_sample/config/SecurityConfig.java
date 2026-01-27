@@ -6,12 +6,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.authentication.session.SessionAuthenticationException;
 
 @Slf4j
 @Configuration
@@ -51,6 +54,11 @@ public class SecurityConfig {
                 .logoutUrl("/logout")
                 .logoutSuccessHandler(logoutSuccessHandler()) // ログアウト成功ハンドラー
                 .permitAll()
+            )
+            .sessionManagement(session -> session
+                .maximumSessions(1)
+                .maxSessionsPreventsLogin(true)
+                .sessionRegistry(sessionRegistry())
             );
         return http.build();
     }
@@ -72,6 +80,12 @@ public class SecurityConfig {
     public AuthenticationFailureHandler authenticationFailureHandler() {
         return (request, response, exception) -> {
             String email = request.getParameter("username");
+            // 最大セッション数超過時
+            if (exception instanceof SessionAuthenticationException) {
+                log.warn("最大セッション数超過によるログイン拒否: email={}", email);
+                response.sendRedirect("/session-limit-exceeded");
+                return;
+            }
             if (exception instanceof LockedException) {
                 // ロック中のログイン試行
                 log.warn("ロック中のアカウントへのログイン試行: email={}", email);
@@ -97,5 +111,10 @@ public class SecurityConfig {
             log.info("ログアウト: email={}", authentication.getName());
             response.sendRedirect("/");
         };
+    }
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
     }
 }
