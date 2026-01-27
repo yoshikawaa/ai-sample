@@ -1895,6 +1895,30 @@ private byte[] generateCSV(List<Customer> customers) {
 - CSRFトークンは Spring Security が自動挿入
 - リンクは必ず `th:href="@{/path}"` を使用（`href="/path"` は禁止）
 
+#### CSRF対策の徹底ルール
+
+##### 1. POSTフォームの実装ルール
+- すべてのPOSTフォームは必ず`th:action`と`method="post"`を明示すること。
+- 確認画面やhiddenフィールドのみのフォーム（Back/登録/更新ボタン等）も例外なく適用すること。
+- `th:object`が不要な場合も`th:action`＋`method="post"`を必ず指定すること。
+- これにより、Spring Securityが自動でCSRFトークンを埋め込む。
+
+##### 2. テンプレート追加・修正時のチェック
+- 新規テンプレート追加時・既存テンプレート修正時は、POSTフォームにCSRFトークンが自動挿入されていることを必ず確認すること。
+- `<form>`タグに`th:action`と`method="post"`がない場合、CSRFトークンが埋め込まれず、セキュリティリスクや動作不全の原因となる。
+
+##### 3. REST API/JavaScriptからのPOST/PUT/DELETE
+- JavaScript等で非同期リクエストを送信する場合は、CSRFトークンをmetaタグ等から取得し、リクエストヘッダ`X-CSRF-TOKEN`で送信すること。
+- REST API追加時は、CSRFトークン送信方法を必ず実装コメントまたはドキュメントに明記すること。
+
+##### 4. SecurityConfigの方針
+- CSRF保護は原則すべてのエンドポイントで有効化し、H2コンソール等の開発用エンドポイントのみ除外すること。
+- 除外パスの追加・変更時は、必ずレビュー・テストを実施すること。
+
+##### 5. レビュー・テスト時の観点
+- フォーム送信時にCSRFトークンがHTMLに埋め込まれているか、ブラウザの開発者ツール等で必ず確認すること。
+- テンプレート追加・修正時は、`th:action`＋`method="post"`の有無をgrep等で定期的にチェックすること。
+
 #### ページネーション
 
 **ソート状態を保持する方法**:
