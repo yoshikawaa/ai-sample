@@ -583,29 +583,61 @@ src/main/resources/templates/
 - システムエラー画面: templates/error/配置（Spring Boot規約）
 - Spring Bootは自動的にHTTPステータスコードに応じてerror/配下のテンプレートを選択
 
-### 7. 認証とロックのアーキテクチャ
 
-#### 責務分離と設計原則
-- 認証（Spring Security）とロック判定はサービス層で一貫して管理する。
-- ロック判定・副作用（DB更新）は同一トランザクション内で完結させ、即時性・一貫性を担保する。
+---
 
-#### 認証フロー
-- 認証は `CustomerUserDetailsService`（カスタムUserDetailsService）で取得した `CustomerUserDetails`（カスタムUserDetails）を用いて行う。
-- 認証処理の流れは `CustomerUserDetailsService#loadUserByUsername` でユーザー情報・ロック状態を取得し、Spring Securityが `CustomerUserDetails` を元に認証判定を行う。
-- ロック状態はUserDetails取得時に判定し、失敗時は即座にロック処理を実行。
+## 7. セキュリティのアーキテクチャ
 
-#### ロック判定・画面遷移
-- ログイン成功・失敗・ログアウト時の画面遷移やロック判定は、`SecurityConfig`で定義したカスタムハンドラー（`authenticationSuccessHandler`, `authenticationFailureHandler`, `logoutSuccessHandler`）で制御する。
-- `authenticationSuccessHandler`では、ログイン成功時に試行回数をリセットし、マイページへリダイレクトする。
-- `authenticationFailureHandler`では、失敗時に`LoginAttemptService#handleFailedLoginAttempt`で失敗回数・ロック判定を行い、ロック状態なら即座に`/account-locked`画面へ遷移する。通常失敗時はログイン画面へ戻す。
-- ロック中のログイン試行は`LockedException`を判定し、専用画面へ遷移する。
-- `logoutSuccessHandler`では、ログアウト後にトップページへ遷移する。
-- これらのハンドラーにより、認証・ロック判定・画面遷移の責務分離と即時性・一貫性を担保する。
+このアプリケーションは、Spring Securityを中心とした堅牢なセキュリティアーキテクチャを採用しています。以下の原則・設計方針に従って実装・運用してください。
 
-#### 実装例・注意点
-- サービス層で @Transactional を付与し、DB更新・ロック判定を一括管理。
-- コントローラ層はサービスの戻り値でロック状態を判定し、画面遷移を制御。
-- ロック判定ロジックはDRY原則で共通化。
+### 1. 認証（Authentication）
+- **Spring Securityのフォーム認証**を利用し、ユーザー（顧客）はメールアドレス＋パスワードでログインします。
+- 認証情報は`CustomerUserDetailsService`で取得し、`CustomerUserDetails`（UserDetails実装）で管理します。
+- パスワードは**BCrypt**でハッシュ化し、平文は一切保存・ログ出力しません。
+- ログイン成功時は`AuthenticationSuccessHandler`でマイページへリダイレクト、失敗時は`AuthenticationFailureHandler`でエラー画面またはロック画面へ遷移します。
+- ログイン試行回数・ロック判定はサービス層で一元管理し、即時性・一貫性を担保します。
+
+### 2. 認可（Authorization）
+- URLごとに**アクセス制御**を厳格に設定します。
+    - `/login`, `/register/**`, `/password-reset/**` などは未認証でもアクセス可能
+    - `/mypage/**`, `/customers/**` などは認証済みユーザーのみアクセス可能
+- **ロールベース認可**は現状未使用ですが、将来的な拡張に備え`GrantedAuthority`の設計を意識します。
+
+### 3. CSRF対策
+- すべてのPOSTフォームで**CSRFトークン**を自動埋め込み（`th:action`＋`method="post"`必須）
+- REST APIやJavaScriptからのPOST/PUT/DELETEは、`X-CSRF-TOKEN`ヘッダでトークン送信
+- SecurityConfigでCSRF保護を有効化し、H2コンソール等の開発用エンドポイントのみ除外
+
+### 4. クリックジャッキング対策
+- すべての画面で`X-Frame-Options`ヘッダを付与（原則`DENY`、H2コンソール等のみ`SAMEORIGIN`）
+- SecurityConfigで一元管理
+
+### 5. セッション管理
+- **セッション固定攻撃対策**として、ログイン成功時にセッションIDを再生成
+- **同時ログイン数制限**（セッション数上限）を設定し、上限超過時は`session-limit-exceeded.html`へ遷移
+- セッションタイムアウト時はトップページへリダイレクト
+
+### 6. パスワード管理
+- パスワードは**BCrypt**でハッシュ化し、平文保存・送信・ログ出力を禁止
+- パスワードリセット時は**ワンタイムトークン**を発行し、メールで送信
+- トークンは十分な長さ・ランダム性を持ち、値自体はログ出力しない
+
+### 7. ログ出力と監査
+- セキュリティ関連イベント（ログイン成功/失敗、ロック、パスワード変更等）は必ずログ出力
+- ログには**機密情報（パスワード、トークン値等）を含めない**
+- ログレベルは、成功:INFO、失敗・ロック:WARN、システムエラー:ERROR
+
+### 8. エラーメッセージと情報漏洩対策
+- エラーメッセージは**ユーザーに必要最小限のみ表示**し、内部情報や存在有無を漏らさない
+- パスワードリセット等の認証系機能では、存在しないメールアドレスでも「送信完了」と同じ応答を返す
+
+### 9. その他のセキュリティ対策
+- **SQLインジェクション対策**: MyBatisのバインド変数（`#{}`）を必ず使用し、`${}`による文字列連結はソートカラム等の限定用途のみ
+- **XSS対策**: Thymeleafのデフォルトエスケープ機能を利用し、`th:utext`の使用は最小限に
+- **ディレクトリトラバーサル対策**: ファイル名・パスのバリデーションを徹底
+- **セキュリティヘッダ**: 必要に応じて`Content-Security-Policy`等も追加検討
+
+---
 
 ## コーディング規約
 
@@ -1894,30 +1926,6 @@ private byte[] generateCSV(List<Customer> customers) {
 - エラーメッセージは `th:errors` で表示
 - CSRFトークンは Spring Security が自動挿入
 - リンクは必ず `th:href="@{/path}"` を使用（`href="/path"` は禁止）
-
-#### CSRF対策の徹底ルール
-
-##### 1. POSTフォームの実装ルール
-- すべてのPOSTフォームは必ず`th:action`と`method="post"`を明示すること。
-- 確認画面やhiddenフィールドのみのフォーム（Back/登録/更新ボタン等）も例外なく適用すること。
-- `th:object`が不要な場合も`th:action`＋`method="post"`を必ず指定すること。
-- これにより、Spring Securityが自動でCSRFトークンを埋め込む。
-
-##### 2. テンプレート追加・修正時のチェック
-- 新規テンプレート追加時・既存テンプレート修正時は、POSTフォームにCSRFトークンが自動挿入されていることを必ず確認すること。
-- `<form>`タグに`th:action`と`method="post"`がない場合、CSRFトークンが埋め込まれず、セキュリティリスクや動作不全の原因となる。
-
-##### 3. REST API/JavaScriptからのPOST/PUT/DELETE
-- JavaScript等で非同期リクエストを送信する場合は、CSRFトークンをmetaタグ等から取得し、リクエストヘッダ`X-CSRF-TOKEN`で送信すること。
-- REST API追加時は、CSRFトークン送信方法を必ず実装コメントまたはドキュメントに明記すること。
-
-##### 4. SecurityConfigの方針
-- CSRF保護は原則すべてのエンドポイントで有効化し、H2コンソール等の開発用エンドポイントのみ除外すること。
-- 除外パスの追加・変更時は、必ずレビュー・テストを実施すること。
-
-##### 5. レビュー・テスト時の観点
-- フォーム送信時にCSRFトークンがHTMLに埋め込まれているか、ブラウザの開発者ツール等で必ず確認すること。
-- テンプレート追加・修正時は、`th:action`＋`method="post"`の有無をgrep等で定期的にチェックすること。
 
 #### ページネーション
 
