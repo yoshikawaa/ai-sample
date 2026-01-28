@@ -191,4 +191,21 @@ class SecurityConfigTest {
             .andExpect(header().string("Content-Security-Policy",
                 containsString("default-src 'self'")));
     }
+
+        @Test
+        @DisplayName("X-Frame-OptionsヘッダがDENYで付与される")
+        void testXFrameOptionsHeader() throws Exception {
+            mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Frame-Options", "DENY"));
+        }
+
+        @Test
+        @DisplayName("CSRFトークン未付与時は403 Forbiddenになる")
+        void testCsrfTokenRequired() throws Exception {
+            mockMvc.perform(post("/login")
+                    .param("username", "test@example.com")
+                    .param("password", "password123"))
+                .andExpect(status().isForbidden());
+        }
 }

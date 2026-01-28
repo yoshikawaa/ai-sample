@@ -4,6 +4,7 @@ import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.session.SessionRegistry;
@@ -15,6 +16,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.session.SessionAuthenticationException;
+import static org.springframework.security.config.Customizer.withDefaults;
 
 @Slf4j
 @Configuration
@@ -31,15 +33,40 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+
+    /**
+     * H2コンソール専用: SAMEORIGIN
+     */
     @Bean
+    @Order(1)
+    public SecurityFilterChain h2ConsoleSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/h2-console/**")
+            .authorizeHttpRequests(authorize -> authorize
+                .anyRequest().permitAll()
+            )
+            .headers(headers -> headers
+                .frameOptions(frameOptions -> frameOptions.sameOrigin())
+            )
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers("/h2-console/**")
+            );
+        return http.build();
+    }
+
+    /**
+     * 通常用: X-Frame-Options DENY
+     */
+    @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/", "/customers", "/customers/**", "/register/**", "/login", "/password-reset/**", "/account-locked", "/h2-console/**", "/error").permitAll() // ログイン不要の画面
+                .requestMatchers("/", "/customers", "/customers/**", "/register/**", "/login", "/password-reset/**", "/account-locked", "/error").permitAll() // ログイン不要の画面（※/h2-console/**は除外）
                 .anyRequest().authenticated() // それ以外は認証が必要
             )
             .headers(headers -> headers
-                .frameOptions(frameOptions -> frameOptions.sameOrigin()) // H2コンソール用にiframeを許可
+                .frameOptions(frameOptions -> frameOptions.deny())
                 .contentSecurityPolicy(csp -> csp
                     .policyDirectives(
                         "default-src 'self'; " +
@@ -53,9 +80,7 @@ public class SecurityConfig {
                     )
                 )
             )
-            .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/h2-console/**") // H2コンソール用にCSRFを無効化
-            )
+            .csrf(withDefaults())
             .formLogin(form -> form
                 .loginPage("/login") // カスタムログイン画面
                 .successHandler(authenticationSuccessHandler()) // ログイン成功ハンドラー
