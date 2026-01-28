@@ -12,7 +12,9 @@ import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 
 @WebMvcTest(HomeController.class)
 @Import(SecurityConfig.class) // セキュリティ設定をインポート

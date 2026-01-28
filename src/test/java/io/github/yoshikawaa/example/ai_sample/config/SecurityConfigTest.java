@@ -24,9 +24,13 @@ import org.springframework.mock.web.MockHttpSession;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.logout;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -177,5 +181,14 @@ class SecurityConfigTest {
         mockMvc.perform(logout())
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/"));
+    }
+
+    @Test
+    @DisplayName("CSPヘッダが付与される")
+    void testContentSecurityPolicyHeader() throws Exception {
+        mockMvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Security-Policy",
+                containsString("default-src 'self'")));
     }
 }

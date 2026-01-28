@@ -40,6 +40,18 @@ public class SecurityConfig {
             )
             .headers(headers -> headers
                 .frameOptions(frameOptions -> frameOptions.sameOrigin()) // H2コンソール用にiframeを許可
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives(
+                        "default-src 'self'; " +
+                        "style-src 'self' https://cdn.jsdelivr.net; " +
+                        "script-src 'self'; " +
+                        "img-src 'self'; " +
+                        "font-src 'self' https://cdn.jsdelivr.net; " +
+                        "object-src 'none'; " +
+                        "base-uri 'self'; " +
+                        "form-action 'self';"
+                    )
+                )
             )
             .csrf(csrf -> csrf
                 .ignoringRequestMatchers("/h2-console/**") // H2コンソール用にCSRFを無効化
