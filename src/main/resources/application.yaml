@@ -34,7 +34,7 @@ mybatis:
 app:
   security:
     account-unlock:
-      token-expiry-seconds: 3600 # 1時間
+      token-expiry-seconds: 900 # 15分
       host-url: "http://localhost:8080"
     login:
       attempt:

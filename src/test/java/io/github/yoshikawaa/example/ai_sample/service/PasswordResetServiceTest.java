@@ -302,4 +302,33 @@ class PasswordResetServiceTest {
         // Assert
         verify(passwordResetTokenRepository).deleteByEmail("test@example.com");
     }
+
+    @Test
+    @DisplayName("updatePassword: 一度利用したトークンを再利用した場合、InvalidTokenExceptionがスローされる")
+    void testUpdatePassword_トークン再利用不可() {
+        // Arrange: 1回目は有効なトークン
+        PasswordResetToken validToken = new PasswordResetToken();
+        validToken.setEmail("test@example.com");
+        validToken.setResetToken("valid-token");
+        validToken.setTokenExpiry(System.currentTimeMillis() + 3600000);
+
+        // 1回目: 正常にパスワードリセット
+        when(passwordResetTokenRepository.findByResetToken("valid-token"))
+                .thenReturn(validToken);
+        when(passwordEncoder.encode("newPassword123"))
+                .thenReturn("hashedNewPassword");
+        doNothing().when(customerRepository).updatePassword(anyString(), anyString());
+        doNothing().when(loginAttemptService).resetAttempts(anyString());
+        doNothing().when(passwordResetTokenRepository).deleteByEmail(anyString());
+
+        passwordResetService.updatePassword("valid-token", "newPassword123");
+
+        // 2回目: トークンは既に削除済み（findByResetTokenはnullを返す）
+        when(passwordResetTokenRepository.findByResetToken("valid-token"))
+                .thenReturn(null);
+
+        // Act & Assert: 再利用時は例外
+        assertThatThrownBy(() -> passwordResetService.updatePassword("valid-token", "anotherPassword"))
+                .isInstanceOf(InvalidTokenException.class);
+    }
 }

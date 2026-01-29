@@ -91,4 +91,27 @@ class AccountLockServiceTest {
         assertThat(result).isFalse();
         verify(accountUnlockTokenRepository, never()).deleteByToken(anyString());
     }
+
+    @Test
+    @DisplayName("一度利用したアンロックトークンを再利用した場合、アンロックできない")
+    void testUnlockAccount_TokenReuseNotAllowed() {
+        String email = "test@example.com";
+        String token = "unlock-token";
+        long expiry = System.currentTimeMillis() + 10000;
+        AccountUnlockToken unlockToken = new AccountUnlockToken(email, token, expiry);
+
+        // 1回目: 正常にアンロック
+        when(accountUnlockTokenRepository.findByToken(token)).thenReturn(unlockToken);
+        doNothing().when(accountUnlockTokenRepository).deleteByToken(token);
+        boolean firstResult = accountLockService.unlockAccount(token);
+        assertThat(firstResult).isTrue();
+        verify(accountUnlockTokenRepository, times(1)).deleteByToken(token);
+
+        // 2回目: トークンは既に削除済み（findByTokenはnullを返す）
+        when(accountUnlockTokenRepository.findByToken(token)).thenReturn(null);
+        boolean secondResult = accountLockService.unlockAccount(token);
+        assertThat(secondResult).isFalse();
+        // 削除は1回のみ呼ばれていること
+        verify(accountUnlockTokenRepository, times(1)).deleteByToken(token);
+    }
 }

@@ -6,9 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-import lombok.RequiredArgsConstructor;
-
-@RequiredArgsConstructor
 public class AiSampleApplication {
 
 	public static void main(String[] args) {
