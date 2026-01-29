@@ -1,4 +1,9 @@
+
 package io.github.yoshikawaa.example.ai_sample.config;
+
+import io.github.yoshikawaa.example.ai_sample.service.EmailService;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.model.LoginAttempt;
@@ -54,6 +59,9 @@ class SecurityConfigTest {
     @MockitoBean
     private LoginAttemptRepository loginAttemptRepository;
 
+    @MockitoBean
+    private EmailService emailService;
+
     @BeforeEach
     void setUpCustomer() {
         // テスト用のユーザーをモック
@@ -69,6 +77,8 @@ class SecurityConfigTest {
         // CustomerRepository の findByEmail メソッドをモック
         when(customerRepository.findByEmail("test@example.com"))
                 .thenReturn(Optional.of(testCustomer));
+        // EmailServiceのメール送信を抑止
+        doNothing().when(emailService).sendEmail(any(), any(), any());
     }
 
     @Test
@@ -93,7 +103,7 @@ class SecurityConfigTest {
     @DisplayName("ロック状態のユーザーは/account-lockedにリダイレクトされる（認証フロー全体）")
     void testLogin_LockedUser_RedirectsToAccountLocked() throws Exception {
         // ロック状態のLoginAttemptを返す
-        String email = "locked@example.com";
+        String email = "test@example.com";
         LoginAttempt lockedAttempt = new LoginAttempt();
         lockedAttempt.setEmail(email);
         lockedAttempt.setAttemptCount(5);
@@ -111,17 +121,17 @@ class SecurityConfigTest {
     @Test
     @DisplayName("5回目失敗で即ロック画面に遷移する（認証フロー全体）")
     void testLogin_ImmediateLock_RedirectsToAccountLocked() throws Exception {
-        // 5回目失敗時にロック状態のLoginAttemptを返す
+        // 5回目失敗直前の状態（attemptCount=4, lockedUntil=null）を返す
         String email = "test@example.com";
-        LoginAttempt lockedAttempt = new LoginAttempt();
-        lockedAttempt.setEmail(email);
-        lockedAttempt.setAttemptCount(5);
-        lockedAttempt.setLastAttemptTime(System.currentTimeMillis());
-        lockedAttempt.setLockedUntil(System.currentTimeMillis() + 1000000L);
-        when(loginAttemptRepository.findByEmail(email)).thenReturn(Optional.of(lockedAttempt));
+        LoginAttempt attempt = new LoginAttempt();
+        attempt.setEmail(email);
+        attempt.setAttemptCount(4);
+        attempt.setLastAttemptTime(System.currentTimeMillis());
+        attempt.setLockedUntil(null);
+        when(loginAttemptRepository.findByEmail(email)).thenReturn(Optional.of(attempt));
 
-        // ログイン試行→ロック画面にリダイレクトされることを検証
-        mockMvc.perform(formLogin("/login").user(email).password("password123"))
+        // ログイン試行（誤ったパスワードで5回目失敗を発生させる）→ロック画面にリダイレクトされることを検証
+        mockMvc.perform(formLogin("/login").user(email).password("wrongPassword"))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/account-locked?email=" + email));
     }

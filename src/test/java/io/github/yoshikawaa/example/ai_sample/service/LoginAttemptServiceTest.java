@@ -1,10 +1,15 @@
+
 package io.github.yoshikawaa.example.ai_sample.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.ArgumentMatchers.any;
+import org.junit.jupiter.api.BeforeEach;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 
 import java.util.Optional;
 
@@ -17,6 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.yoshikawaa.example.ai_sample.model.LoginAttempt;
 import io.github.yoshikawaa.example.ai_sample.repository.LoginAttemptRepository;
+import io.github.yoshikawaa.example.ai_sample.model.Customer;
 
 @DisplayName("LoginAttemptService のテスト")
 class LoginAttemptServiceTest {
@@ -27,10 +33,22 @@ class LoginAttemptServiceTest {
     class DefaultTest {
 
         @MockitoBean
+        private CustomerService customerService;
+
+        @MockitoBean
         private LoginAttemptRepository loginAttemptRepository;
+
+        @MockitoBean
+        private EmailService emailService;
 
         @Autowired
         private LoginAttemptService loginAttemptService;
+
+        @BeforeEach
+        void setUpEmailService() {
+            // EmailServiceのメール送信を抑止
+            doNothing().when(emailService).sendEmail(any(), any(), any());
+        }
 
         @Test
         @DisplayName("handleFailedLoginAttempt: 初回失敗でログイン試行を記録できる")
@@ -76,6 +94,12 @@ class LoginAttemptServiceTest {
             existingAttempt.setLockedUntil(null);
             existingAttempt.setLastAttemptTime(System.currentTimeMillis());
             when(loginAttemptRepository.findByEmail(email)).thenReturn(Optional.of(existingAttempt));
+
+            // 顧客情報のスタブ
+            Customer mockCustomer = new Customer();
+            mockCustomer.setEmail(email);
+            mockCustomer.setName("Test User");
+            when(customerService.getCustomerByEmail(email)).thenReturn(mockCustomer);
 
             // When
             loginAttemptService.handleFailedLoginAttempt(email);
@@ -207,11 +231,24 @@ class LoginAttemptServiceTest {
     @DisplayName("プロパティ変更時の動作検証")
     class LoginAttemptPropertiesChangeTest {
 
+
+        @MockitoBean
+        private CustomerService customerService;
+
         @MockitoBean
         private LoginAttemptRepository loginAttemptRepository;
 
+        @MockitoBean
+        private EmailService emailService;
+
         @Autowired
         private LoginAttemptService loginAttemptService;
+
+        @BeforeEach
+        void setUpEmailService() {
+            // EmailServiceのメール送信を抑止
+            doNothing().when(emailService).sendEmail(any(), any(), any());
+        }
 
         @Test
         @DisplayName("max値を変更した場合、その回数でロックされることを検証する")
@@ -226,7 +263,7 @@ class LoginAttemptServiceTest {
                 return Optional.of(currentAttempt[0]);
             });
             // insertの挙動を模擬
-            org.mockito.Mockito.doAnswer(invocation -> {
+            doAnswer(invocation -> {
                 LoginAttempt inserted = invocation.getArgument(0);
                 currentAttempt[0] = inserted;
                 return null;
@@ -239,6 +276,12 @@ class LoginAttemptServiceTest {
                 currentAttempt[0].setLockedUntil(updated.getLockedUntil());
                 return null;
             }).when(loginAttemptRepository).update(any(LoginAttempt.class));
+
+            // 顧客情報のスタブ
+            Customer mockCustomer = new Customer();
+            mockCustomer.setEmail(email);
+            mockCustomer.setName("Lock3 User");
+            when(customerService.getCustomerByEmail(email)).thenReturn(mockCustomer);
 
             // 1回目失敗（まだロックされない）
             boolean locked1 = loginAttemptService.handleFailedLoginAttempt(email);
@@ -285,6 +328,12 @@ class LoginAttemptServiceTest {
                 currentAttempt[0].setLockedUntil(updated.getLockedUntil());
                 return null;
             }).when(loginAttemptRepository).update(any(LoginAttempt.class));
+
+            // 顧客情報のスタブ
+            Customer mockCustomer = new Customer();
+            mockCustomer.setEmail(email);
+            mockCustomer.setName("LockDuration User");
+            when(customerService.getCustomerByEmail(email)).thenReturn(mockCustomer);
 
             // 1回目失敗（まだロックされない）
             loginAttemptService.handleFailedLoginAttempt(email);

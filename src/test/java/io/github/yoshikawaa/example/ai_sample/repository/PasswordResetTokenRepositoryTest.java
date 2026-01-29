@@ -8,6 +8,10 @@ import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 
+import io.github.yoshikawaa.example.ai_sample.model.Customer;
+
+import java.time.LocalDate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @MybatisTest
@@ -18,10 +22,21 @@ class PasswordResetTokenRepositoryTest {
     @Autowired
     private PasswordResetTokenRepository passwordResetTokenRepository;
 
+    @Autowired
+    private CustomerRepository customerRepository;
+
     @BeforeEach
     void setUp() {
-        // 各テストの前にテストデータをクリーンアップ
-        passwordResetTokenRepository.deleteByEmail("john.doe@example.com");
+        // 各テストの前にtest@example.comの顧客を必ずinsert（外部キー制約対策）
+        Customer customer = new Customer();
+        customer.setEmail("test@example.com");
+        customer.setPassword("hashed_password");
+        customer.setName("Test User");
+        customer.setRegistrationDate(LocalDate.of(2023, 1, 1));
+        customer.setBirthDate(LocalDate.of(1990, 1, 1));
+        customer.setPhoneNumber("000-0000-0000");
+        customer.setAddress("Test Address");
+        customerRepository.insert(customer);
     }
 
     @Test
@@ -29,7 +44,7 @@ class PasswordResetTokenRepositoryTest {
     void testInsert() {
         // トークンを作成
         PasswordResetToken token = new PasswordResetToken();
-        token.setEmail("john.doe@example.com");
+        token.setEmail("test@example.com");
         token.setResetToken("test-token-123");
         token.setTokenExpiry(System.currentTimeMillis() + 3600000); // 1時間後
 
@@ -39,7 +54,7 @@ class PasswordResetTokenRepositoryTest {
         // 挿入されたトークンを取得して検証
         PasswordResetToken savedToken = passwordResetTokenRepository.findByResetToken("test-token-123");
         assertThat(savedToken).isNotNull();
-        assertThat(savedToken.getEmail()).isEqualTo("john.doe@example.com");
+        assertThat(savedToken.getEmail()).isEqualTo("test@example.com");
         assertThat(savedToken.getResetToken()).isEqualTo("test-token-123");
         assertThat(savedToken.getTokenExpiry()).isGreaterThan(System.currentTimeMillis());
     }
@@ -49,15 +64,15 @@ class PasswordResetTokenRepositoryTest {
     void testInsert_既存のメールアドレスで上書き() {
         // 最初のトークンを挿入
         PasswordResetToken token1 = new PasswordResetToken();
-        token1.setEmail("john.doe@example.com");
+        token1.setEmail("test@example.com");
         token1.setResetToken("test-token-old");
         token1.setTokenExpiry(System.currentTimeMillis() + 3600000);
         passwordResetTokenRepository.insert(token1);
 
         // 同じメールアドレスで新しいトークンを挿入（既存のトークンを削除してから挿入）
-        passwordResetTokenRepository.deleteByEmail("john.doe@example.com");
+        passwordResetTokenRepository.deleteByEmail("test@example.com");
         PasswordResetToken token2 = new PasswordResetToken();
-        token2.setEmail("john.doe@example.com");
+        token2.setEmail("test@example.com");
         token2.setResetToken("test-token-new");
         token2.setTokenExpiry(System.currentTimeMillis() + 3600000);
         passwordResetTokenRepository.insert(token2);
@@ -69,7 +84,7 @@ class PasswordResetTokenRepositoryTest {
         // 新しいトークンが存在することを確認
         PasswordResetToken newToken = passwordResetTokenRepository.findByResetToken("test-token-new");
         assertThat(newToken).isNotNull();
-        assertThat(newToken.getEmail()).isEqualTo("john.doe@example.com");
+        assertThat(newToken.getEmail()).isEqualTo("test@example.com");
     }
 
     @Test
@@ -77,7 +92,7 @@ class PasswordResetTokenRepositoryTest {
     void testFindByResetToken_存在するトークン() {
         // トークンを挿入
         PasswordResetToken token = new PasswordResetToken();
-        token.setEmail("john.doe@example.com");
+        token.setEmail("test@example.com");
         token.setResetToken("test-token-456");
         token.setTokenExpiry(System.currentTimeMillis() + 3600000);
         passwordResetTokenRepository.insert(token);
@@ -87,7 +102,7 @@ class PasswordResetTokenRepositoryTest {
 
         // 検証
         assertThat(foundToken).isNotNull();
-        assertThat(foundToken.getEmail()).isEqualTo("john.doe@example.com");
+        assertThat(foundToken.getEmail()).isEqualTo("test@example.com");
         assertThat(foundToken.getResetToken()).isEqualTo("test-token-456");
     }
 
@@ -106,7 +121,7 @@ class PasswordResetTokenRepositoryTest {
     void testDeleteByEmail() {
         // トークンを挿入
         PasswordResetToken token = new PasswordResetToken();
-        token.setEmail("john.doe@example.com");
+        token.setEmail("test@example.com");
         token.setResetToken("test-token-789");
         token.setTokenExpiry(System.currentTimeMillis() + 3600000);
         passwordResetTokenRepository.insert(token);
@@ -116,7 +131,7 @@ class PasswordResetTokenRepositoryTest {
         assertThat(savedToken).isNotNull();
 
         // トークンを削除
-        passwordResetTokenRepository.deleteByEmail("john.doe@example.com");
+        passwordResetTokenRepository.deleteByEmail("test@example.com");
 
         // トークンが削除されたことを確認
         PasswordResetToken deletedToken = passwordResetTokenRepository.findByResetToken("test-token-789");
@@ -137,7 +152,7 @@ class PasswordResetTokenRepositoryTest {
     void testFindByResetToken_有効期限切れのトークン() {
         // 有効期限切れのトークンを挿入
         PasswordResetToken token = new PasswordResetToken();
-        token.setEmail("john.doe@example.com");
+        token.setEmail("test@example.com");
         token.setResetToken("expired-token");
         token.setTokenExpiry(System.currentTimeMillis() - 1000); // 過去の時刻
         passwordResetTokenRepository.insert(token);

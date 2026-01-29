@@ -9,7 +9,6 @@ import java.time.format.DateTimeFormatter;
 import io.github.yoshikawaa.example.ai_sample.config.LoginAttemptProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import io.github.yoshikawaa.example.ai_sample.model.LoginAttempt;
 import io.github.yoshikawaa.example.ai_sample.repository.LoginAttemptRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -21,10 +20,14 @@ public class LoginAttemptService {
 
     private final LoginAttemptRepository loginAttemptRepository;
     private final LoginAttemptProperties loginAttemptProperties;
+    private final CustomerService customerService;
+    private final NotificationService notificationService;
 
-    public LoginAttemptService(LoginAttemptRepository loginAttemptRepository, LoginAttemptProperties loginAttemptProperties) {
+    public LoginAttemptService(LoginAttemptRepository loginAttemptRepository, LoginAttemptProperties loginAttemptProperties, CustomerService customerService, NotificationService notificationService) {
         this.loginAttemptRepository = loginAttemptRepository;
         this.loginAttemptProperties = loginAttemptProperties;
+        this.customerService = customerService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -54,6 +57,8 @@ public class LoginAttemptService {
 
             if (newAttemptCount >= loginAttemptProperties.getMax()) {
                 // ロック
+                var customer = customerService.getCustomerByEmail(email);
+                notificationService.sendAccountLockedNotification(customer);
                 long lockedUntil = currentTime + loginAttemptProperties.getLockDurationMs();
                 loginAttempt.setLockedUntil(lockedUntil);
                 loginAttemptRepository.update(loginAttempt);

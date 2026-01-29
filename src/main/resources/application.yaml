@@ -31,13 +31,16 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
 
-
 app:
   security:
+    account-unlock:
+      token-expiry-seconds: 3600 # 1時間
+      host-url: "http://localhost:8080"
     login:
       attempt:
         max: 5
         lock-duration-ms: 1800000 # 30分
+
 logging:
   level:
     "[io.github.yoshikawaa.example.ai_sample]": DEBUG

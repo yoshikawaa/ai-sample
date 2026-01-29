@@ -11,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,12 +29,12 @@ import lombok.extern.slf4j.Slf4j;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final ObjectProvider<PasswordEncoder> passwordEncoderProvider;
     private final CsvService csvService;
 
-    public CustomerService(CustomerRepository customerRepository, PasswordEncoder passwordEncoder, CsvService csvService) {
+    public CustomerService(CustomerRepository customerRepository, ObjectProvider<PasswordEncoder> passwordEncoderProvider, CsvService csvService) {
         this.customerRepository = customerRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.passwordEncoderProvider = passwordEncoderProvider;
         this.csvService = csvService;
     }
 
@@ -62,10 +63,10 @@ public class CustomerService {
         }
 
         // パスワードをハッシュ化
-        customer.setPassword(passwordEncoder.encode(customer.getPassword()));
+        customer.setPassword(passwordEncoderProvider.getObject().encode(customer.getPassword()));
 
         // 顧客情報を登録
-        customerRepository.save(customer);
+        customerRepository.insert(customer);
         
         log.info("顧客登録完了: email={}", customer.getEmail());
     }
@@ -74,7 +75,7 @@ public class CustomerService {
         log.info("パスワード変更開始: email={}", customer.getEmail());
         
         // 新しいパスワードをハッシュ化
-        String hashedPassword = passwordEncoder.encode(newPassword);
+        String hashedPassword = passwordEncoderProvider.getObject().encode(newPassword);
 
         // パスワードを更新
         customerRepository.updatePassword(customer.getEmail(), hashedPassword);

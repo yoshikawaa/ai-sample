@@ -126,7 +126,7 @@ class CustomerRepositoryTest {
         newCustomer.setAddress("789 New St");
 
         // 顧客を保存
-        customerRepository.save(newCustomer);
+        customerRepository.insert(newCustomer);
 
         // 保存された顧客を取得して検証
         Optional<Customer> savedCustomer = customerRepository.findByEmail("new.customer@example.com");
@@ -243,7 +243,7 @@ class CustomerRepositoryTest {
         testCustomer.setBirthDate(LocalDate.of(1990, 1, 1));
         testCustomer.setPhoneNumber("999-999-9999");
         testCustomer.setAddress("999 Delete St");
-        customerRepository.save(testCustomer);
+        customerRepository.insert(testCustomer);
 
         // 顧客が保存されたことを確認
         Optional<Customer> savedCustomer = customerRepository.findByEmail("delete-test@example.com");

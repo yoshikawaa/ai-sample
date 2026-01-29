@@ -10,6 +10,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+
+import org.springframework.util.MultiValueMap;
+import org.springframework.util.LinkedMultiValueMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -45,15 +48,28 @@ class PasswordResetControllerTest {
         doNothing().when(passwordResetService).sendResetLink("test@example.com");
 
         // Act & Assert
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("email", "test@example.com");
         mockMvc.perform(post("/password-reset/request")
-                        .param("email", "test@example.com")
+                        .params(params)
                         .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/password-reset/request-complete"));
+
+        mockMvc.perform(get("/password-reset/complete"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("password-reset-request"))
-                .andExpect(model().attributeExists("message"))
-                .andExpect(model().attribute("message", "パスワードリセットリンクを送信しました。"));
+                .andExpect(view().name("password-reset-complete"));
 
         verify(passwordResetService).sendResetLink("test@example.com");
+    }
+
+    @Test
+    @DisplayName("GET /password-reset/complete: 完了画面を表示する")
+    void testShowResetCompletePage() throws Exception {
+        mockMvc.perform(get("/password-reset/complete"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("password-reset-complete"));
     }
 
     @Test
@@ -63,8 +79,10 @@ class PasswordResetControllerTest {
         doNothing().when(passwordResetService).validateResetToken("valid-token");
 
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "valid-token");
         mockMvc.perform(get("/password-reset/confirm")
-                        .param("token", "valid-token"))
+                        .params(params))
                 .andExpect(status().isOk())
                 .andExpect(view().name("password-reset-form"))
                 .andExpect(model().attributeExists("token"))
@@ -81,8 +99,10 @@ class PasswordResetControllerTest {
                 .when(passwordResetService).validateResetToken("invalid-token");
 
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "invalid-token");
         mockMvc.perform(get("/password-reset/confirm")
-                        .param("token", "invalid-token"))
+                        .params(params))
                 .andExpect(status().isBadRequest())
                 .andExpect(view().name("password-reset-error"))
                 .andExpect(model().attributeExists("errorMessage"))
@@ -114,10 +134,12 @@ class PasswordResetControllerTest {
         doNothing().when(passwordResetService).updatePassword("valid-token", "newPassword123");
 
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "valid-token");
+        params.add("newPassword", "newPassword123");
+        params.add("confirmPassword", "newPassword123");
         mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "valid-token")
-                        .param("newPassword", "newPassword123")
-                        .param("confirmPassword", "newPassword123")
+                        .params(params)
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/password-reset/complete"));
@@ -129,10 +151,12 @@ class PasswordResetControllerTest {
     @DisplayName("POST /password-reset/reset: パスワードが短すぎる場合、バリデーションエラーを表示する")
     void testResetPassword_パスワードが短すぎる() throws Exception {
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "valid-token");
+        params.add("newPassword", "12345");
+        params.add("confirmPassword", "12345");
         mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "valid-token")
-                        .param("newPassword", "12345")
-                        .param("confirmPassword", "12345")
+                        .params(params)
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("password-reset-form"))
@@ -146,10 +170,12 @@ class PasswordResetControllerTest {
     @DisplayName("POST /password-reset/reset: パスワードが一致しない場合、バリデーションエラーを表示する")
     void testResetPassword_パスワードが一致しない() throws Exception {
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "valid-token");
+        params.add("newPassword", "newPassword123");
+        params.add("confirmPassword", "differentPassword");
         mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "valid-token")
-                        .param("newPassword", "newPassword123")
-                        .param("confirmPassword", "differentPassword")
+                        .params(params)
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("password-reset-form"))
@@ -163,10 +189,12 @@ class PasswordResetControllerTest {
     @DisplayName("POST /password-reset/reset: パスワードが空の場合、バリデーションエラーを表示する")
     void testResetPassword_パスワードが空() throws Exception {
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "valid-token");
+        params.add("newPassword", "");
+        params.add("confirmPassword", "");
         mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "valid-token")
-                        .param("newPassword", "")
-                        .param("confirmPassword", "")
+                        .params(params)
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("password-reset-form"))
@@ -184,10 +212,12 @@ class PasswordResetControllerTest {
                 .when(passwordResetService).updatePassword("invalid-token", "newPassword123");
 
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "invalid-token");
+        params.add("newPassword", "newPassword123");
+        params.add("confirmPassword", "newPassword123");
         mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "invalid-token")
-                        .param("newPassword", "newPassword123")
-                        .param("confirmPassword", "newPassword123")
+                        .params(params)
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(view().name("password-reset-error"))
@@ -201,10 +231,12 @@ class PasswordResetControllerTest {
     @DisplayName("POST /password-reset/reset: 確認用パスワードが空の場合、バリデーションエラーを表示する")
     void testResetPassword_確認用パスワードが空() throws Exception {
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "valid-token");
+        params.add("newPassword", "newPassword123");
+        params.add("confirmPassword", "");
         mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "valid-token")
-                        .param("newPassword", "newPassword123")
-                        .param("confirmPassword", "")
+                        .params(params)
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(view().name("password-reset-form"))
@@ -215,11 +247,11 @@ class PasswordResetControllerTest {
     }
 
     @Test
-    @DisplayName("GET /password-reset/complete: 完了画面を表示する")
-    void testShowResetCompletePage() throws Exception {
-        mockMvc.perform(get("/password-reset/complete"))
+    @DisplayName("GET /password-reset/request-complete: リクエスト完了画面を表示する")
+    void testShowResetRequestCompletePage() throws Exception {
+        mockMvc.perform(get("/password-reset/request-complete"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("password-reset-complete"));
+                .andExpect(view().name("password-reset-request-complete"));
     }
 
     @Test
@@ -230,10 +262,12 @@ class PasswordResetControllerTest {
                 .when(passwordResetService).updatePassword("expiring-token", "newPassword123");
 
         // Act & Assert
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("token", "expiring-token");
+        params.add("newPassword", "newPassword123");
+        params.add("confirmPassword", "newPassword123");
         mockMvc.perform(post("/password-reset/reset")
-                        .param("token", "expiring-token")
-                        .param("newPassword", "newPassword123")
-                        .param("confirmPassword", "newPassword123")
+                        .params(params)
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(view().name("password-reset-error"))

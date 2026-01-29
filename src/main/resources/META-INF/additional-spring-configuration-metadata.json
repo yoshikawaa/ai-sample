@@ -13,5 +13,15 @@
     "name": "app.security.login.attempt.lock-duration-ms",
     "type": "java.lang.Long",
     "description": "アカウントロックの継続時間（ミリ秒, デフォルト: 1800000=30分）"
+  },
+  {
+    "name": "app.security.account-unlock.token-expiry-seconds",
+    "type": "java.lang.Integer",
+    "description": "アカウントロック解除トークンの有効期限（秒, デフォルト: 3600=1時間）"
+  },
+  {
+    "name": "app.security.account-unlock.host-url",
+    "type": "java.lang.String",
+    "description": "アプリケーションのホストURL（例: http://localhost:8080）"
   }
 ]}
