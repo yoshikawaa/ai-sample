@@ -5,9 +5,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @Data
 @ConfigurationProperties(prefix = "app.security.account-unlock")
-import lombok.Data;
-
-@Data
 public class AccountUnlockProperties {
     /** トークン有効期限（秒） */
     private int tokenExpirySeconds = 3600;

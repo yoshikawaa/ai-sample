@@ -748,6 +748,25 @@ src/main/resources/templates/
 - メソッド名変更時は全呼び出し・テストも一括修正する（IDEやgrepで全参照を洗い出し、漏れなく修正）。
 - テスト名・DisplayNameも実装名に合わせて修正し、説明も実装の責務・命名と一致させる。
 
+#### Lombok利用時のアノテーション並び順ルール
+
+- **Lombok系アノテーション（@Slf4j, @RequiredArgsConstructor など）は、必ずSpring系アノテーション（@Service, @Controller, @Configuration, @Component など）より前に記述すること。**
+- 理由：Lombokのアノテーションはクラスの構造生成に関わるため、SpringのDIやAOPアノテーションより先に記述することで、可読性・一貫性・自動生成コードの安定性を高める。
+- 例：
+    ```java
+    // ✅ 正しい例
+    @Slf4j
+    @RequiredArgsConstructor
+    @Service
+    public class CustomerService { ... }
+
+    // ❌ 誤った例
+    @Service
+    @Slf4j
+    public class CustomerService { ... }
+    ```
+- すべての本番用クラス（Service, Controller, Validator, Config等）でこの順序を厳守すること。
+
 ### 2. 設定クラス（@Configuration）
 
 #### プロパティベースの条件付きBean登録
