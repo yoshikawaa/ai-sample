@@ -4,6 +4,7 @@ import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetToken;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.repository.PasswordResetTokenRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.lang.NonNull;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 @Transactional
 public class PasswordResetService {
@@ -23,18 +25,6 @@ public class PasswordResetService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
-
-    public PasswordResetService(CustomerRepository customerRepository,
-                                PasswordResetTokenRepository passwordResetTokenRepository,
-                                EmailService emailService,
-                                PasswordEncoder passwordEncoder,
-                                LoginAttemptService loginAttemptService) {
-        this.customerRepository = customerRepository;
-        this.passwordResetTokenRepository = passwordResetTokenRepository;
-        this.emailService = emailService;
-        this.passwordEncoder = passwordEncoder;
-        this.loginAttemptService = loginAttemptService;
-    }
 
     public void sendResetLink(@NonNull String email) {
         // セキュリティ: メールアドレスの存在有無を外部に漏らさない

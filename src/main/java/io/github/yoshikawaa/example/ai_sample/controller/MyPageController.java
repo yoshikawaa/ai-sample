@@ -1,5 +1,6 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,15 +16,12 @@ import io.github.yoshikawaa.example.ai_sample.model.CustomerEditForm;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 
+@RequiredArgsConstructor
 @Controller
 @RequestMapping("/mypage")
 public class MyPageController {
 
     private final CustomerService customerService;
-
-    public MyPageController(CustomerService customerService) {
-        this.customerService = customerService;
-    }
 
     @GetMapping
     public String showMyPage() {

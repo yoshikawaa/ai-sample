@@ -1,5 +1,6 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,14 +8,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 
+@RequiredArgsConstructor
 @Controller
 public class AccountLockedController {
 
     private final LoginAttemptService loginAttemptService;
-
-    public AccountLockedController(LoginAttemptService loginAttemptService) {
-        this.loginAttemptService = loginAttemptService;
-    }
 
     @GetMapping("/account-locked")
     public String showAccountLockedPage(@RequestParam String email, Model model) {

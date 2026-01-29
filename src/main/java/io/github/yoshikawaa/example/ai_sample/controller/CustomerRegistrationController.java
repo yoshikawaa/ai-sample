@@ -4,6 +4,7 @@ import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerExceptio
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.model.CustomerForm;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -20,15 +21,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import java.time.LocalDate;
 
 @Slf4j
+@RequiredArgsConstructor
 @Controller
 @RequestMapping("/register")
 public class CustomerRegistrationController {
 
     private final CustomerService customerService;
-
-    public CustomerRegistrationController(CustomerService customerService) {
-        this.customerService = customerService;
-    }
 
     // 共通の @ModelAttribute メソッド
     @ModelAttribute("customerForm")

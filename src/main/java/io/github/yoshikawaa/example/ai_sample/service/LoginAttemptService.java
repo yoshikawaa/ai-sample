@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import io.github.yoshikawaa.example.ai_sample.model.LoginAttempt;
 import io.github.yoshikawaa.example.ai_sample.repository.LoginAttemptRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 @Transactional
 public class LoginAttemptService {
@@ -22,13 +24,6 @@ public class LoginAttemptService {
     private final LoginAttemptProperties loginAttemptProperties;
     private final CustomerService customerService;
     private final NotificationService notificationService;
-
-    public LoginAttemptService(LoginAttemptRepository loginAttemptRepository, LoginAttemptProperties loginAttemptProperties, CustomerService customerService, NotificationService notificationService) {
-        this.loginAttemptRepository = loginAttemptRepository;
-        this.loginAttemptProperties = loginAttemptProperties;
-        this.customerService = customerService;
-        this.notificationService = notificationService;
-    }
 
     /**
      * ログイン失敗回数を記録し、ロック閾値に達した場合はアカウントをロックしてtrueを返す。
