@@ -1,6 +1,7 @@
 package io.github.yoshikawaa.example.ai_sample.config;
 
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,14 +20,11 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Slf4j
+@RequiredArgsConstructor
 @Configuration
 public class SecurityConfig {
 
     private final LoginAttemptService loginAttemptService;
-
-    public SecurityConfig(LoginAttemptService loginAttemptService) {
-        this.loginAttemptService = loginAttemptService;
-    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -63,8 +61,8 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(
-                    "/", "/customers", "/customers/**", "/register/**", "/login", "/password-reset/**", "/account-locked", "/error",
-                    "/account-unlock/request", "/account-unlock", "/account-unlock/**"
+                    "/", "/customers", "/customers/**", "/register/**", "/login", "/password-reset/**", "/account-locked",
+                    "/account-unlock/**", "/error"
                 ).permitAll() // ログイン不要の画面（※/h2-console/**は除外）
                 .anyRequest().authenticated() // それ以外は認証が必要
             )

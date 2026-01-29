@@ -4,19 +4,17 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
 
+@RequiredArgsConstructor
 @Component
 public class CurrentPasswordValidator implements ConstraintValidator<CurrentPassword, String> {
 
     private final PasswordEncoder passwordEncoder;
-
-    public CurrentPasswordValidator(PasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {

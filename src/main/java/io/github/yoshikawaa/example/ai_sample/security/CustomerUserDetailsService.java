@@ -3,23 +3,19 @@ package io.github.yoshikawaa.example.ai_sample.security;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 
+@RequiredArgsConstructor
 @Service
 public class CustomerUserDetailsService implements UserDetailsService {
 
     private final CustomerRepository customerRepository;
     private final LoginAttemptService loginAttemptService;
-
-    public CustomerUserDetailsService(CustomerRepository customerRepository, 
-                                      LoginAttemptService loginAttemptService) {
-        this.customerRepository = customerRepository;
-        this.loginAttemptService = loginAttemptService;
-    }
 
     @Override
     @Transactional(readOnly = true)

@@ -3,6 +3,7 @@ package io.github.yoshikawaa.example.ai_sample.controller;
 import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetForm;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -17,15 +18,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @Slf4j
+@RequiredArgsConstructor
 @Controller
 @RequestMapping("/password-reset") // クラスレベルで共通のパスを設定
 public class PasswordResetController {
 
     private final PasswordResetService passwordResetService;
-
-    public PasswordResetController(PasswordResetService passwordResetService) {
-        this.passwordResetService = passwordResetService;
-    }
 
     @GetMapping("/request")
     public String showResetRequestForm() {

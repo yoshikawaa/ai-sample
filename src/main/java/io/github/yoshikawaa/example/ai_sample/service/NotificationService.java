@@ -2,6 +2,7 @@ package io.github.yoshikawaa.example.ai_sample.service;
 
 import io.github.yoshikawaa.example.ai_sample.config.AccountUnlockProperties;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -9,16 +10,12 @@ import org.springframework.stereotype.Service;
  * 通知メール送信の共通サービス
  */
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class NotificationService {
 
     private final EmailService emailService;
     private final AccountUnlockProperties accountUnlockProperties;
-
-    public NotificationService(EmailService emailService, AccountUnlockProperties accountUnlockProperties) {
-        this.emailService = emailService;
-        this.accountUnlockProperties = accountUnlockProperties;
-    }
 
     /**
      * アカウントロック通知メール送信

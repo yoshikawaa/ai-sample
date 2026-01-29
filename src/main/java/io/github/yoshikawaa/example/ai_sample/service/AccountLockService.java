@@ -3,6 +3,7 @@ package io.github.yoshikawaa.example.ai_sample.service;
 import io.github.yoshikawaa.example.ai_sample.model.AccountUnlockToken;
 
 import io.github.yoshikawaa.example.ai_sample.repository.AccountUnlockTokenRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import io.github.yoshikawaa.example.ai_sample.config.AccountUnlockProperties;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class AccountLockService {
 
@@ -18,19 +20,6 @@ public class AccountLockService {
     private final AccountUnlockProperties accountUnlockProperties;
     private final LoginAttemptService loginAttemptService;
     private final NotificationService notificationService;
-
-    public AccountLockService(
-            AccountUnlockTokenRepository tokenRepository,
-            AccountUnlockProperties accountUnlockProperties,
-            LoginAttemptService loginAttemptService,
-            NotificationService notificationService) {
-        this.tokenRepository = tokenRepository;
-        this.accountUnlockProperties = accountUnlockProperties;
-        this.loginAttemptService = loginAttemptService;
-        this.notificationService = notificationService;
-    }
-
-
 
     /**
      * ロック解除申請を受付・トークン発行・メール送信（文面生成はNotificationServiceで担当）

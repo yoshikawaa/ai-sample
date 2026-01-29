@@ -3,6 +3,7 @@ package io.github.yoshikawaa.example.ai_sample.controller;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
@@ -21,15 +22,12 @@ import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.model.CustomerSearchForm;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 
+@RequiredArgsConstructor
 @Controller
 @RequestMapping("/customers")
 public class CustomerController {
 
     private final CustomerService customerService;
-
-    public CustomerController(CustomerService customerService) {
-        this.customerService = customerService;
-    }
 
     @ModelAttribute("customerSearchForm")
     public CustomerSearchForm customerSearchForm() {

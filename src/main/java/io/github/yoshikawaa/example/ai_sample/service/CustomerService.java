@@ -21,9 +21,11 @@ import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerExceptio
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 @Transactional
 public class CustomerService {
@@ -31,12 +33,6 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final ObjectProvider<PasswordEncoder> passwordEncoderProvider;
     private final CsvService csvService;
-
-    public CustomerService(CustomerRepository customerRepository, ObjectProvider<PasswordEncoder> passwordEncoderProvider, CsvService csvService) {
-        this.customerRepository = customerRepository;
-        this.passwordEncoderProvider = passwordEncoderProvider;
-        this.csvService = csvService;
-    }
 
     @Transactional(readOnly = true)
     public Customer getCustomerByEmail(String email) {

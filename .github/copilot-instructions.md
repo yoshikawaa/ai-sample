@@ -839,7 +839,56 @@ class LoginAttemptServiceTest {
 
 このように、**テストごとにプロパティ値を切り替えたい場合は、`@SpringBootTest`の付与単位に注意してください。**
 
-### 3. ログ出力
+### 3. 依存性注入
+
+**本番用クラス（@Service, @Component, @Configuration等）**  
+    - 依存性の注入は必ず**コンストラクタインジェクション**を使用すること。  
+    - フィールドインジェクション（@Autowired等）は使用禁止。
+    - 例外的に循環参照回避のため`ObjectProvider<T>`等の遅延注入を使う場合も、コンストラクタで受け取る。
+    - **Lombokの`@RequiredArgsConstructor`を積極的に利用し、finalフィールド＋自動生成コンストラクタで簡潔に記述することを推奨する。**
+
+- **テストクラス**  
+    - 依存性の注入は**フィールドインジェクション**（@Autowired, @MockitoBean等）を使用してよい。
+    - テストの可読性・記述量削減を優先し、コンストラクタインジェクションは不要。
+
+**理由**:
+- 本番用クラスでコンストラクタインジェクションを徹底することで、不変性・テスト容易性・循環参照検出性が向上する。
+- テストクラスではフィールドインジェクションの方が簡潔であり、テストの意図が明確になる。
+
+**例（本番用クラス）**:
+```java
+@Service
+@RequiredArgsConstructor
+public class CustomerService {
+    private final CustomerRepository customerRepository;
+}
+```
+
+// 明示的なコンストラクタでも可
+```java
+@Service
+public class CustomerService {
+    private final CustomerRepository customerRepository;
+    public CustomerService(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
+    }
+}
+```
+
+**例（テストクラス）**:
+```java
+@SpringBootTest
+class CustomerServiceTest {
+
+        @Autowired
+        private CustomerService customerService;
+
+        @MockitoBean
+        private CustomerRepository customerRepository;
+}
+```
+
+### 4. ログ出力
 
 #### ロガーの実装方法
 
@@ -1066,7 +1115,7 @@ void testRegisterCustomer() {
 - セキュリティログ（インシデント対応）
 - ただし、これらは専用の監査システムで管理すべきで、通常のログ出力とは別扱い
 
-### 4. リポジトリ層（MyBatis）
+### 5. リポジトリ層（MyBatis）
 
 #### マッパーインターフェース
 ```java
@@ -1183,7 +1232,7 @@ public interface CustomerRepository {
 - **CRUD操作の順序**: 取得（Read）→ 登録（Create）→ 更新（Update）→ 削除（Delete）
 - **可読性とメンテナンス性**: 関連するメソッドが離れていると理解しづらい
 
-### 5. インポートとコードスタイル
+### 6. インポートとコードスタイル
 
 #### インポート規約
 ```java
@@ -1541,7 +1590,7 @@ public void updatePassword(String token, String newPassword) {
 - **メソッド呼び出しの最適化**: 同じメソッド呼び出し（例: `resetToken.getEmail()`）を複数回実行する場合は、変数に格納して再利用する
 - **適用範囲**: サービス層、コントローラ層、リポジトリ層など、すべてのレイヤーで適用
 
-### 6. サービス層
+### 7. サービス層
 
 #### 汎用的なサービス設計（ジェネリクスの活用）
 
@@ -1693,7 +1742,7 @@ public class PasswordResetService {
 - Spring SecurityのUserDetailsService等、フレームワークが提供する特殊なサービス実装（例: CustomerUserDetailsService#loadUserByUsername）も、サービス層の一部として例外なく@Transactional（readOnly = true）を付与すること。インターフェース実装や認証系の特殊クラスでも、DBアクセスがあれば必ず付与する。
 - 実装時・レビュー時は「サービス層のpublicメソッドはすべて@Transactional付きか」を必ず確認すること。
 
-### 7. コントローラ層
+### 8. コントローラ層
 
 #### リクエストマッピング
 ```java
@@ -1824,7 +1873,7 @@ public class CustomerController {
 - CRUD操作は GET → POST → PUT → DELETE の順
 - 可読性とメンテナンス性を重視
 
-### 8. モデルクラス
+### 9. モデルクラス
 
 #### フォームクラス
 ```java
@@ -1977,7 +2026,7 @@ private byte[] generateCSV(List<Customer> customers) {
 - ❌ カスタムMappingStrategyで完全自動化を試みない（データ行が出力されない）
 - ❌ 手動でCSVエスケープ処理を実装しない（OpenCSVに任せる）
 
-### 9. テンプレート（Thymeleaf）
+### 10. テンプレート（Thymeleaf）
 
 #### 基本構成
 ```html
