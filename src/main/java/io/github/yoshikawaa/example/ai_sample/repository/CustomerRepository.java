@@ -136,7 +136,7 @@ public interface CustomerRepository {
         INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address)
         VALUES (#{email}, #{password}, #{name}, #{registrationDate}, #{birthDate}, #{phoneNumber}, #{address})
     """)
-    void save(Customer customer);
+    void insert(Customer customer);
 
     // ========================================
     // 更新

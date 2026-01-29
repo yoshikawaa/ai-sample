@@ -1,3 +1,6 @@
+
+-- 依存テーブルを先にDROP
+DROP TABLE IF EXISTS account_unlock_token;
 DROP TABLE IF EXISTS login_attempt;
 DROP TABLE IF EXISTS password_reset_tokens;
 DROP TABLE IF EXISTS customer;
@@ -25,4 +28,15 @@ CREATE TABLE login_attempt (
     attempt_count INT NOT NULL DEFAULT 0,
     locked_until BIGINT,
     last_attempt_time BIGINT NOT NULL
+);
+
+
+-- アカウントアンロック用トークンテーブル
+CREATE TABLE account_unlock_token (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    unlock_token VARCHAR(255) NOT NULL,
+    token_expiry BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (email) REFERENCES customer(email) ON DELETE CASCADE
 );

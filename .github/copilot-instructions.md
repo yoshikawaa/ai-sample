@@ -92,6 +92,89 @@ io.github.yoshikawaa.example.ai_sample/
   - 認証情報の表示（`#authentication`）
 - **禁止事項**: ビジネスロジックを含めない（条件分岐は表示制御のみ）
 
+## 循環参照（circular dependency）の禁止・対策
+
+### 原則
+- サービス層・コンポーネント間での循環参照（A→B→A）は設計上禁止とする。
+- SpringのDIで `Requested bean is currently in creation` などのエラーが発生し、アプリケーションが起動しなくなるため。
+
+### サービス間の循環参照（双方向依存）防止のベストプラクティス
+
+#### 原則
+- サービス層で**双方向依存（A→B→A）**が発生しないように設計する。
+- 循環参照が発生すると、SpringのDIで`BeanCurrentlyInCreationException`等のエラーとなり、アプリケーションが起動しなくなる。
+
+#### 解決アプローチ
+1. **責務の分離・集約**
+   - 共通の副作用（例：通知メール送信など）は**NotificationService**等の専用サービスに集約し、依存関係を一方向に整理する。
+   - 例：AccountLockServiceとLoginAttemptServiceが互いに通知を呼び合う場合、NotificationServiceを新設し、両者はNotificationServiceのみを参照する。
+
+2. **遅延注入（ObjectProvider/Provider）**
+   - どうしても一方向化できない場合は、`ObjectProvider<T>`等で遅延注入し、循環参照を回避する。ただし、設計の見直しが最優先。
+
+3. **設計段階での依存関係の可視化**
+   - サービス間の依存関係を図示し、双方向になっていないかレビューする。
+
+#### 具体例
+
+**悪い例（循環参照）**
+```java
+@Service
+public class AccountLockService {
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+    // ...
+}
+
+@Service
+public class LoginAttemptService {
+    @Autowired
+    private AccountLockService accountLockService;
+    // ...
+}
+```
+
+**良い例（NotificationServiceで一方向化）**
+```java
+@Service
+public class AccountLockService {
+    private final NotificationService notificationService;
+    // ...
+}
+
+@Service
+public class LoginAttemptService {
+    private final NotificationService notificationService;
+    // ...
+}
+
+@Service
+public class NotificationService {
+    // 通知メール送信など副作用を集約
+}
+```
+
+#### テストの観点
+- サービス間の呼び出しは**@MockitoBean**でモック化し、**サービス間の呼び出し自体が行われていることもテストで検証**する（副作用の検証）。
+
+### 回避策
+- **推奨**: 循環参照が発生しそうな場合は、`ObjectProvider<T>`（または`Provider<T>`）による遅延注入を用いる。
+    - コンストラクタインジェクションの利点（不変性・テスト容易性）を維持しつつ、依存解決を遅延できる。
+    - 例：
+      ```java
+      private final ObjectProvider<LoginAttemptService> loginAttemptServiceProvider;
+
+      public SecurityConfig(ObjectProvider<LoginAttemptService> loginAttemptServiceProvider) {
+          this.loginAttemptServiceProvider = loginAttemptServiceProvider;
+      }
+      // 必要なタイミングで getIfAvailable() などで取得
+      ```
+- Setter Injectionは原則不要。どうしても必要な場合（ObjectProviderでも解決できない特殊なケース）のみ使用する。
+
+### Spring Bootの循環参照エラー例
+- `org.springframework.beans.factory.BeanCurrentlyInCreationException: Error creating bean with name 'xxx': Requested bean is currently in creation: Is there an unresolvable circular reference?`
+- アプリケーション起動時に上記エラーが出た場合は、必ず循環参照を疑う
+
 ## 開発ワークフロー
 
 ### 1. 大規模変更時の事前計画
@@ -163,7 +246,7 @@ io.github.yoshikawaa.example.ai_sample/
 5. エラー・警告なし確認後に runTests 実行 ⬅️ 1回のテスト実行で完了
 ```
 
-**重要**: 
+**重要**:
 - ❌ 警告を無視してテスト実行 → テスト成功 → 警告修正 → 再テスト実行（非効率）
 - ✅ 警告をその場で修正 → テスト実行 → 1回で完了（効率的）
 - `runTests`を実行する前に必ず`get_errors`でコンパイルエラーがないことを確認
@@ -676,7 +759,7 @@ public class GreenMailConfig {
 }
 ```
 
-**重要**: 
+**重要**:
 - カスタムプロパティには必ず `app.` プレフィックスを付ける
 - `@Profile` より `@ConditionalOnProperty` を優先使用
 - `matchIfMissing = true` でデフォルト動作を明示
@@ -1146,6 +1229,16 @@ import static org.mockito.ArgumentMatchers.*;
 - IDEのコード検査機能を使用（グレーアウトされたインポートを確認）
 - `get_errors`ツールでコンパイルエラーと警告を確認
 - 特にテストクラスでは、使われなくなったアサーションメソッド（`assertThrows`等）のインポートに注意
+
+**テストコードのimportに関する注意点**:
+- @BeforeEach, @Test などのJUnitアノテーションは必ず org.junit.jupiter.api からimportすること。
+- 型解決エラーや誤動作を防ぐため、他のパッケージからのimportは避ける。
+- Mockitoのstatic import（doNothing, any等）は必要なものだけを明示的にimportし、未使用のstatic importは必ず削除する。
+例:
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.any;
 
 #### FQCN（完全修飾クラス名）の使用禁止
 ```java
@@ -2290,3 +2383,17 @@ void testGetAllCustomersWithPagination_SortByRegistrationDateDesc() {
 - **デフォルトソート**: ソート指定がない場合のデフォルト動作も考慮
 - **検証**: 期待する順序でデータが返されることをアサート
 - **誤った順序のモックデータ**: テストは成功してもバグが隠れる可能性がある
+
+### テストでの副作用抑止（メール送信など）
+- テストで外部サービス（メール送信等）を呼び出す場合は、必ず@MockitoBean等でモック化し副作用を抑止すること。
+- 例:
+```java
+@MockitoBean
+private EmailService emailService;
+
+@BeforeEach
+void setUpEmailService() {
+    doNothing().when(emailService).sendEmail(any(), any(), any());
+}
+```
+

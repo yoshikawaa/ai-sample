@@ -225,13 +225,13 @@ class CustomerServiceTest {
 
         // モックの動作を定義
         when(passwordEncoder.encode("plain_password")).thenReturn(hashedPassword); // ハッシュ化のモック
-        doNothing().when(customerRepository).save(newCustomer);
+        doNothing().when(customerRepository).insert(newCustomer);
 
         // サービスメソッドを呼び出し
         customerService.registerCustomer(newCustomer);
 
         // リポジトリの呼び出しを検証
-        verify(customerRepository, times(1)).save(argThat(customer -> 
+        verify(customerRepository, times(1)).insert(argThat(customer -> 
             customer.getPassword().equals(hashedPassword) // ハッシュ化されたパスワードが渡されていることを確認
         ));
     }

@@ -62,7 +62,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/", "/customers", "/customers/**", "/register/**", "/login", "/password-reset/**", "/account-locked", "/error").permitAll() // ログイン不要の画面（※/h2-console/**は除外）
+                .requestMatchers(
+                    "/", "/customers", "/customers/**", "/register/**", "/login", "/password-reset/**", "/account-locked", "/error",
+                    "/account-unlock/request", "/account-unlock", "/account-unlock/**"
+                ).permitAll() // ログイン不要の画面（※/h2-console/**は除外）
                 .anyRequest().authenticated() // それ以外は認証が必要
             )
             .headers(headers -> headers
@@ -105,10 +108,8 @@ public class SecurityConfig {
         return (request, response, authentication) -> {
             String email = authentication.getName();
             log.info("ログイン成功: email={}", email);
-            
             // ログイン成功時は試行回数をリセット
             loginAttemptService.resetAttempts(email);
-            
             response.sendRedirect("/mypage");
         };
     }
@@ -124,15 +125,14 @@ public class SecurityConfig {
                 return;
             }
             if (exception instanceof LockedException) {
-                // ロック中のログイン試行
-                log.warn("ロック中のアカウントへのログイン試行: email={}", email);
+                // 6回目以降のロック中ログイン試行
+                log.warn("ロック中のアカウントへのログイン試行: email={}, reason={}", email, exception.getMessage());
                 response.sendRedirect("/account-locked?email=" + email);
                 return;
             }
             boolean locked = loginAttemptService.handleFailedLoginAttempt(email);
             if (locked) {
-                // 5回目失敗時のWARNログ（通常失敗ログはこの場合は出力しない）
-                log.warn("5回目失敗で即ロック画面遷移: email={}, reason={}", email, exception.getMessage());
+                // 5回目失敗で即ロック画面遷移: email={}, reason={}", email, exception.getMessage());
                 response.sendRedirect("/account-locked?email=" + email);
                 return;
             }

@@ -33,10 +33,9 @@ public class PasswordResetController {
     }
 
     @PostMapping("/request")
-    public String handleResetRequest(@RequestParam(required = true) String email, Model model) {
+    public String handleResetRequest(@RequestParam(required = true) String email) {
         passwordResetService.sendResetLink(email);
-        model.addAttribute("message", "パスワードリセットリンクを送信しました。");
-        return "password-reset-request";
+        return "redirect:/password-reset/request-complete";
     }
 
     @GetMapping("/confirm")
@@ -59,6 +58,11 @@ public class PasswordResetController {
     @GetMapping("/complete")
     public String showResetCompletePage() {
         return "password-reset-complete"; // パスワードリセット完了画面
+    }
+
+    @GetMapping("/request-complete")
+    public String showResetRequestCompletePage() {
+        return "password-reset-request-complete";
     }
 
     /**
