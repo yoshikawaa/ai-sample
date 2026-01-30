@@ -5,8 +5,9 @@
     <!-- Tailwind CSS の読み込み -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-900 min-h-screen flex items-center justify-center">
-    <div class="container mx-auto px-4">
+<body class="bg-gray-900 min-h-screen min-h-dvh">
+    <div th:replace="fragments/nav :: nav(${true})"></div>
+    <div class="container mx-auto px-4 flex items-center justify-center min-h-[80vh]">
         <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md mx-auto">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Edit Customer Information</h1>
             <form th:action="@{/mypage/edit-confirm}" th:object="${customerEditForm}" method="post" class="space-y-4" novalidate>

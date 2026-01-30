@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.test.context.jdbc.Sql;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,7 +14,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @MybatisTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DisplayName("AccountUnlockTokenRepository のテスト")
-@Sql(scripts = "/schema.sql")
 class AccountUnlockTokenRepositoryTest {
 
     @Autowired

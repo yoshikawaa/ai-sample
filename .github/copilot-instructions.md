@@ -1186,7 +1186,7 @@ List<Customer> findAllWithSort(@Param("sortColumn") String sortColumn,
 - 条件付きSQLには `<script>` タグを使用
 - 相互排他的な条件（if-else）は `<choose>` + `<when>` + `<otherwise>` を使用（`<if>` の連続ではなく）
 - 複数の独立した条件は `<if test>` を使用
-- `${変数名}` は文字列置換（ソートカラム名など）、`#{変数名}` はプレースホルダ（値のバインド）
+- `${変数名}` は文字列置換（ソートカラム名など）、`#{変数名}` はプレースホルダー（値のバインド）
 - null許容パラメータは `test="param != null and param != ''"` でチェック
 - `<otherwise>` でデフォルト動作を明示
 - **パフォーマンス重視**: 大量データの場合、Java側のソートではなくSQL側でソートを実装
@@ -2088,6 +2088,53 @@ private byte[] generateCSV(List<Customer> customers) {
 - CSRFトークンは Spring Security が自動挿入
 - リンクは必ず `th:href="@{/path}"` を使用（`href="/path"` は禁止）
 
+#### 共通ナビゲーション（fragments/nav.html）の適用ルール
+
+**適用対象**
+
+* すべての画面（完了画面・エラー画面・ログイン画面・特殊画面を含む）
+    - 例: home.html, mypage.html, customer-list.html, customer-detail.html, customer-edit.html, change-password.html, customer-complete.html, error.html, login.html, account-locked.html, session-limit-exceeded.html など
+
+**理由**
+
+* 画面全体の統一感・ブランド感を高めるため、全画面で共通ヘッダを表示する
+* ただし、メニューリンク（My Page等）はログイン状態に応じて切り替えることでUXの違和感を解消する
+
+**実装方法**
+
+* 共通部は templates/fragments/nav.html として作成し、th:replace="fragments/nav :: nav(${showMenuLinks})" でインクルードする
+* <body>直下などに必ず追加する
+* nav.html内でSpring Securityのsec:authorize属性を使い、
+    - ログイン時: My Pageリンクを表示
+    - 未ログイン時: Loginリンクを表示
+
+**nav.html（共通部品）の例**
+```html
+<!-- templates/fragments/nav.html -->
+<nav class="bg-gray-800 p-4 mb-8" th:fragment="nav(showMenuLinks)">
+    <div class="container mx-auto flex items-center justify-between">
+        <a th:href="@{/}" class="text-white font-bold text-xl">AI Sample</a>
+        <ul class="flex space-x-4" th:if="${showMenuLinks}">
+            <li sec:authorize="isAuthenticated()">
+                <a th:href="@{/mypage}" class="text-gray-300 hover:text-white">My Page</a>
+            </li>
+            <li sec:authorize="isAnonymous()">
+                <a th:href="@{/login}" class="text-gray-300 hover:text-white">Login</a>
+            </li>
+            <!-- 必要に応じて他のリンクを追加 -->
+        </ul>
+    </div>
+</nav>
+```
+
+**各画面テンプレートでのインクルード例**
+```html
+<body class="...">
+    <div th:replace="fragments/nav :: nav(${true})"></div>
+    <!-- 画面ごとのコンテンツ -->
+</body>
+```
+
 #### ページネーション
 
 **ソート状態を保持する方法**:
@@ -2174,7 +2221,7 @@ private byte[] generateCSV(List<Customer> customers) {
             <h1 class="text-3xl font-bold text-gray-800 mb-6">Complete</h1>
             <p class="text-lg text-gray-600 mb-6">Success message here.</p>
             <div class="flex justify-center space-x-4">
-                <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Back</a>
+                <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Button in English</a>
             </div>
         </div>
     </div>
@@ -2190,36 +2237,49 @@ private byte[] generateCSV(List<Customer> customers) {
 
 #### 画面の統一ルール
 
-**完了画面のフォーマット**:
+
+**完了画面のフォーマット（統一レイアウト）**:
 ```html
-<div class="mb-6">
-    <svg class="mx-auto h-16 w-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-    </svg>
-</div>
-<h1 class="text-3xl font-bold text-gray-800 mb-6">Title in English</h1>
-<p class="text-lg text-gray-600 mb-6">
-    日本語での説明文。
-</p>
-<div class="flex justify-center space-x-4">
-    <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Button in English</a>
-</div>
+<body class="bg-gray-900 min-h-screen min-h-dvh">
+    <div th:replace="fragments/nav :: nav(${false})"></div>
+    <div class="flex items-center justify-center min-h-[80vh] w-full">
+        <div class="bg-white shadow-md rounded-lg p-8 max-w-md mx-auto text-center">
+            <div class="mb-6">
+                <svg class="mx-auto h-16 w-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Title in English</h1>
+            <p class="text-lg text-gray-600 mb-6">日本語での説明文。</p>
+            <div class="flex justify-center space-x-4">
+                <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Button in English</a>
+            </div>
+        </div>
+    </div>
+</body>
 ```
 
-**エラー画面のフォーマット**:
+**エラー画面のフォーマット（統一レイアウト）**:
 ```html
-<div class="mb-6">
-    <svg class="mx-auto h-16 w-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-    </svg>
-</div>
-<h1 class="text-3xl font-bold text-gray-800 mb-6">Error</h1>
-<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert" th:text="${errorMessage}">
-    Error message here.
-</div>
-<div class="flex justify-center space-x-4">
-    <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Button in English</a>
-</div>
+<body class="bg-gray-900 min-h-screen min-h-dvh">
+    <div th:replace="fragments/nav :: nav(${false})"></div>
+    <div class="flex items-center justify-center min-h-[80vh] w-full">
+        <div class="bg-white shadow-md rounded-lg p-8 max-w-md mx-auto text-center">
+            <div class="mb-6">
+                <svg class="mx-auto h-16 w-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Error</h1>
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
+                <p th:text="${errorMessage}">エラーが発生しました。</p>
+            </div>
+            <div class="flex justify-center space-x-4">
+                <a th:href="@{/path}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Button in English</a>
+            </div>
+        </div>
+    </div>
+</body>
 ```
 
 **画面全体の統一ルール**:
