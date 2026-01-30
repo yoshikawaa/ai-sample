@@ -1,8 +1,0 @@
-app:
-  greenmail:
-    enabled: false
-  security:
-    login:
-      attempt:
-        max: 3
-        lock-duration-ms: 60000
