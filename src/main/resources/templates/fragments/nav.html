@@ -1,0 +1,15 @@
+<!-- templates/fragments/nav.html -->
+<nav class="bg-gray-800 p-4 mb-8" th:fragment="nav(showMenuLinks)">
+  <div class="container mx-auto flex items-center justify-between">
+    <a th:href="@{/}" class="text-white font-bold text-xl">AI Sample</a>
+    <ul class="flex space-x-4" th:if="${showMenuLinks}">
+      <li sec:authorize="isAuthenticated()">
+        <a th:href="@{/mypage}" class="text-gray-300 hover:text-white">My Page</a>
+      </li>
+      <li sec:authorize="isAnonymous()">
+        <a th:href="@{/login}" class="text-gray-300 hover:text-white">Login</a>
+      </li>
+      <!-- 必要に応じて他のリンクを追加 -->
+    </ul>
+  </div>
+</nav>
