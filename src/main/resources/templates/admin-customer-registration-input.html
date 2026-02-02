@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Admin - Customer Registration</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-dvh">
+    <div th:replace="~{fragments/nav :: nav(${true})}"></div>
+    <div class="container mx-auto px-4 flex items-center justify-center min-h-[80dvh]">
+        <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md mx-auto">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Customer Registration</h1>
+            <p class="text-sm text-gray-600 text-center mb-4">管理者による代理登録</p>
+            <form th:action="@{/admin/customers/registration-confirm}" th:object="${adminCustomerRegistrationForm}" method="post" class="space-y-4" novalidate>
+                <!-- Email Field -->
+                <div>
+                    <label for="email" class="block text-gray-700 font-medium">Email</label>
+                    <input type="email" id="email" name="email" th:field="*{email}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" placeholder="Enter email" required>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
+                </div>
+
+                <!-- Password Field -->
+                <div>
+                    <label for="password" class="block text-gray-700 font-medium">Password</label>
+                    <input type="password" id="password" name="password" th:field="*{password}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" placeholder="Enter password" required>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
+                </div>
+
+                <!-- Confirm Password Field -->
+                <div>
+                    <label for="confirmPassword" class="block text-gray-700 font-medium">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" th:field="*{confirmPassword}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" placeholder="Confirm password" required>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></p>
+                </div>
+
+                <!-- Name Field -->
+                <div>
+                    <label for="name" class="block text-gray-700 font-medium">Name</label>
+                    <input type="text" id="name" name="name" th:field="*{name}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" placeholder="Enter name" required>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></p>
+                </div>
+
+                <!-- Birth Date Field -->
+                <div>
+                    <label for="birthDate" class="block text-gray-700 font-medium">Birth Date</label>
+                    <input type="date" id="birthDate" name="birthDate" th:field="*{birthDate}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" required>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('birthDate')}" th:errors="*{birthDate}"></p>
+                </div>
+
+                <!-- Phone Number Field -->
+                <div>
+                    <label for="phoneNumber" class="block text-gray-700 font-medium">Phone Number</label>
+                    <input type="tel" id="phoneNumber" name="phoneNumber" th:field="*{phoneNumber}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" placeholder="Enter phone number" required>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('phoneNumber')}" th:errors="*{phoneNumber}"></p>
+                </div>
+
+                <!-- Address Field -->
+                <div>
+                    <label for="address" class="block text-gray-700 font-medium">Address</label>
+                    <textarea id="address" name="address" th:field="*{address}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" placeholder="Enter address" rows="3" required></textarea>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></p>
+                </div>
+
+                <!-- Role Field -->
+                <div>
+                    <label for="role" class="block text-gray-700 font-medium">Role</label>
+                    <select id="role" name="role" th:field="*{role}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" required>
+                        <option value="">Select Role</option>
+                        <option value="USER">USER</option>
+                        <option value="ADMIN">ADMIN</option>
+                    </select>
+                    <p class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('role')}" th:errors="*{role}"></p>
+                </div>
+
+                <!-- Actions -->
+                <div class="text-center mt-6">
+                    <div class="flex justify-center space-x-4">
+                        <a th:href="@{/admin/customers}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancel</a>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Confirm</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Confirm Update</title>
-    <!-- Tailwind CSS の読み込み -->
+    <title>Admin - Confirm Edit</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-900 min-h-dvh">
-    <div th:replace="~{fragments/nav :: nav(${false})}"></div>
+    <div th:replace="~{fragments/nav :: nav(${true})}"></div>
     <div class="container mx-auto px-4 flex items-center justify-center min-h-[80dvh]">
         <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md mx-auto">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Confirm Update</h1>
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Confirm Edit</h1>
             <p class="text-sm text-gray-600 text-center mb-4">以下の内容で更新します。よろしいですか？</p>
-            <form th:object="${customerEditForm}" class="space-y-4">
+            <form th:object="${adminCustomerEditForm}" class="space-y-4">
+                <!-- Email Field (読み取り専用) -->
+                <div>
+                    <label class="block text-gray-700 font-medium">Email</label>
+                    <p class="text-gray-900" th:text="${email}">email</p>
+                </div>
                 <!-- Name Field -->
                 <div>
                     <label class="block text-gray-700 font-medium">Name</label>
@@ -32,25 +36,31 @@
                     <label class="block text-gray-700 font-medium">Address</label>
                     <p class="text-gray-900" th:text="*{address}">address</p>
                 </div>
+                <!-- Role Field -->
+                <div>
+                    <label class="block text-gray-700 font-medium">Role</label>
+                    <p class="text-gray-900" th:text="*{role}">role</p>
+                </div>
             </form>
                 <!-- Actions -->
                 <div class="text-center mt-6">
                     <div class="flex justify-center space-x-4">
                         <!-- Back ボタン -->
-                        <form th:action="@{/mypage/edit}" th:object="${customerEditForm}" method="post">
+                        <form th:action="@{/admin/customers/{email}/edit-input(email=${email})}" th:object="${adminCustomerEditForm}" method="post">
                             <input type="hidden" th:field="*{name}">
                             <input type="hidden" th:field="*{birthDate}">
                             <input type="hidden" th:field="*{phoneNumber}">
                             <input type="hidden" th:field="*{address}">
+                            <input type="hidden" th:field="*{role}">
                             <button type="submit" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Back</button>
                         </form>
-
                         <!-- Update ボタン -->
-                        <form th:action="@{/mypage/update}" th:object="${customerEditForm}" method="post">
+                        <form th:action="@{/admin/customers/{email}/edit(email=${email})}" th:object="${adminCustomerEditForm}" method="post">
                             <input type="hidden" th:field="*{name}">
                             <input type="hidden" th:field="*{birthDate}">
                             <input type="hidden" th:field="*{phoneNumber}">
                             <input type="hidden" th:field="*{address}">
+                            <input type="hidden" th:field="*{role}">
                             <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Update</button>
                         </form>
                     </div>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Admin - Delete Customer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-dvh">
+    <div th:replace="~{fragments/nav :: nav(${true})}"></div>
+    <div class="container mx-auto px-4 flex items-center justify-center min-h-[80dvh]">
+        <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md mx-auto">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Delete Customer</h1>
+            <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-6">
+                <p class="text-sm text-gray-700">
+                    <strong>警告：</strong><br>
+                    この操作は取り消すことができません。本当に削除してよろしいですか？
+                </p>
+            </div>
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 font-medium">Email</label>
+                    <p class="text-gray-900" th:text="${customer.email}">email</p>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium">Name</label>
+                    <p class="text-gray-900" th:text="${customer.name}">name</p>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium">Registration Date</label>
+                    <p class="text-gray-900" th:text="${customer.registrationDate}">registration date</p>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium">Role</label>
+                    <p class="text-gray-900" th:text="${customer.role}">role</p>
+                </div>
+            </div>
+            <!-- Actions -->
+            <div class="text-center mt-6">
+                <div class="flex justify-center space-x-4">
+                    <a th:href="@{/admin/customers/{email}(email=${customer.email})}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancel</a>
+                    <form th:action="@{/admin/customers/{email}/delete(email=${customer.email})}" method="post" style="display: inline;">
+                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

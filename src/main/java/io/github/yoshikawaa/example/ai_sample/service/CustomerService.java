@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.ObjectProvider;
@@ -92,11 +93,15 @@ public class CustomerService {
         // 顧客情報を更新
         customerRepository.updateCustomerInfo(customer);
 
-        // 認証情報を更新
-        CustomerUserDetails updatedUserDetails = new CustomerUserDetails(customer);
-        SecurityContextHolder.getContext().setAuthentication(
-            new UsernamePasswordAuthenticationToken(updatedUserDetails, null, updatedUserDetails.getAuthorities())
-        );
+        // 認証情報を更新（ログインユーザー自身の情報を更新した場合のみ）
+        Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+        if (currentAuth != null && currentAuth.getName().equals(customer.getEmail())) {
+            CustomerUserDetails updatedUserDetails = new CustomerUserDetails(customer);
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(updatedUserDetails, null, updatedUserDetails.getAuthorities())
+            );
+            log.info("認証情報更新: email={}", customer.getEmail());
+        }
         
         log.info("顧客情報更新完了: email={}", customer.getEmail());
     }
