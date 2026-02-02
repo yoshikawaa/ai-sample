@@ -12,7 +12,8 @@ CREATE TABLE customer (
     registration_date DATE,
     birth_date DATE,
     phone_number VARCHAR(20),
-    address VARCHAR(255)
+    address VARCHAR(255),
+    role VARCHAR(20) NOT NULL DEFAULT 'USER'
 );
 
 CREATE TABLE password_reset_tokens (

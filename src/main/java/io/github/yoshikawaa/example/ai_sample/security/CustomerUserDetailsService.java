@@ -24,6 +24,7 @@ public class CustomerUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
         
         // ロック状態をチェックし、UserDetailsに設定
+        // CustomerエンティティのroleがCustomerUserDetails経由でGrantedAuthorityとして反映される
         // AuthenticationProviderのUserDetailsCheckerが isAccountNonLocked() をチェックし、
         // falseの場合にLockedExceptionをスローする
         boolean locked = loginAttemptService.isLocked(username);

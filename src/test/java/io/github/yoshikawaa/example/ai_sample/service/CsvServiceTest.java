@@ -25,8 +25,8 @@ class CsvServiceTest {
     void testGenerateCustomerCsv() {
         // テストデータの準備
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         );
 
         // サービスメソッドを呼び出し
@@ -78,7 +78,7 @@ class CsvServiceTest {
     void testGenerateCustomerCsv_EscapeDoubleQuotes() {
         // ダブルクォートを含むテストデータ
         List<Customer> customers = Arrays.asList(
-            new Customer("test@example.com", "password", "Test \"Nickname\" User", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("test@example.com", "password", "Test \"Nickname\" User", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         );
 
         // サービスメソッドを呼び出し
@@ -96,7 +96,7 @@ class CsvServiceTest {
     void testGenerateCustomerCsv_EscapeCommas() {
         // カンマを含むテストデータ
         List<Customer> customers = Arrays.asList(
-            new Customer("test@example.com", "password", "User, Test", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "123 Main St, Apt 4")
+            new Customer("test@example.com", "password", "User, Test", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "123 Main St, Apt 4", Customer.Role.USER)
         );
 
         // サービスメソッドを呼び出し
@@ -115,7 +115,7 @@ class CsvServiceTest {
     void testGenerateCustomerCsv_EscapeNewlines() {
         // 改行を含むテストデータ
         List<Customer> customers = Arrays.asList(
-            new Customer("test@example.com", "password", "Test User", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "123 Main St\nApt 4")
+            new Customer("test@example.com", "password", "Test User", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "123 Main St\nApt 4", Customer.Role.USER)
         );
 
         // サービスメソッドを呼び出し
@@ -141,7 +141,8 @@ class CsvServiceTest {
                 LocalDate.of(2023, 1, 1),
                 LocalDate.of(1990, 1, 1),
                 "111-1111",
-                "Address " + i
+                "Address" + i,
+                Customer.Role.USER
             ));
         }
 

@@ -36,6 +36,7 @@ class PasswordResetTokenRepositoryTest {
         customer.setBirthDate(LocalDate.of(1990, 1, 1));
         customer.setPhoneNumber("000-0000-0000");
         customer.setAddress("Test Address");
+        customer.setRole(Customer.Role.USER);
         customerRepository.insert(customer);
     }
 

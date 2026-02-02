@@ -26,7 +26,7 @@ class AccountUnlockTokenRepositoryTest {
     @DisplayName("unlock_tokenで検索できる")
     void testFindByToken() {
         // 事前にcustomer登録
-        Customer customer = new Customer("test@example.com", "dummy", "テストユーザー", java.time.LocalDate.now(), java.time.LocalDate.now(), "", "");
+        Customer customer = new Customer("test@example.com", "dummy", "テストユーザー", java.time.LocalDate.now(), java.time.LocalDate.now(), "", "", Customer.Role.USER);
         customerRepository.insert(customer);
         // テストデータ登録
         AccountUnlockToken token = new AccountUnlockToken("test@example.com", "unlock-token", System.currentTimeMillis() + 10000);
@@ -40,7 +40,7 @@ class AccountUnlockTokenRepositoryTest {
     @DisplayName("tokenで削除できる")
     void testDeleteByToken() {
         // 事前にcustomer登録
-        Customer customer = new Customer("test@example.com", "dummy", "テストユーザー", java.time.LocalDate.now(), java.time.LocalDate.now(), "", "");
+        Customer customer = new Customer("test@example.com", "dummy", "テストユーザー", java.time.LocalDate.now(), java.time.LocalDate.now(), "", "", Customer.Role.USER);
         customerRepository.insert(customer);
         AccountUnlockToken token = new AccountUnlockToken("test@example.com", "unlock-token", System.currentTimeMillis() + 10000);
         repository.insert(token);

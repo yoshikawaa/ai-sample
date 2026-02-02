@@ -5,7 +5,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-900 min-h-screen min-h-dvh">
-    <div th:replace="fragments/nav :: nav(${true})"></div>
+    <div th:replace="~{fragments/nav :: nav(${true})}"></div>
     <div class="container mx-auto px-4 flex items-center justify-center min-h-[80vh]">
         <div class="bg-white shadow-md rounded-lg p-8">
             <h1 class="text-3xl font-bold text-gray-800 mb-6">Customer Detail</h1>

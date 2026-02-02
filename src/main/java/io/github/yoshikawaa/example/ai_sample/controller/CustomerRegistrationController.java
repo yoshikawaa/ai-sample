@@ -74,6 +74,7 @@ public class CustomerRegistrationController {
         customer.setPhoneNumber(customerForm.getPhoneNumber());
         customer.setAddress(customerForm.getAddress());
         customer.setRegistrationDate(LocalDate.now());
+        customer.setRole(Customer.Role.USER); // 明示的にUSERロールをセット
     
         // 顧客情報を登録
         customerService.registerCustomer(customer);

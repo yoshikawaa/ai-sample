@@ -73,10 +73,10 @@ class SecurityConfigTest {
         testCustomer.setPhoneNumber("123-456-7890");
         testCustomer.setAddress("123 Test St");
         testCustomer.setRegistrationDate(LocalDate.of(2023, 1, 1));
+        testCustomer.setRole(Customer.Role.USER);
 
         // CustomerRepository の findByEmail メソッドをモック
-        when(customerRepository.findByEmail("test@example.com"))
-                .thenReturn(Optional.of(testCustomer));
+        when(customerRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testCustomer));
         // EmailServiceのメール送信を抑止
         doNothing().when(emailService).sendEmail(any(), any(), any());
     }

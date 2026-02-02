@@ -133,8 +133,8 @@ public interface CustomerRepository {
     // ========================================
 
     @Insert("""
-        INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address)
-        VALUES (#{email}, #{password}, #{name}, #{registrationDate}, #{birthDate}, #{phoneNumber}, #{address})
+        INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address, role)
+        VALUES (#{email}, #{password}, #{name}, #{registrationDate}, #{birthDate}, #{phoneNumber}, #{address}, #{role})
     """)
     void insert(Customer customer);
 

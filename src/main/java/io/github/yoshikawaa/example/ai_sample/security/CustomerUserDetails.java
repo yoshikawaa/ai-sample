@@ -3,6 +3,8 @@ package io.github.yoshikawaa.example.ai_sample.security;
 import java.util.Collection;
 
 import org.springframework.security.core.GrantedAuthority;
+
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
@@ -27,7 +29,9 @@ public class CustomerUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null; // 権限が必要な場合はここに設定
+        // CustomerのroleをSpring SecurityのGrantedAuthorityリストに変換
+        // enum値を"ROLE_USER"や"ROLE_ADMIN"形式に変換して付与
+        return AuthorityUtils.createAuthorityList("ROLE_" + customer.getRole().name());
     }
 
     @Override

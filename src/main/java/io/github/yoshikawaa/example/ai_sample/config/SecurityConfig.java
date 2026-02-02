@@ -60,11 +60,14 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
+                // 管理者専用画面・API
+                .requestMatchers("/admin/**", "/customers/**").hasRole("ADMIN")
+                // 認証不要画面
                 .requestMatchers(
-                    "/", "/customers", "/customers/**", "/register/**", "/login", "/password-reset/**", "/account-locked",
-                    "/account-unlock/**", "/error"
-                ).permitAll() // ログイン不要の画面（※/h2-console/**は除外）
-                .anyRequest().authenticated() // それ以外は認証が必要
+                    "/", "/register/**", "/login", "/password-reset/**", "/account-locked", "/account-unlock/**", "/error"
+                ).permitAll()
+                // その他は認証のみ必要
+                .anyRequest().authenticated()
             )
             .headers(headers -> headers
                 .frameOptions(frameOptions -> frameOptions.deny())
