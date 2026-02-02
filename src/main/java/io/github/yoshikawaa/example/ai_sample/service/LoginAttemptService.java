@@ -94,6 +94,41 @@ public class LoginAttemptService {
     }
 
     /**
+     * 管理者によるアカウント強制ロック
+     * 長期間（1年）のロックを設定し、管理者が明示的に解除するまで有効
+     */
+    public void lockAccountByAdmin(String email) {
+        log.info("管理者によるアカウントロック: email={}", email);
+        var loginAttemptOpt = loginAttemptRepository.findByEmail(email);
+        long currentTime = System.currentTimeMillis();
+        long lockedUntil = currentTime + (365L * 24 * 60 * 60 * 1000); // 1年間
+
+        if (loginAttemptOpt.isEmpty()) {
+            LoginAttempt loginAttempt = new LoginAttempt();
+            loginAttempt.setEmail(email);
+            loginAttempt.setAttemptCount(loginAttemptProperties.getMax());
+            loginAttempt.setLastAttemptTime(currentTime);
+            loginAttempt.setLockedUntil(lockedUntil);
+            loginAttemptRepository.insert(loginAttempt);
+        } else {
+            LoginAttempt loginAttempt = loginAttemptOpt.get();
+            loginAttempt.setAttemptCount(loginAttemptProperties.getMax());
+            loginAttempt.setLastAttemptTime(currentTime);
+            loginAttempt.setLockedUntil(lockedUntil);
+            loginAttemptRepository.update(loginAttempt);
+        }
+    }
+
+    /**
+     * 管理者によるアカウントロック解除
+     * login_attemptレコードを削除することでロックを解除
+     */
+    public void unlockAccountByAdmin(String email) {
+        log.info("管理者によるアカウントロック解除: email={}", email);
+        resetAttempts(email);
+    }
+
+    /**
      * ログイン試行記録からlockedUntil値を安全に取得
      */
     private Long extractLockedUntil(String email) {

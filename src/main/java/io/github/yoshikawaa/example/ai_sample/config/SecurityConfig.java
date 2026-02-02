@@ -61,7 +61,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(authorize -> authorize
                 // 管理者専用画面・API
-                .requestMatchers("/admin/**", "/customers/**").hasRole("ADMIN")
+                .requestMatchers("/admin/**").hasRole("ADMIN")
                 // 認証不要画面
                 .requestMatchers(
                     "/", "/register/**", "/login", "/password-reset/**", "/account-locked", "/account-unlock/**", "/error"

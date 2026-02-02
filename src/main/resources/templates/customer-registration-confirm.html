@@ -10,36 +10,37 @@
     <div class="container mx-auto px-4 flex items-center justify-center min-h-[80dvh]">
         <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md mx-auto">
             <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Confirm Registration</h1>
+            <p class="text-sm text-gray-600 text-center mb-4">以下の内容で登録します。よろしいですか？</p>
             <form th:object="${customerForm}" class="space-y-4">
                 <!-- Email Field -->
                 <div>
-                    <label for="email" class="block text-gray-700 font-medium">Email</label>
-                    <input type="email" id="email" name="email" th:field="*{email}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" readonly>
+                    <label class="block text-gray-700 font-medium">Email</label>
+                    <p class="text-gray-900" th:text="*{email}">email</p>
                 </div>
                 <!-- Password Field -->
                 <div>
-                    <label for="password" class="block text-gray-700 font-medium">Password</label>
-                    <input type="password" id="password" name="password" value="******" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" readonly>
+                    <label class="block text-gray-700 font-medium">Password</label>
+                    <p class="text-gray-900">******</p>
                 </div>
                 <!-- Name Field -->
                 <div>
-                    <label for="name" class="block text-gray-700 font-medium">Name</label>
-                    <input type="text" id="name" name="name" th:field="*{name}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" readonly>
+                    <label class="block text-gray-700 font-medium">Name</label>
+                    <p class="text-gray-900" th:text="*{name}">name</p>
                 </div>
                 <!-- Birth Date Field -->
                 <div>
-                    <label for="birthDate" class="block text-gray-700 font-medium">Birth Date</label>
-                    <input type="date" id="birthDate" name="birthDate" th:field="*{birthDate}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" readonly>
+                    <label class="block text-gray-700 font-medium">Birth Date</label>
+                    <p class="text-gray-900" th:text="*{birthDate}">birth date</p>
                 </div>
                 <!-- Phone Number Field -->
                 <div>
-                    <label for="phoneNumber" class="block text-gray-700 font-medium">Phone Number</label>
-                    <input type="tel" id="phoneNumber" name="phoneNumber" th:field="*{phoneNumber}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" readonly>
+                    <label class="block text-gray-700 font-medium">Phone Number</label>
+                    <p class="text-gray-900" th:text="*{phoneNumber}">phone number</p>
                 </div>
                 <!-- Address Field -->
                 <div>
-                    <label for="address" class="block text-gray-700 font-medium">Address</label>
-                    <textarea id="address" name="address" th:field="*{address}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" rows="3" readonly></textarea>
+                    <label class="block text-gray-700 font-medium">Address</label>
+                    <p class="text-gray-900" th:text="*{address}">address</p>
                 </div>
             </form>
                 <!-- Actions -->

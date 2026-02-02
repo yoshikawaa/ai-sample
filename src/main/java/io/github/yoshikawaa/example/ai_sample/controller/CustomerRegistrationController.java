@@ -37,7 +37,7 @@ public class CustomerRegistrationController {
     // 入力画面の表示
     @GetMapping("/input")
     public String showInputForm() {
-        return "customer-input";
+        return "customer-registration-input";
     }
 
     @PostMapping("/confirm")
@@ -45,15 +45,15 @@ public class CustomerRegistrationController {
                                    BindingResult bindingResult) {
         // バリデーションエラーがある場合、入力画面に戻る
         if (bindingResult.hasErrors()) {
-            return "customer-input";
+            return "customer-registration-input";
         }
     
-        return "customer-confirm";
+        return "customer-registration-confirm";
     }
     
     @PostMapping("/input")
     public String handleBackToInput(CustomerForm customerForm) {
-        return "customer-input";
+        return "customer-registration-input";
     }
     
     // 登録処理
@@ -62,7 +62,7 @@ public class CustomerRegistrationController {
                                    BindingResult bindingResult) {
         // バリデーションエラーがある場合、入力画面に戻る
         if (bindingResult.hasErrors()) {
-            return "customer-input";
+            return "customer-registration-input";
         }
     
         // CustomerForm を Customer に変換
@@ -85,7 +85,7 @@ public class CustomerRegistrationController {
     // 完了画面の表示
     @GetMapping("/complete")
     public String showCompletePage() {
-        return "customer-complete";
+        return "customer-registration-complete";
     }
 
     /**

@@ -1763,6 +1763,54 @@ public class PasswordResetService {
 
 ### 8. コントローラ層
 
+#### コントローラの重複チェックと命名規則
+
+**原則**:
+- **同じ機能を提供するコントローラを複数作成しない**
+- 管理者向け機能は必ず `Admin` プレフィックスを付ける（例: `AdminCustomerController`）
+- URLパスも明確に区別する（例: `/admin/customers`）
+
+**禁止事項**:
+```java
+// ❌ 禁止: 同じ機能を提供する重複コントローラ
+@Controller
+@RequestMapping("/customers")
+@PreAuthorize("hasRole('ADMIN')")
+public class CustomerController {  // 管理者用なのにAdminプレフィックスがない
+    // 一覧、検索、詳細表示などの機能
+}
+
+@Controller
+@RequestMapping("/admin/customers")
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminCustomerController {  // 上記と機能が重複
+    // 一覧、検索、詳細表示などの機能
+}
+```
+
+**推奨**:
+```java
+// ✅ 推奨: 管理者用は1つのコントローラに統合
+@Controller
+@RequestMapping("/admin/customers")
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminCustomerController {
+    // すべての管理者向け顧客管理機能
+}
+
+// ✅ 推奨: 一般ユーザー用は別コントローラ
+@Controller
+@RequestMapping("/register")
+public class CustomerRegistrationController {
+    // 一般ユーザーの自己登録機能
+}
+```
+
+**重要**:
+- コントローラ作成時は既存の類似コントローラをgrepで検索
+- 機能が重複する場合は既存コントローラに統合
+- URLパス、命名、機能の一貫性を保つ
+
 #### リクエストマッピング
 ```java
 @Controller
@@ -2088,6 +2136,54 @@ private byte[] generateCSV(List<Customer> customers) {
 - CSRFトークンは Spring Security が自動挿入
 - リンクは必ず `th:href="@{/path}"` を使用（`href="/path"` は禁止）
 
+#### テンプレート内の認可チェック
+
+**原則**:
+- **コントローラレベルで認可設定がある場合、テンプレート内での認可チェック（`sec:authorize`）は不要**
+- 冗長な認可チェックは削除し、コードをシンプルに保つ
+
+**禁止事項**:
+```html
+<!-- ❌ 禁止: コントローラで既に認可済みなのにテンプレートでも認可チェック -->
+<!-- AdminCustomerController は @PreAuthorize("hasRole('ADMIN')") を持つ -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+    <!-- この画面には管理者しかアクセスできないのに... -->
+    <div sec:authorize="hasRole('ADMIN')">
+        <a th:href="@{/admin/customers/registration-input}">Register New Customer</a>
+    </div>
+</body>
+</html>
+```
+
+**推奨**:
+```html
+<!-- ✅ 推奨: コントローラで認可済みなら、テンプレートでは認可チェック不要 -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <!-- sec:authorize を削除、xmlns:sec も不要 -->
+    <div>
+        <a th:href="@{/admin/customers/registration-input}">Register New Customer</a>
+    </div>
+</body>
+</html>
+```
+
+**判断基準**:
+- コントローラに `@PreAuthorize("hasRole('ADMIN')")` がある場合:
+  - テンプレート内の `sec:authorize="hasRole('ADMIN')"` は**不要**
+  - `xmlns:sec` 名前空間宣言も不要
+- 1つの画面内で複数の権限レベルを扱う場合:
+  - テンプレート内で `sec:authorize` を使用する（例: 管理者のみ編集ボタンを表示）
+
+**重要**:
+- テンプレート作成時は対応するコントローラの認可設定を確認
+- 冗長な認可チェックはコードの可読性を下げる
+- セキュリティの二重チェックは不要（コントローラレベルで十分）
+
 #### 共通ナビゲーション（fragments/nav.html）の適用ルール
 
 **適用対象**
@@ -2296,6 +2392,75 @@ private byte[] generateCSV(List<Customer> customers) {
 - **危険な操作**: `bg-red-500 hover:bg-red-600`（削除の確認ボタンなど）
 
 ## テストコード
+
+### 0. テストクラスの構造とインデント規則
+
+#### @Nestedクラスのインデント
+
+**原則**:
+- **@Nestedクラス内のテストメソッドは一貫したインデントを使用**
+- クラスレベルのテストと@Nestedクラス内のテストで階層を統一
+
+**インデント規則**:
+```java
+@SpringBootTest
+class CustomerServiceTest {  // トップレベルクラス（インデント0）
+
+    @Nested  // インデント4スペース
+    @DisplayName("顧客登録機能")
+    class CustomerRegistrationTest {  // インデント4スペース
+
+        @Test  // インデント8スペース
+        @DisplayName("顧客を登録できる")
+        void testRegisterCustomer() {  // インデント8スペース
+            // テストメソッド本体: インデント12スペース
+            Customer customer = new Customer(...);
+            customerService.registerCustomer(customer);
+            verify(customerRepository).save(any());
+        }  // インデント8スペース
+    }  // インデント4スペース
+
+    @Nested  // インデント4スペース
+    @DisplayName("顧客検索機能")
+    class CustomerSearchTest {  // インデント4スペース
+
+        @Test  // インデント8スペース
+        @DisplayName("名前で検索できる")
+        void testSearchByName() {  // インデント8スペース
+            // テストメソッド本体: インデント12スペース
+            List<Customer> result = customerService.search("John");
+            assertThat(result).hasSize(1);
+        }  // インデント8スペース
+    }  // インデント4スペース
+}  // インデント0
+```
+
+**重要**:
+- @Nestedクラス: **4スペース**インデント
+- @Nestedクラス内のメソッド・アノテーション: **8スペース**インデント
+- @Nestedクラス内のテストメソッド本体: **12スペース**インデント
+- 閉じ括弧もそれぞれのレベルに合わせる
+
+**禁止事項**:
+```java
+// ❌ 禁止: インデントが不統一
+@Nested
+class CustomerRegistrationTest {
+
+    @Test
+    @DisplayName("顧客を登録できる")
+@WithMockUser  // インデントが合っていない
+void testRegisterCustomer() {  // インデントが合っていない
+    Customer customer = new Customer(...);  // 本体が4スペース（12スペースが正しい）
+    verify(customerRepository).save(any());
+}
+}
+```
+
+**確認方法**:
+- テストクラス作成後、必ずインデントを目視確認
+- IDEの自動フォーマット機能を活用
+- コンパイルエラーやテスト実行前にインデントチェック
 
 ### 1. テスト用設定
 

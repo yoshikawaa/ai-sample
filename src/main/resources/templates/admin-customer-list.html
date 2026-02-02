@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Customer List</title>
     <!-- Tailwind CSS の読み込み -->
@@ -36,7 +35,7 @@
 
             <!-- Export CSV and Register buttons -->
             <div class="mb-4 flex justify-between">
-                <div sec:authorize="hasRole('ADMIN')">
+                <div>
                     <a th:href="@{/admin/customers/registration-input}" 
                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

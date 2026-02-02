@@ -221,6 +221,54 @@ class LoginAttemptServiceTest {
             assertThat(formattedTime).matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}");
         }
 
+        @Test
+        @DisplayName("lockAccountByAdmin: 既存レコードがない場合、新規レコードを作成してロックする")
+        void testLockAccountByAdmin_NewRecord() {
+            // Given
+            String email = "newuser@example.com";
+            when(loginAttemptRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+            // When
+            loginAttemptService.lockAccountByAdmin(email);
+
+            // Then
+            verify(loginAttemptRepository, times(1)).insert(any(LoginAttempt.class));
+            verify(loginAttemptRepository, times(0)).update(any(LoginAttempt.class));
+        }
+
+        @Test
+        @DisplayName("lockAccountByAdmin: 既存レコードがある場合、更新してロックする")
+        void testLockAccountByAdmin_ExistingRecord() {
+            // Given
+            String email = "existinguser@example.com";
+            LoginAttempt existingAttempt = new LoginAttempt();
+            existingAttempt.setEmail(email);
+            existingAttempt.setAttemptCount(2);
+            existingAttempt.setLockedUntil(null);
+            existingAttempt.setLastAttemptTime(System.currentTimeMillis());
+            when(loginAttemptRepository.findByEmail(email)).thenReturn(Optional.of(existingAttempt));
+
+            // When
+            loginAttemptService.lockAccountByAdmin(email);
+
+            // Then
+            verify(loginAttemptRepository, times(0)).insert(any(LoginAttempt.class));
+            verify(loginAttemptRepository, times(1)).update(any(LoginAttempt.class));
+        }
+
+        @Test
+        @DisplayName("unlockAccountByAdmin: アカウントロックを解除する")
+        void testUnlockAccountByAdmin() {
+            // Given
+            String email = "lockeduser@example.com";
+
+            // When
+            loginAttemptService.unlockAccountByAdmin(email);
+
+            // Then
+            verify(loginAttemptRepository, times(1)).deleteByEmail(email);
+        }
+
     }
 
     @Nested

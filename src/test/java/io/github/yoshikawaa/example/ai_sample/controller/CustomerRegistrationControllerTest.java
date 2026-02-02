@@ -49,7 +49,7 @@ class CustomerRegistrationControllerTest {
         // テスト実行
         mockMvc.perform(get("/register/input"))
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
-                .andExpect(view().name("customer-input")); // ビュー名が "customer-input" であることを確認
+                .andExpect(view().name("customer-registration-input")); // ビュー名が "customer-registration-input" であることを確認
     }
 
     @Test
@@ -70,7 +70,7 @@ class CustomerRegistrationControllerTest {
                 .params(validCustomerForm) // params を使用してフォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
-                .andExpect(view().name("customer-confirm")) // ビュー名が "customer-confirm" であることを確認
+                .andExpect(view().name("customer-registration-confirm")) // ビュー名が "customer-registration-confirm" であることを確認
                 .andExpect(model().attributeHasNoErrors("customerForm")); // バリデーションエラーがないことを確認
         }
 
@@ -92,7 +92,7 @@ class CustomerRegistrationControllerTest {
                 .params(invalidCustomerForm) // params を使用してフォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
-                .andExpect(view().name("customer-input")) // ビュー名が "customer-input" に戻ることを確認
+                .andExpect(view().name("customer-registration-input")) // ビュー名が "customer-registration-input" に戻ることを確認
                 .andExpect(model().attributeHasFieldErrors("customerForm", "email", "name", "password", "confirmPassword", "birthDate", "phoneNumber", "address")); // バリデーションエラーを確認
     }
 
@@ -114,7 +114,7 @@ class CustomerRegistrationControllerTest {
                 .params(customerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
-                .andExpect(view().name("customer-input")); // ビュー名が "customer-input" であることを確認
+                .andExpect(view().name("customer-registration-input")); // ビュー名が "customer-registration-input" であることを確認
     }
 
     @Test
@@ -159,7 +159,7 @@ class CustomerRegistrationControllerTest {
                 .params(invalidCustomerForm) // フォームデータを送信
                 .with(csrf())) // CSRF トークンを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
-                .andExpect(view().name("customer-input")) // ビュー名が "customer-input" に戻ることを確認
+                .andExpect(view().name("customer-registration-input")) // ビュー名が "customer-registration-input" に戻ることを確認
                 .andExpect(model().attributeHasFieldErrors("customerForm", "email", "password", "confirmPassword", "name", "birthDate", "phoneNumber", "address")); // バリデーションエラーを確認
 
         // サービス呼び出しが行われていないことを確認
@@ -199,6 +199,6 @@ class CustomerRegistrationControllerTest {
         // テスト実行
         mockMvc.perform(get("/register/complete")) // GET リクエストを送信
                 .andExpect(status().isOk()) // HTTP ステータスが 200 OK であることを確認
-                .andExpect(view().name("customer-complete")); // ビュー名が "customer-complete" であることを確認
+                .andExpect(view().name("customer-registration-complete")); // ビュー名が "customer-registration-complete" であることを確認
     }
 }
