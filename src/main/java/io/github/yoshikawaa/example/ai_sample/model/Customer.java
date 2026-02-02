@@ -17,4 +17,13 @@ public class Customer {
     private LocalDate birthDate;
     private String phoneNumber;
     private String address;
+
+    /**
+     * ユーザーロール（USER, ADMIN）
+     */
+    private Role role;
+
+    public static enum Role {
+        USER, ADMIN
+    }
 }

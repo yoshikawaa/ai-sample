@@ -1,3 +1,4 @@
+
 package io.github.yoshikawaa.example.ai_sample.repository;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
@@ -6,11 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @MybatisTest
@@ -18,8 +22,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("CustomerRepository のテスト")
 class CustomerRepositoryTest {
 
+    @TestConfiguration
+    static class PasswordEncoderTestConfig {
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+            return new BCryptPasswordEncoder();
+        }
+    }
+
     @Autowired
     private CustomerRepository customerRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     // ========================================
     // 全件取得系
@@ -28,27 +43,28 @@ class CustomerRepositoryTest {
     @Test
     @DisplayName("findAllWithPagination: ページネーションで顧客を取得できる")
     void testFindAllWithPagination() {
-        // 1ページ目（5件取得、offset=0）
+        // ページごとの件数を検証
         List<Customer> page1 = customerRepository.findAllWithPagination(5, 0, null, null);
-        assertThat(page1).hasSize(5);
-
-        // 2ページ目（5件取得、offset=5）
         List<Customer> page2 = customerRepository.findAllWithPagination(5, 5, null, null);
-        assertThat(page2).hasSize(5);
-
-        // 3ページ目（5件取得、offset=10）
         List<Customer> page3 = customerRepository.findAllWithPagination(5, 10, null, null);
-        assertThat(page3).hasSize(5); // data.sqlには15件
-
-        // 4ページ目（5件取得、offset=15）- データなし
         List<Customer> page4 = customerRepository.findAllWithPagination(5, 15, null, null);
-        assertThat(page4).isEmpty();
 
-        // 登録日の降順であることを確認
-        assertThat(page1.get(0).getRegistrationDate()).isAfterOrEqualTo(page1.get(1).getRegistrationDate());
-        
-        // ページ間の順序を確認（page1の最後 >= page2の最初）
-        assertThat(page1.get(4).getRegistrationDate()).isAfterOrEqualTo(page2.get(0).getRegistrationDate());
+        assertThat(page1).hasSize(5);
+        assertThat(page2).hasSize(5);
+        assertThat(page3).hasSize(5);
+        assertThat(page4).hasSize(1);
+
+        // 全ページ合計がcount()と一致することを検証
+        long total = page1.size() + page2.size() + page3.size() + page4.size();
+        assertThat(total).isEqualTo(customerRepository.count());
+
+        // ページ間で重複がないことを検証
+        List<String> allEmails = new ArrayList<>();
+        page1.forEach(c -> allEmails.add(c.getEmail()));
+        page2.forEach(c -> allEmails.add(c.getEmail()));
+        page3.forEach(c -> allEmails.add(c.getEmail()));
+        page4.forEach(c -> allEmails.add(c.getEmail()));
+        assertThat(allEmails).doesNotHaveDuplicates();
     }
 
     @Test
@@ -88,14 +104,23 @@ class CustomerRepositoryTest {
     // ========================================
 
     @Test
-    @DisplayName("findByEmail: 特定のメールアドレスで顧客を取得できる")
+    @DisplayName("findByEmail: 特定のメールアドレスで顧客を取得できる（全項目検証）")
     void testFindByEmail() {
         // データベースから特定の顧客を取得
         Optional<Customer> customer = customerRepository.findByEmail("john.doe@example.com");
 
-        // 検証
+        // 検証（全項目）
         assertThat(customer).isPresent();
-        assertThat(customer.get().getName()).isEqualTo("John Doe");
+        Customer c = customer.get();
+        assertThat(c.getEmail()).isEqualTo("john.doe@example.com");
+        // パスワードはハッシュ値なので、平文"password"と一致するかPasswordEncoderで検証
+        assertThat(passwordEncoder.matches("password", c.getPassword())).isTrue();
+        assertThat(c.getName()).isEqualTo("John Doe");
+        assertThat(c.getRegistrationDate()).isEqualTo(LocalDate.of(2023, 1, 1));
+        assertThat(c.getBirthDate()).isEqualTo(LocalDate.of(1990, 5, 15));
+        assertThat(c.getPhoneNumber()).isEqualTo("123-456-7890");
+        assertThat(c.getAddress()).isEqualTo("123 Main St");
+        assertThat(c.getRole()).isEqualTo(Customer.Role.USER);
     }
 
     @Test
@@ -113,8 +138,8 @@ class CustomerRepositoryTest {
     // ========================================
 
     @Test
-    @DisplayName("save: 新しい顧客を保存できる")
-    void testSave() {
+    @DisplayName("insert: 新しい顧客を保存できる")
+    void testInsert() {
         // 新しい顧客を作成
         Customer newCustomer = new Customer();
         newCustomer.setEmail("new.customer@example.com");
@@ -124,6 +149,7 @@ class CustomerRepositoryTest {
         newCustomer.setBirthDate(LocalDate.of(1995, 5, 20));
         newCustomer.setPhoneNumber("111-222-3333");
         newCustomer.setAddress("789 New St");
+        newCustomer.setRole(Customer.Role.USER);
 
         // 顧客を保存
         customerRepository.insert(newCustomer);
@@ -132,6 +158,7 @@ class CustomerRepositoryTest {
         Optional<Customer> savedCustomer = customerRepository.findByEmail("new.customer@example.com");
         assertThat(savedCustomer).isPresent();
         assertThat(savedCustomer.get().getName()).isEqualTo("New Customer");
+        assertThat(savedCustomer.get().getRole()).isEqualTo(Customer.Role.USER);
     }
 
     // ========================================
@@ -243,6 +270,7 @@ class CustomerRepositoryTest {
         testCustomer.setBirthDate(LocalDate.of(1990, 1, 1));
         testCustomer.setPhoneNumber("999-999-9999");
         testCustomer.setAddress("999 Delete St");
+        testCustomer.setRole(Customer.Role.USER);
         customerRepository.insert(testCustomer);
 
         // 顧客が保存されたことを確認

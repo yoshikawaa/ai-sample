@@ -41,7 +41,8 @@ class CustomerUserDetailsServiceTest {
             LocalDate.now(),
             LocalDate.of(1990, 1, 1),
             "123-456-7890",
-            "123 Test St"
+            "123 Test St",
+            Customer.Role.USER
         );
     }
 
@@ -77,7 +78,8 @@ class CustomerUserDetailsServiceTest {
             LocalDate.now(),
             LocalDate.of(1990, 1, 1),
             "123-456-7890",
-            "123 Test St"
+            "123 Test St",
+            Customer.Role.USER
         );
         when(customerRepository.findByEmail("locked@example.com"))
             .thenReturn(Optional.of(lockedCustomer));
@@ -89,5 +91,40 @@ class CustomerUserDetailsServiceTest {
 
         // then
         assertThat(userDetails.isAccountNonLocked()).isFalse();
+    }
+
+
+    @Test
+    @DisplayName("ロールに応じてGrantedAuthorityが正しく付与される")
+    void testGrantedAuthorityByRole() {
+        // USERロール
+        Customer user = new Customer(
+            "user@example.com",
+            "encodedPassword",
+            "User",
+            LocalDate.now(),
+            LocalDate.of(1990, 1, 1),
+            "123-456-7890",
+            "123 Test St",
+            Customer.Role.USER
+        );
+        when(customerRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+        UserDetails userDetails = customerUserDetailsService.loadUserByUsername("user@example.com");
+        assertThat(userDetails.getAuthorities()).extracting("authority").containsExactly("ROLE_USER");
+
+        // ADMINロール
+        Customer admin = new Customer(
+            "admin@example.com",
+            "encodedPassword",
+            "Admin",
+            LocalDate.now(),
+            LocalDate.of(1980, 1, 1),
+            "987-654-3210",
+            "456 Admin St",
+            Customer.Role.ADMIN
+        );
+        when(customerRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        UserDetails adminDetails = customerUserDetailsService.loadUserByUsername("admin@example.com");
+        assertThat(adminDetails.getAuthorities()).extracting("authority").containsExactly("ROLE_ADMIN");
     }
 }

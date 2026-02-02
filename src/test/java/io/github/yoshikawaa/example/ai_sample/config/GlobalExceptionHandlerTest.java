@@ -71,7 +71,7 @@ class GlobalExceptionHandlerTest {
     @BeforeEach
     void setUp() {
         testCustomer = new Customer("test@example.com", "password", "Test User", 
-            LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-4567", "Test Address");
+            LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-4567", "Test Address", Customer.Role.USER);
         when(customerRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testCustomer));
     }
 

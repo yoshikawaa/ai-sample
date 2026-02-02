@@ -60,7 +60,8 @@ class CustomerServiceTest {
             LocalDate.of(2023, 1, 1),
             LocalDate.of(1990, 1, 1),
             "123-456-7890",
-            "123 Main St"
+            "123 Main St",
+            Customer.Role.USER
         );
         when(customerRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(customer));
 
@@ -99,8 +100,8 @@ class CustomerServiceTest {
         // モックの動作を定義
         Pageable pageable = PageRequest.of(0, 10);
         when(customerRepository.findAllWithPagination(10, 0, null, null)).thenReturn(Arrays.asList(
-            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St"),
-            new Customer("jane.doe@example.com", "password456", "Jane Doe", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "987-654-3210", "456 Elm St")
+            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St", Customer.Role.USER),
+            new Customer("jane.doe@example.com", "password456", "Jane Doe", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "987-654-3210", "456 Elm St", Customer.Role.USER)
         ));
         when(customerRepository.count()).thenReturn(2L);
 
@@ -123,8 +124,8 @@ class CustomerServiceTest {
         
         // モックの動作を定義
         when(customerRepository.findAllWithPagination(10, 0, "name", "ASC")).thenReturn(Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         ));
         when(customerRepository.count()).thenReturn(2L);
 
@@ -146,8 +147,8 @@ class CustomerServiceTest {
         
         // モックの動作を定義
         when(customerRepository.findAllWithPagination(10, 0, "registration_date", "DESC")).thenReturn(Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         ));
         when(customerRepository.count()).thenReturn(2L);
 
@@ -169,8 +170,8 @@ class CustomerServiceTest {
         
         // モックの動作を定義
         when(customerRepository.findAllWithPagination(10, 0, "birth_date", "ASC")).thenReturn(Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         ));
         when(customerRepository.count()).thenReturn(2L);
 
@@ -192,7 +193,7 @@ class CustomerServiceTest {
         
         // モックの動作を定義
         when(customerRepository.findAllWithPagination(10, 0, "registration_date", "ASC")).thenReturn(Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         ));
         when(customerRepository.count()).thenReturn(1L);
 
@@ -219,7 +220,8 @@ class CustomerServiceTest {
             LocalDate.of(2023, 3, 1), // registrationDate
             LocalDate.of(1990, 5, 20), // birthDate
             "111-222-3333",
-            "789 New St"
+            "789 New St",
+            Customer.Role.USER
         );
         String hashedPassword = "hashed_password"; // ハッシュ化後のパスワード（モック）
 
@@ -247,7 +249,8 @@ class CustomerServiceTest {
             LocalDate.now(), // registrationDate
             LocalDate.now().minusYears(15), // birthDate を 15 歳に設定
             "123-456-7890",
-            "123 Main St"
+            "123 Main St",
+            Customer.Role.USER
         );
 
         // 例外がスローされることを検証
@@ -271,7 +274,8 @@ class CustomerServiceTest {
             LocalDate.of(2023, 3, 1), // registrationDate
             LocalDate.of(1990, 5, 20), // birthDate
             "123-456-7890",
-            "123 Main St"
+            "123 Main St",
+            Customer.Role.USER
         );
         String newPassword = "new_secure_password";
         String hashedPassword = "hashed_new_secure_password"; // ハッシュ化後のパスワード（モック）
@@ -298,7 +302,8 @@ class CustomerServiceTest {
             LocalDate.of(2023, 3, 1), // registrationDate
             LocalDate.of(1990, 5, 20), // birthDate
             "999-888-7777",
-            "999 Updated St"
+            "999 Updated St",
+            Customer.Role.USER
         );
 
         // モックの動作を定義
@@ -338,7 +343,7 @@ class CustomerServiceTest {
         // モックの動作を定義
         Pageable pageable = PageRequest.of(0, 10);
         when(customerRepository.searchWithPagination("John", "john@example.com", 10, 0, null, null)).thenReturn(Arrays.asList(
-            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St")
+            new Customer("john.doe@example.com", "password123", "John Doe", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "123-456-7890", "123 Main St", Customer.Role.USER)
         ));
         when(customerRepository.countBySearch("John", "john@example.com")).thenReturn(1L);
 
@@ -361,8 +366,8 @@ class CustomerServiceTest {
         
         // モックの動作を定義
         when(customerRepository.searchWithPagination("test", null, 10, 0, "email", "ASC")).thenReturn(Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice Test", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob Test", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice Test", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob Test", LocalDate.of(2023, 2, 2), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         ));
         when(customerRepository.countBySearch("test", null)).thenReturn(2L);
 
@@ -385,8 +390,8 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_AllCustomers() {
         // テストデータ
         List<Customer> customers = Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -409,7 +414,7 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_WithSearchConditions() {
         // テストデータ
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -432,8 +437,8 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_WithSorting() {
         // テストデータ（name ASC: Alice first, then Bob）
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -456,7 +461,7 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_EscapeDoubleQuotes() {
         // テストデータ（ダブルクォートを含む名前）
         List<Customer> customers = Arrays.asList(
-            new Customer("test@example.com", "password", "Test \"Name\"", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address \"1\"")
+            new Customer("test@example.com", "password", "Test \"Name\"", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address \"1\"", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -479,8 +484,8 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_WithDescendingSort() {
         // テストデータ（name DESC: Bob first, then Alice）
         List<Customer> customers = Arrays.asList(
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2"),
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER),
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -503,8 +508,8 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_SortByEmail() {
         // テストデータ（email ASC: alice@ first, then bob@）
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -527,8 +532,8 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_SortByBirthDate() {
         // テストデータ（birth_date ASC: Alice (1990) first, then Bob (1992)）
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -551,8 +556,8 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_SortByUnknownProperty() {
         // テストデータ（unknown property with ASC defaults to registration_date ASC: Alice (Jan) first, then Bob (Feb)）
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -575,8 +580,8 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_SortByRegistrationDate() {
         // テストデータ（registration_date ASC: Alice (Jan) first, then Bob (Feb)）
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1"),
-            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER),
+            new Customer("bob@example.com", "password", "Bob", LocalDate.of(2023, 2, 1), LocalDate.of(1992, 2, 2), "222-2222", "Address2", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -599,7 +604,7 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_WithEmailOnly() {
         // テストデータ
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
@@ -622,7 +627,7 @@ class CustomerServiceTest {
     void testExportCustomersToCSV_WithBothNameAndEmail() {
         // テストデータ
         List<Customer> customers = Arrays.asList(
-            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1")
+            new Customer("alice@example.com", "password", "Alice", LocalDate.of(2023, 1, 1), LocalDate.of(1990, 1, 1), "111-1111", "Address1", Customer.Role.USER)
         );
         byte[] mockCsvData = "CSV data".getBytes();
         
