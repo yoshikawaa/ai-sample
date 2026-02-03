@@ -88,6 +88,27 @@ public class LoginHistoryService {
     }
 
     /**
+     * セッション超過を記録
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordSessionExceeded(String email, String ipAddress, String userAgent) {
+        try {
+            LoginHistory loginHistory = new LoginHistory();
+            loginHistory.setEmail(email);
+            loginHistory.setLoginTime(LocalDateTime.now());
+            loginHistory.setStatus(LoginHistory.Status.SESSION_EXCEEDED);
+            loginHistory.setIpAddress(ipAddress);
+            loginHistory.setUserAgent(userAgent);
+            loginHistory.setFailureReason("最大セッション数超過");
+            
+            loginHistoryRepository.insert(loginHistory);
+            log.info("セッション超過を記録: email={}", email);
+        } catch (Exception e) {
+            log.error("ログイン履歴の記録に失敗: email={}", email, e);
+        }
+    }
+
+    /**
      * ログアウトを記録
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -1,6 +1,7 @@
 package io.github.yoshikawaa.example.ai_sample.config;
 
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     private final LoginAttemptService loginAttemptService;
+    private final LoginHistoryService loginHistoryService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -64,7 +66,7 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 // 認証不要画面
                 .requestMatchers(
-                    "/", "/register/**", "/login", "/password-reset/**", "/account-locked", "/account-unlock/**", "/error"
+                    "/", "/register/**", "/login", "/password-reset/**", "/account-locked", "/account-unlock/**", "/session-limit-exceeded", "/error"
                 ).permitAll()
                 // その他は認証のみ必要
                 .anyRequest().authenticated()
@@ -107,10 +109,18 @@ public class SecurityConfig {
     @Bean
     public AuthenticationSuccessHandler authenticationSuccessHandler() {
         return (request, response, authentication) -> {
-            log.info("ログイン成功: email={}", authentication.getName());
+            String email = authentication.getName();
+            String ipAddress = request.getRemoteAddr();
+            String userAgent = request.getHeader("User-Agent");
+            
+            log.info("ログイン成功: email={}", email);
             
             // ログイン成功時は試行回数をリセット
-            loginAttemptService.resetAttempts(authentication.getName());
+            loginAttemptService.resetAttempts(email);
+            
+            // ログイン履歴を記録（セッション制御チェック後に実行される）
+            loginHistoryService.recordLoginSuccess(email, ipAddress, userAgent);
+            
             response.sendRedirect("/mypage");
         };
     }
@@ -119,19 +129,25 @@ public class SecurityConfig {
     public AuthenticationFailureHandler authenticationFailureHandler() {
         return (request, response, exception) -> {
             String email = request.getParameter("username");
+            String ipAddress = request.getRemoteAddr();
+            String userAgent = request.getHeader("User-Agent");
             
-            // 最大セッション数超過時
             if (exception instanceof SessionAuthenticationException) {
+                // 最大セッション数超過時
                 log.warn("最大セッション数超過によるログイン拒否: email={}", email);
+                loginHistoryService.recordSessionExceeded(email, ipAddress, userAgent);
                 response.sendRedirect("/session-limit-exceeded");
                 return;
             }
             if (exception instanceof LockedException) {
                 // 6回目以降のロック中ログイン試行
                 log.warn("ロック中のアカウントへのログイン試行: email={}, reason={}", email, exception.getMessage());
+                loginHistoryService.recordLoginLocked(email, ipAddress, userAgent);
                 response.sendRedirect("/account-locked?email=" + email);
                 return;
             }
+            // ログイン失敗を記録
+            loginHistoryService.recordLoginFailure(email, ipAddress, userAgent, exception.getMessage());
             boolean locked = loginAttemptService.handleFailedLoginAttempt(email);
             if (locked) {
                 // 5回目失敗で即ロック画面遷移
@@ -148,7 +164,15 @@ public class SecurityConfig {
     @Bean
     public LogoutSuccessHandler logoutSuccessHandler() {
         return (request, response, authentication) -> {
-            log.info("ログアウト: email={}", authentication.getName());
+            String email = authentication.getName();
+            String ipAddress = request.getRemoteAddr();
+            String userAgent = request.getHeader("User-Agent");
+            
+            log.info("ログアウト: email={}", email);
+            
+            // ログアウト履歴を記録
+            loginHistoryService.recordLogout(email, ipAddress, userAgent);
+            
             response.sendRedirect("/");
         };
     }

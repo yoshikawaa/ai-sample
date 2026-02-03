@@ -13,13 +13,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(AdminController.class)
-@Import(SecurityConfig.class)
+@Import(SecurityConfig.class) // セキュリティ設定をインポート
 @DisplayName("AdminController の認可テスト")
 class AdminControllerTest {
 
@@ -29,13 +30,16 @@ class AdminControllerTest {
     @MockitoBean
     private LoginAttemptService loginAttemptService;
 
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
+
     @Nested
     @DisplayName("AuthorizationTest")
     class AuthorizationTest {
 
         @Test
         @DisplayName("管理者ユーザー: /admin/dashboard にアクセスできる")
-        @WithMockUser(username = "admin@example.com", roles = {"ADMIN"})
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
         void accessAdminDashboard_withAdminRole() throws Exception {
             mockMvc.perform(get("/admin/dashboard"))
                 .andExpect(status().isOk())
@@ -44,7 +48,7 @@ class AdminControllerTest {
 
         @Test
         @DisplayName("一般ユーザー: /admin/dashboard にアクセスすると403 Forbidden")
-        @WithMockUser(username = "user@example.com", roles = {"USER"})
+        @WithMockUser(username = "user@example.com", roles = "USER")
         void accessAdminDashboard_withUserRole() throws Exception {
             mockMvc.perform(get("/admin/dashboard"))
                 .andExpect(status().isForbidden());

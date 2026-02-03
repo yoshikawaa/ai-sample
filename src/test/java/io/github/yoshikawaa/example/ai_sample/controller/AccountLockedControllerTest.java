@@ -10,14 +10,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 
 import static org.mockito.Mockito.when;
 
 @WebMvcTest(AccountLockedController.class)
+@Import(SecurityConfig.class) // セキュリティ設定をインポート
 @DisplayName("AccountLockedController のテスト")
 class AccountLockedControllerTest {
 
@@ -26,6 +30,9 @@ class AccountLockedControllerTest {
 
     @MockitoBean
     private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
 
     @Test
     @WithMockUser

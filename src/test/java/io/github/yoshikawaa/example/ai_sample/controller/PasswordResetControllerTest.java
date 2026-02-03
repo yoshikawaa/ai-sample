@@ -1,11 +1,15 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
+import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
+import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
 @WebMvcTest(PasswordResetController.class)
+@Import(SecurityConfig.class) // セキュリティ設定をインポート
 @WithMockUser
 @DisplayName("PasswordResetController のテスト")
 class PasswordResetControllerTest {
@@ -32,6 +37,12 @@ class PasswordResetControllerTest {
 
     @MockitoBean
     private PasswordResetService passwordResetService;
+
+    @MockitoBean
+    private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
 
     @Test
     @DisplayName("GET /password-reset/request: リクエストフォーム画面を表示する")

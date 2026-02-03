@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(AdminLoginHistoryController.class)
-@Import(SecurityConfig.class)
+@Import(SecurityConfig.class) // セキュリティ設定をインポート
 @DisplayName("AdminLoginHistoryController のテスト")
 class AdminLoginHistoryControllerTest {
 
@@ -47,10 +47,10 @@ class AdminLoginHistoryControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private LoginHistoryService loginHistoryService;
+    private LoginAttemptService loginAttemptService;
 
     @MockitoBean
-    private LoginAttemptService loginAttemptService;
+    private LoginHistoryService loginHistoryService;
 
     // ========================================
     // ログイン履歴一覧表示

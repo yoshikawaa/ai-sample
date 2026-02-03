@@ -16,6 +16,7 @@ import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerExceptio
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -39,6 +40,9 @@ class CustomerRegistrationControllerTest {
 
     @MockitoBean
     private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
 
     @Autowired
     private MockMvc mockMvc;

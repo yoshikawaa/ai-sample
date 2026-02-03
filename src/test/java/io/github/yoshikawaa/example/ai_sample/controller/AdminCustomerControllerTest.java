@@ -47,10 +47,11 @@ import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerExceptio
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
 
 @WebMvcTest(AdminCustomerController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, GlobalExceptionHandler.class}) // セキュリティ設定とグローバルエラーハンドラーをインポート
 @DisplayName("AdminCustomerController のテスト")
 class AdminCustomerControllerTest {
 
@@ -62,6 +63,9 @@ class AdminCustomerControllerTest {
 
     @MockitoBean
     private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
 
     @MockitoBean
     private PasswordResetService passwordResetService;
