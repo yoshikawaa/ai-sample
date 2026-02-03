@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,6 +27,9 @@ class HomeControllerTest {
 
     @MockitoBean
     private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
 
     @Test
     @DisplayName("GET /: ホームページを表示する")

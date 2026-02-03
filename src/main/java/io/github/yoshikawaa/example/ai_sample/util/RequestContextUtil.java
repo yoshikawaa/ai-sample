@@ -47,21 +47,6 @@ public class RequestContextUtil {
     }
 
     /**
-     * 現在のHTTPリクエストからUser-Agentを取得
-     * 
-     * @return User-Agent（取得できない場合は "unknown"）
-     */
-    public static String getUserAgent() {
-        HttpServletRequest request = getCurrentRequest();
-        if (request == null) {
-            return "unknown";
-        }
-
-        String userAgent = request.getHeader("User-Agent");
-        return StringUtils.hasText(userAgent) ? userAgent : "unknown";
-    }
-
-    /**
      * RequestContextHolderから現在のHttpServletRequestを取得
      * 
      * @return HttpServletRequest（取得できない場合は null）

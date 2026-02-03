@@ -19,9 +19,9 @@ public class LoginHistory {
     private String failureReason;
 
     /**
-     * ログインステータス（SUCCESS, FAILURE, LOCKED, LOGOUT）
+     * ログインステータス（SUCCESS, FAILURE, LOCKED, LOGOUT, SESSION_EXCEEDED）
      */
     public static enum Status {
-        SUCCESS, FAILURE, LOCKED, LOGOUT
+        SUCCESS, FAILURE, LOCKED, LOGOUT, SESSION_EXCEEDED
     }
 }

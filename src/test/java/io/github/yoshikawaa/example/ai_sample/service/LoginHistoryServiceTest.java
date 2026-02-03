@@ -95,6 +95,19 @@ class LoginHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("recordSessionExceeded: セッション超過を記録できる")
+    void testRecordSessionExceeded() {
+        // モックの動作を定義
+        doNothing().when(loginHistoryRepository).insert(any(LoginHistory.class));
+
+        // サービスメソッドを呼び出し
+        loginHistoryService.recordSessionExceeded("user@example.com", "192.168.1.1", "Mozilla/5.0");
+
+        // 検証
+        verify(loginHistoryRepository, times(1)).insert(any(LoginHistory.class));
+    }
+
+    @Test
     @DisplayName("recordLoginSuccess: 例外が発生してもログ記録は失敗しない（エラーログ出力のみ）")
     void testRecordLoginSuccess_ExceptionHandling() {
         // モックの動作を定義: 例外をスロー
@@ -141,6 +154,19 @@ class LoginHistoryServiceTest {
 
         // サービスメソッドを呼び出し（例外が発生しても正常終了する）
         loginHistoryService.recordLogout("user@example.com", "192.168.1.1", "Mozilla/5.0");
+
+        // 検証: 呼び出しは成功する（例外がthrowされない）
+        verify(loginHistoryRepository, times(1)).insert(any(LoginHistory.class));
+    }
+
+    @Test
+    @DisplayName("recordSessionExceeded: 例外が発生してもログ記録は失敗しない（エラーログ出力のみ）")
+    void testRecordSessionExceeded_ExceptionHandling() {
+        // モックの動作を定義: 例外をスロー
+        doThrow(new RuntimeException("Database error")).when(loginHistoryRepository).insert(any(LoginHistory.class));
+
+        // サービスメソッドを呼び出し（例外が発生しても正常終了する）
+        loginHistoryService.recordSessionExceeded("user@example.com", "192.168.1.1", "Mozilla/5.0");
 
         // 検証: 呼び出しは成功する（例外がthrowされない）
         verify(loginHistoryRepository, times(1)).insert(any(LoginHistory.class));

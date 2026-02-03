@@ -4,6 +4,7 @@ import io.github.yoshikawaa.example.ai_sample.model.AuditLog;
 import io.github.yoshikawaa.example.ai_sample.model.AuditLogSearchForm;
 import io.github.yoshikawaa.example.ai_sample.service.AuditLogService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(AdminAuditLogController.class)
-@Import(SecurityConfig.class)
+@Import(SecurityConfig.class) // セキュリティ設定をインポート
 @DisplayName("AdminAuditLogController のテスト")
 class AdminAuditLogControllerTest {
 
@@ -51,6 +52,9 @@ class AdminAuditLogControllerTest {
 
     @MockitoBean
     private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
 
     // ========================================
     // 監査ログ一覧表示

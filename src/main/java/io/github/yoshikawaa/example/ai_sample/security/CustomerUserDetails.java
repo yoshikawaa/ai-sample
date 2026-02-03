@@ -1,6 +1,7 @@
 package io.github.yoshikawaa.example.ai_sample.security;
 
 import java.util.Collection;
+import java.util.Objects;
 
 import org.springframework.security.core.GrantedAuthority;
 
@@ -62,5 +63,28 @@ public class CustomerUserDetails implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    /**
+     * 多重ログイン制御のため、同じemailを持つUserDetailsは同一と見なす
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        CustomerUserDetails that = (CustomerUserDetails) obj;
+        return Objects.equals(getUsername(), that.getUsername());
+    }
+
+    /**
+     * equals()に対応するhashCode実装
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(getUsername());
     }
 }

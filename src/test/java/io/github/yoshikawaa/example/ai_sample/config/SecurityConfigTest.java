@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.junit.jupiter.api.Disabled;
 import org.springframework.security.test.context.support.TestExecutionEvent;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -51,8 +51,11 @@ class SecurityConfigTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private PasswordEncoder passwordEncoder; // PasswordEncoder を注入
+    private SessionRegistry sessionRegistry;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder; // PasswordEncoder を注入
+    
     @MockitoBean
     private CustomerRepository customerRepository;
 
@@ -64,6 +67,13 @@ class SecurityConfigTest {
 
     @BeforeEach
     void setUpCustomer() {
+        // 他のテストで登録されたセッションをクリア（テスト間の影響を排除）
+        sessionRegistry.getAllPrincipals().forEach(principal -> {
+            sessionRegistry.getAllSessions(principal, false).forEach(session -> {
+                session.expireNow();
+            });
+        });
+        
         // テスト用のユーザーをモック
         Customer testCustomer = new Customer();
         testCustomer.setEmail("test@example.com");
@@ -77,6 +87,10 @@ class SecurityConfigTest {
 
         // CustomerRepository の findByEmail メソッドをモック
         when(customerRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testCustomer));
+        
+        // LoginAttemptRepositoryのモック: アカウントはロックされていない
+        when(loginAttemptRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
+        
         // EmailServiceのメール送信を抑止
         doNothing().when(emailService).sendEmail(any(), any(), any());
     }
@@ -137,23 +151,28 @@ class SecurityConfigTest {
     }
 
     @Test
-    @Disabled("spring-projects/spring-security#4212 Spring Securityの不具合により多重ログイン制御が動作しないため、一時的に無効化。")
     @DisplayName("多重ログイン制御: 1回目のセッションがSessionRegistryに登録されている状態で、2回目のログインは最大セッション数超過エラー画面に遷移する")
     void testSessionSurvivesAfterSecondLoginAttempt() throws Exception {
         // 1回目のログイン（セッションA）
-        MvcResult resultA = mockMvc.perform(post("/login")
-                .param("username", "test@example.com")
-                .param("password", "password123")
-                .with(csrf()))
+        MvcResult resultA = mockMvc.perform(formLogin("/login")
+                .user("test@example.com")
+                .password("password123"))
             .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/mypage"))
             .andReturn();
-        MockHttpSession sessionA = (MockHttpSession) resultA.getRequest().getSession();
-
-        // セッションAで認証済みページにアクセス（セッションAは有効なまま）
-        mockMvc.perform(get("/mypage").session(sessionA))
-            .andExpect(status().isOk());
+        
+        // sessionFixation().migrateSession()により新しいセッションIDが生成される
+        // リダイレクト先にアクセスして新しいセッションを取得
+        MockHttpSession sessionA = (MockHttpSession) mockMvc.perform(get("/mypage")
+                .session((MockHttpSession) resultA.getRequest().getSession()))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getRequest()
+            .getSession();
 
         // 2回目のログイン（セッションB: 新しいセッション）
+        // maxSessionsPreventsLogin(true)により、セッション超過で拒否される
+        // 注: formLoginビルダーは.session()をサポートしないため、post()を使用
         MockHttpSession sessionB = new MockHttpSession();
         mockMvc.perform(post("/login")
             .param("username", "test@example.com")
@@ -162,6 +181,10 @@ class SecurityConfigTest {
             .session(sessionB))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/session-limit-exceeded"));
+        
+        // セッションAは引き続き有効（maxSessionsPreventsLogin(true)の動作）
+        mockMvc.perform(get("/mypage").session(sessionA))
+            .andExpect(status().isOk());
     }
 
     @Test

@@ -1,12 +1,16 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
 
+import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.service.AccountLockService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
+import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -21,8 +25,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.LinkedMultiValueMap;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(AccountUnlockController.class)
+@Import(SecurityConfig.class) // セキュリティ設定をインポート
 @DisplayName("AccountUnlockController のテスト")
 class AccountUnlockControllerTest {
 
@@ -31,6 +35,12 @@ class AccountUnlockControllerTest {
 
     @MockitoBean
     private AccountLockService accountLockService;
+
+    @MockitoBean
+    private LoginAttemptService loginAttemptService;
+
+    @MockitoBean
+    private LoginHistoryService loginHistoryService;
 
     @Test
     @DisplayName("アンロックリクエスト画面が表示される")
