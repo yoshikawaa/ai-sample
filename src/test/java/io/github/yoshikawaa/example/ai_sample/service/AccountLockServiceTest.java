@@ -3,6 +3,8 @@ package io.github.yoshikawaa.example.ai_sample.service;
 
 import io.github.yoshikawaa.example.ai_sample.model.AccountUnlockToken;
 import io.github.yoshikawaa.example.ai_sample.repository.AccountUnlockTokenRepository;
+import io.github.yoshikawaa.example.ai_sample.repository.AuditLogRepository;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -40,6 +42,14 @@ class AccountLockServiceTest {
 
         @MockitoBean
         private NotificationService notificationService;
+
+        @MockitoBean
+        private AuditLogRepository auditLogRepository;
+
+        @BeforeEach
+        void setUpAuditLogMock() {
+            doNothing().when(auditLogRepository).insert(any());
+        }
 
         @Test
         @DisplayName("アンロックリクエスト時にトークンが生成・保存され、メール送信される")
@@ -140,6 +150,14 @@ class AccountLockServiceTest {
 
         @MockitoBean
         private NotificationService notificationService;
+
+        @MockitoBean
+        private AuditLogRepository auditLogRepository;
+
+        @BeforeEach
+        void setUpAuditLogMock() {
+            org.mockito.Mockito.doNothing().when(auditLogRepository).insert(org.mockito.ArgumentMatchers.any());
+        }
 
         @BeforeEach
         void setUp() {

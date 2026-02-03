@@ -729,6 +729,120 @@ src/main/resources/templates/
 - ただし、要件変更や仕様変更時は既存設定の書き換え・削除も許容される。
 - その場合は影響範囲を十分に確認し、意図しない副作用が出ないよう注意する。
 
+#### ユーティリティクラスのパターン
+
+**原則**: ユーティリティクラスは静的メソッドのみを提供し、インスタンス化を禁止する
+
+```java
+// ✅ 推奨: privateコンストラクタでインスタンス化を防止
+public class SecurityContextUtil {
+    
+    private SecurityContextUtil() {
+        // インスタンス化を禁止
+    }
+    
+    public static String getCurrentAuthenticatedEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (authentication != null && authentication.isAuthenticated()) 
+            ? authentication.getName() 
+            : null;
+    }
+}
+
+public class RequestContextUtil {
+    
+    private RequestContextUtil() {
+        // インスタンス化を禁止
+    }
+    
+    public static String getClientIpAddress() {
+        // ...
+    }
+}
+
+// ❌ 禁止: privateコンストラクタがない
+public class SecurityContextUtil {
+    public static String getCurrentAuthenticatedEmail() {
+        // インスタンス化可能（誤用のリスク）
+    }
+}
+```
+
+**重要**:
+- **privateコンストラクタ必須**: ユーティリティクラスは必ずprivateコンストラクタを定義
+- **staticメソッドのみ**: インスタンスメソッドは持たない
+- **状態を持たない**: フィールド変数は持たない（定数は可）
+- **テストカバレッジ100%**: すべての分岐条件をテストし、100%カバレッジを目指す
+- **ネーミング**: `〜Util` または `〜Utils` で終わる
+
+#### コード簡潔化の原則
+
+**原則**: 既存の変数を活用し、冗長な変数宣言や条件チェックを避ける
+
+##### 既存変数の活用
+
+```java
+// ✅ 推奨: 既存の変数を活用
+public void updateCustomerInfo(Customer customer) {
+    String performedBy = SecurityContextUtil.getCurrentAuthenticatedEmail();
+    String email = customer.getEmail();
+    
+    customerRepository.updateCustomerInfo(customer);
+    
+    // performedByを再利用
+    if (performedBy.equals(customer.getEmail())) {
+        // SecurityContextHolderを更新
+    }
+    
+    auditLogService.recordAudit(performedBy, email, ...);
+}
+
+// ❌ 非推奨: 同じ値を再取得
+public void updateCustomerInfo(Customer customer) {
+    String performedBy = SecurityContextUtil.getCurrentAuthenticatedEmail();
+    
+    customerRepository.updateCustomerInfo(customer);
+    
+    // 再度取得（冗長）
+    Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+    if (currentAuth != null && currentAuth.getName().equals(customer.getEmail())) {
+        // ...
+    }
+}
+```
+
+##### Spring Securityの保証を信頼
+
+```java
+// ✅ 推奨: 認証済みエンドポイントではnullチェック不要
+@PostMapping("/edit")
+public String updateCustomer(@AuthenticationPrincipal CustomerUserDetails userDetails, ...) {
+    String performedBy = SecurityContextUtil.getCurrentAuthenticatedEmail();
+    
+    // Spring Securityが認証を保証しているため、performedByは必ずnon-null
+    if (performedBy.equals(customer.getEmail())) {
+        // SecurityContextHolderを更新
+    }
+}
+
+// ❌ 非推奨: 冗長なnullチェック
+@PostMapping("/edit")
+public String updateCustomer(@AuthenticationPrincipal CustomerUserDetails userDetails, ...) {
+    Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+    
+    // 認証済みエンドポイントでのnullチェックは不要
+    if (currentAuth != null && currentAuth.getName().equals(customer.getEmail())) {
+        // ...
+    }
+}
+```
+
+**重要**:
+- **Spring Securityの保証**: `@PreAuthorize`や`@WithUserDetails`で保護されたエンドポイントでは認証が保証される
+- **冗長な変数削除**: 同じ値を複数回取得・保持しない
+- **nullチェックの適切な配置**: フレームワークが保証する条件では不要
+- **可読性の向上**: コードが簡潔になり、意図が明確になる
+
 #### 命名規則
 - クラス・メソッド・変数名は、その責務・役割が一目で分かるように命名する。
 - 動詞＋目的語（registerCustomer, updatePassword など）や、状態・属性を表す名詞（Customer, LoginAttempt など）を基本とする。
@@ -1193,6 +1307,74 @@ List<Customer> findAllWithSort(@Param("sortColumn") String sortColumn,
   - メモリ使用量削減
   - データベースインデックスの活用
   - ネットワーク転送量の削減
+
+#### MyBatisでのEnum処理
+
+**原則**：MyBatisはEnum型を自動的に文字列に変換してデータベースに保存する
+
+**動的SQLでの条件チェック**：
+```java
+// ✅ 正しい：Enum型のnullチェック（空文字チェック不要）
+@Select("""
+    <script>
+    SELECT * FROM audit_log
+    <where>
+        <if test="performedBy != null and performedBy != ''">
+            AND LOWER(performed_by) LIKE LOWER(CONCAT('%', #{performedBy}, '%'))
+        </if>
+        <if test="actionType != null">
+            AND action_type = #{actionType}
+        </if>
+    </where>
+    </script>
+""")
+List<AuditLog> search(@Param("performedBy") String performedBy, 
+                      @Param("actionType") AuditLog.ActionType actionType);
+
+// ❌ 誤り：Enum型に対して空文字チェック
+<if test="actionType != null and actionType != ''">  // エラー: invalid comparison
+    AND action_type = #{actionType}
+</if>
+```
+
+**重要**：
+- **String型パラメータ**: `param != null and param != ''` でチェック（nullと空文字の両方を除外）
+- **Enum型パラメータ**: `param != null` のみでチェック（空文字チェックは不要、エラーになる）
+- **理由**: Enumは文字列ではないため、`!= ''` という比較は型不一致エラーを引き起こす
+- **データベース保存**: Enumは `name()` メソッドの文字列表現（例: "CREATE", "UPDATE"）として保存される
+- **データベース読取**: 文字列を自動的にEnumに変換（`valueOf()`）
+
+**テストコードでの注意**：
+```java
+// ✅ 正しい：有効なEnum値を使用
+insertAuditLog("admin@example.com", "user@example.com", "CREATE", "詳細", LocalDateTime.now());
+
+// ❌ 誤り：無効なEnum値を使用
+insertAuditLog("admin@example.com", "user@example.com", "ACTION1", "詳細", LocalDateTime.now());
+// → 実行時エラー: IllegalArgumentException: No enum constant AuditLog.ActionType.ACTION1
+```
+
+**パラメータ型の一貫性**：
+```java
+// ✅ リポジトリ・サービス・フォームですべて同じEnum型を使用
+@Mapper
+public interface AuditLogRepository {
+    List<AuditLog> search(@Param("actionType") AuditLog.ActionType actionType, ...);
+}
+
+@Service
+public class AuditLogService {
+    public Page<AuditLog> search(AuditLogSearchForm form, Pageable pageable) {
+        // form.getActionType() は AuditLog.ActionType 型
+        List<AuditLog> logs = repository.search(form.getActionType(), ...);
+    }
+}
+
+@Data
+public class AuditLogSearchForm {
+    private AuditLog.ActionType actionType;  // 同じEnum型
+}
+```
 
 #### メソッドの配置順序
 
@@ -1976,6 +2158,101 @@ public class CustomerForm {
 }
 ```
 
+#### Enumの使用（型安全性の向上）
+
+**原則**：取りうる値が限定されているString型フィールドは、Enum型を使用する
+
+**Enum使用の判断基準**：
+```java
+// ✅ Enum使用が適切なケース：値が限定されている
+public class AuditLog {
+    private ActionType actionType;  // CREATE, UPDATE, DELETE, PASSWORD_RESET, ACCOUNT_LOCK, ACCOUNT_UNLOCK
+    
+    public static enum ActionType {
+        CREATE, UPDATE, DELETE, PASSWORD_RESET, ACCOUNT_LOCK, ACCOUNT_UNLOCK
+    }
+}
+
+public class LoginHistory {
+    private Status status;  // SUCCESS, FAILURE, LOCKED, LOGOUT
+    
+    public static enum Status {
+        SUCCESS, FAILURE, LOCKED, LOGOUT
+    }
+}
+
+// ❌ Enum使用が不適切なケース：値が自由入力
+public class Customer {
+    private String name;  // 任意の名前（Enumにしない）
+    private String email;  // 任意のメールアドレス（Enumにしない）
+}
+```
+
+**Enumパターン**：
+- Inner static enum を使用（既存の `Customer.Role` パターンに従う）
+- エンティティクラス内に enum を定義
+- 検索フォームクラスでも同じ enum 型を使用
+
+**利点**：
+- **型安全性**: 無効な値の使用を防ぐ（コンパイル時にチェック）
+- **IDEサポート**: 自動補完で有効な値を提示
+- **MyBatis対応**: 自動的にEnum ↔ String変換（後述）
+- **保守性**: 値の追加・変更が一箇所で完結
+
+**例**：
+```java
+// エンティティクラス
+@Data
+public class AuditLog {
+    private Long id;
+    private String performedBy;
+    private String targetEmail;
+    private ActionType actionType;  // Enum型
+    private String actionDetail;
+    
+    public static enum ActionType {
+        CREATE, UPDATE, DELETE, PASSWORD_RESET, ACCOUNT_LOCK, ACCOUNT_UNLOCK
+    }
+}
+
+// 検索フォームクラス
+@Data
+public class AuditLogSearchForm {
+    private String performedBy;
+    private String targetEmail;
+    private AuditLog.ActionType actionType;  // 同じEnum型を使用
+}
+
+// サービス層での使用
+public void recordAudit(String performedBy, String targetEmail, AuditLog.ActionType actionType, ...) {
+    AuditLog auditLog = new AuditLog();
+    auditLog.setActionType(actionType);  // Enum値を設定
+    auditLogRepository.insert(auditLog);
+}
+
+// 呼び出し側
+recordAudit("admin@example.com", "user@example.com", AuditLog.ActionType.CREATE, ...);
+```
+
+**検索フォームでの空文字チェック**：
+```java
+// ✅ Enum型の場合：nullチェックのみ
+if (searchForm.getPerformedBy() != null ||
+    searchForm.getTargetEmail() != null ||
+    searchForm.getActionType() != null) {  // ← nullチェックのみ
+    // 検索実行
+}
+
+// ❌ String型と同じように空文字チェックはしない
+if (StringUtils.hasText(searchForm.getActionType())) {  // コンパイルエラー
+    // ...
+}
+```
+
+**重要**：
+- 既存のString型フィールドをEnum化する場合、サービス層・リポジトリ層・テストコードをすべて修正
+- データベースには文字列として保存される（MyBatisが自動変換）
+
 #### CSV出力用DTOパターン
 ```java
 @Data
@@ -2676,6 +2953,96 @@ void testGetAllCustomersWithPagination_SortByRegistrationDateDesc() {
 - **デフォルトソート**: ソート指定がない場合のデフォルト動作も考慮
 - **検証**: 期待する順序でデータが返されることをアサート
 - **誤った順序のモックデータ**: テストは成功してもバグが隠れる可能性がある
+
+### 4. テスト責務の明確化
+
+**原則**: テストの責務を明確に分離し、重複を避ける
+
+#### ユーティリティクラスのテスト vs サービス統合テスト
+
+```java
+// ✅ 推奨: SecurityContextUtilでnull認証をテスト（単体テスト）
+@SpringBootTest
+class SecurityContextUtilTest {
+    
+    @Test
+    @DisplayName("getCurrentAuthenticatedEmail: 未認証の場合はnullを返す")
+    void testGetCurrentAuthenticatedEmail_NotAuthenticated() {
+        SecurityContextHolder.clearContext();
+        String email = SecurityContextUtil.getCurrentAuthenticatedEmail();
+        assertThat(email).isNull();
+    }
+}
+
+// ✅ 推奨: CustomerServiceでビジネスロジックをテスト（統合テスト）
+@SpringBootTest
+class CustomerServiceTest {
+    
+    @Test
+    @DisplayName("registerCustomer: 顧客を登録できる")
+    @WithUserDetails(value = "admin@example.com")
+    void testRegisterCustomer() {
+        // ビジネスロジックのみに集中
+        customerService.registerCustomer(customer);
+        verify(customerRepository).save(any());
+    }
+}
+
+// ❌ 非推奨: CustomerServiceTestで未認証ケースをテスト（重複）
+@Test
+@DisplayName("registerCustomer: 未認証の場合にエラー")
+void testRegisterCustomer_NotAuthenticated() {
+    // SecurityContextUtilで既にテスト済みの内容を重複テスト
+    SecurityContextHolder.clearContext();
+    customerService.registerCustomer(customer);
+    // ...
+}
+```
+
+**重要**:
+- **ユーティリティクラスのテスト**: 認証ロジック、ユーティリティメソッドの単体テスト
+- **サービス統合テスト**: ビジネスロジックに集中、認証は`@WithUserDetails`で保証
+- **テストの重複を避ける**: 同じ条件（未認証等）を複数のテストクラスでテストしない
+- **責務の分離**: ユーティリティの動作検証 vs ビジネスロジックの検証
+
+#### ユーティリティクラスのテストパターン
+
+```java
+@SpringBootTest
+class RequestContextUtilTest {
+    
+    private MockHttpServletRequest request;
+    
+    @BeforeEach
+    void setUp() {
+        request = new MockHttpServletRequest();
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    }
+    
+    @Test
+    @DisplayName("getClientIpAddress: X-Forwarded-Forから取得できる")
+    void testGetClientIpAddress_FromXForwardedFor() {
+        request.addHeader("X-Forwarded-For", "203.0.113.195");
+        String ip = RequestContextUtil.getClientIpAddress();
+        assertThat(ip).isEqualTo("203.0.113.195");
+    }
+    
+    @Test
+    @DisplayName("getClientIpAddress: WL-Proxy-Client-IPが'unknown'の場合はRemoteAddrから取得")
+    void testGetClientIpAddress_FromRemoteAddrWhenWLProxyClientIpUnknown() {
+        request.addHeader("WL-Proxy-Client-IP", "unknown");
+        request.setRemoteAddr("198.51.100.178");
+        String ip = RequestContextUtil.getClientIpAddress();
+        assertThat(ip).isEqualTo("198.51.100.178");
+    }
+}
+```
+
+**重要**:
+- **100%カバレッジを目指す**: すべての分岐条件をテスト
+- **エッジケース**: null、空文字、"unknown"などの特殊値をテスト
+- **フォールバック動作**: 優先度の高いヘッダーがない場合の動作を検証
+- **MockHttpServletRequest**: Spring Testが提供するテスト用オブジェクトを活用
 
 ### テストでの副作用抑止（メール送信など）
 - テストで外部サービス（メール送信等）を呼び出す場合は、必ず@MockitoBean等でモック化し副作用を抑止すること。

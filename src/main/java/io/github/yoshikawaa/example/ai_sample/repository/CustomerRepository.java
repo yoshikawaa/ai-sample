@@ -25,7 +25,7 @@ public interface CustomerRepository {
                 ORDER BY ${sortColumn} ${sortDirection}
             </when>
             <otherwise>
-                ORDER BY registration_date DESC
+                ORDER BY registration_date DESC, email ASC
             </otherwise>
         </choose>
         </script>
@@ -40,7 +40,7 @@ public interface CustomerRepository {
                 ORDER BY ${sortColumn} ${sortDirection}
             </when>
             <otherwise>
-                ORDER BY registration_date DESC
+                ORDER BY registration_date DESC, email ASC
             </otherwise>
         </choose>
         LIMIT #{limit} OFFSET #{offset}
@@ -72,7 +72,7 @@ public interface CustomerRepository {
                 ORDER BY ${sortColumn} ${sortDirection}
             </when>
             <otherwise>
-                ORDER BY registration_date DESC
+                ORDER BY registration_date DESC, email ASC
             </otherwise>
         </choose>
         </script>
@@ -96,7 +96,7 @@ public interface CustomerRepository {
                 ORDER BY ${sortColumn} ${sortDirection}
             </when>
             <otherwise>
-                ORDER BY registration_date DESC
+                ORDER BY registration_date DESC, email ASC
             </otherwise>
         </choose>
         LIMIT #{limit} OFFSET #{offset}

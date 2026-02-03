@@ -9,7 +9,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.ObjectProvider;
@@ -19,9 +18,12 @@ import org.springframework.util.StringUtils;
 
 import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
 import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
+import io.github.yoshikawaa.example.ai_sample.model.AuditLog;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.security.CustomerUserDetails;
+import io.github.yoshikawaa.example.ai_sample.util.RequestContextUtil;
+import io.github.yoshikawaa.example.ai_sample.util.SecurityContextUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,6 +36,7 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final ObjectProvider<PasswordEncoder> passwordEncoderProvider;
     private final CsvService csvService;
+    private final AuditLogService auditLogService;
 
     @Transactional(readOnly = true)
     public Customer getCustomerByEmail(String email) {
@@ -65,6 +68,11 @@ public class CustomerService {
         // 顧客情報を登録
         customerRepository.insert(customer);
         
+        // 監査ログを記録
+        String performedBy = SecurityContextUtil.getAuthenticatedUsername(customer.getEmail());
+        auditLogService.recordAudit(performedBy, customer.getEmail(), AuditLog.ActionType.CREATE, 
+            "顧客登録: name=" + customer.getName(), RequestContextUtil.getClientIpAddress());
+        
         log.info("顧客登録完了: email={}", customer.getEmail());
     }
 
@@ -76,6 +84,11 @@ public class CustomerService {
 
         // パスワードを更新
         customerRepository.updatePassword(customer.getEmail(), hashedPassword);
+
+        // 監査ログを記録
+        String performedBy = SecurityContextUtil.getAuthenticatedUsername(customer.getEmail());
+        auditLogService.recordAudit(performedBy, customer.getEmail(), AuditLog.ActionType.PASSWORD_RESET, 
+            "パスワード変更", RequestContextUtil.getClientIpAddress());
 
         // 認証情報を更新
         customer.setPassword(hashedPassword);
@@ -93,9 +106,13 @@ public class CustomerService {
         // 顧客情報を更新
         customerRepository.updateCustomerInfo(customer);
 
+        // 監査ログを記録
+        String performedBy = SecurityContextUtil.getAuthenticatedUsername(customer.getEmail());
+        auditLogService.recordAudit(performedBy, customer.getEmail(), AuditLog.ActionType.UPDATE, 
+            "顧客情報更新: name=" + customer.getName(), RequestContextUtil.getClientIpAddress());
+
         // 認証情報を更新（ログインユーザー自身の情報を更新した場合のみ）
-        Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
-        if (currentAuth != null && currentAuth.getName().equals(customer.getEmail())) {
+        if (performedBy.equals(customer.getEmail())) {
             CustomerUserDetails updatedUserDetails = new CustomerUserDetails(customer);
             SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(updatedUserDetails, null, updatedUserDetails.getAuthorities())
@@ -108,6 +125,11 @@ public class CustomerService {
 
     public void deleteCustomer(String email) {
         log.info("顧客削除開始: email={}", email);
+        
+        // 監査ログを記録（削除前に記録）
+        String performedBy = SecurityContextUtil.getAuthenticatedUsername(email);
+        auditLogService.recordAudit(performedBy, email, AuditLog.ActionType.DELETE, 
+            "顧客削除", RequestContextUtil.getClientIpAddress());
         
         // 顧客を削除
         customerRepository.deleteByEmail(email);

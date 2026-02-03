@@ -2,8 +2,12 @@ package io.github.yoshikawaa.example.ai_sample.service;
 
 import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
 import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
+import io.github.yoshikawaa.example.ai_sample.model.AuditLog;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
+import io.github.yoshikawaa.example.ai_sample.repository.AuditLogRepository;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDate;
@@ -33,6 +38,7 @@ import static org.mockito.Mockito.when;
 @DisplayName("CustomerService のテスト")
 class CustomerServiceTest {
 
+
     @MockitoBean
     private CustomerRepository customerRepository;
 
@@ -42,8 +48,19 @@ class CustomerServiceTest {
     @MockitoBean
     private CsvService csvService;
 
+    @MockitoBean
+    private AuditLogRepository auditLogRepository;
+
+    @MockitoBean
+    private AuditLogService auditLogService;
+
     @Autowired
     private CustomerService customerService;
+
+    @BeforeEach
+    void setUpAuditLogMock() {
+        doNothing().when(auditLogRepository).insert(any());
+    }
 
     // ========================================
     // 単一取得
@@ -259,6 +276,35 @@ class CustomerServiceTest {
         });
     }
 
+    @Test
+    @DisplayName("registerCustomer: 認証済みユーザーが登録する場合、監査ログに認証ユーザー名を記録する")
+    @WithMockUser(username = "admin@example.com")
+    void testRegisterCustomer_WithAuthentication() {
+        // テストデータの準備
+        Customer newCustomer = new Customer(
+            "new.customer@example.com",
+            "plain_password",
+            "New Customer",
+            LocalDate.of(2023, 3, 1),
+            LocalDate.of(1990, 5, 20),
+            "111-222-3333",
+            "789 New St",
+            Customer.Role.USER
+        );
+
+        // モックの動作を定義
+        when(passwordEncoder.encode(any())).thenReturn("hashed_password");
+        doNothing().when(customerRepository).insert(any());
+        doNothing().when(auditLogService).recordAudit(any(), any(), any(), any(), any());
+
+        // サービスメソッドを呼び出し
+        customerService.registerCustomer(newCustomer);
+
+        // 検証: 認証ユーザー名が監査ログに記録される
+        verify(auditLogService, times(1)).recordAudit(
+            eq("admin@example.com"), eq("new.customer@example.com"), eq(AuditLog.ActionType.CREATE), any(), any());
+    }
+
     // ========================================
     // 更新
     // ========================================
@@ -314,6 +360,35 @@ class CustomerServiceTest {
 
         // リポジトリの呼び出しを検証
         verify(customerRepository, times(1)).updateCustomerInfo(customer);
+    }
+
+    @Test
+    @DisplayName("updateCustomerInfo: 管理者が他ユーザーの情報を更新する場合、SecurityContextを更新しない")
+    @WithMockUser(username = "admin@example.com")
+    void testUpdateCustomerInfo_AdminUpdatesOtherUser() {
+        // テストデータの準備（管理者が他ユーザーの情報を更新）
+        Customer customer = new Customer(
+            "john.doe@example.com",
+            "password123",
+            "Updated Name",
+            LocalDate.of(2023, 3, 1),
+            LocalDate.of(1990, 5, 20),
+            "999-888-7777",
+            "999 Updated St",
+            Customer.Role.USER
+        );
+
+        // モックの動作を定義
+        doNothing().when(customerRepository).updateCustomerInfo(any());
+        doNothing().when(auditLogService).recordAudit(any(), any(), any(), any(), any());
+
+        // サービスメソッドを呼び出し
+        customerService.updateCustomerInfo(customer);
+
+        // 検証: SecurityContextは更新されない（currentAuth.getName() != customer.getEmail() の分岐）
+        verify(customerRepository, times(1)).updateCustomerInfo(customer);
+        verify(auditLogService, times(1)).recordAudit(
+            eq("admin@example.com"), eq("john.doe@example.com"), eq(AuditLog.ActionType.UPDATE), any(), any());
     }
 
     // ========================================
