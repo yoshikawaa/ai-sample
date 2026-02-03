@@ -107,10 +107,10 @@ public class SecurityConfig {
     @Bean
     public AuthenticationSuccessHandler authenticationSuccessHandler() {
         return (request, response, authentication) -> {
-            String email = authentication.getName();
-            log.info("ログイン成功: email={}", email);
+            log.info("ログイン成功: email={}", authentication.getName());
+            
             // ログイン成功時は試行回数をリセット
-            loginAttemptService.resetAttempts(email);
+            loginAttemptService.resetAttempts(authentication.getName());
             response.sendRedirect("/mypage");
         };
     }
@@ -119,6 +119,7 @@ public class SecurityConfig {
     public AuthenticationFailureHandler authenticationFailureHandler() {
         return (request, response, exception) -> {
             String email = request.getParameter("username");
+            
             // 最大セッション数超過時
             if (exception instanceof SessionAuthenticationException) {
                 log.warn("最大セッション数超過によるログイン拒否: email={}", email);
@@ -133,7 +134,8 @@ public class SecurityConfig {
             }
             boolean locked = loginAttemptService.handleFailedLoginAttempt(email);
             if (locked) {
-                // 5回目失敗で即ロック画面遷移: email={}, reason={}", email, exception.getMessage());
+                // 5回目失敗で即ロック画面遷移
+                log.warn("5回目のログイン失敗によるアカウントロック: email={}, reason={}", email, exception.getMessage());
                 response.sendRedirect("/account-locked?email=" + email);
                 return;
             }

@@ -5,6 +5,7 @@ import com.icegreen.greenmail.util.ServerSetup;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetToken;
+import io.github.yoshikawaa.example.ai_sample.repository.AuditLogRepository;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.repository.PasswordResetTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +59,9 @@ class PasswordResetServiceTest {
     @MockitoBean
     private LoginAttemptService loginAttemptService;
 
+    @MockitoBean
+    private AuditLogRepository auditLogRepository;
+
     @Autowired
     private PasswordResetService passwordResetService;
 
@@ -69,6 +73,9 @@ class PasswordResetServiceTest {
         testCustomer.setEmail("test@example.com");
         testCustomer.setPassword("oldHashedPassword");
         testCustomer.setName("Test User");
+
+        // AuditLogRepositoryのinsertをモック
+        doNothing().when(auditLogRepository).insert(any());
     }
 
     @Test

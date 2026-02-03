@@ -1,9 +1,11 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
 import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
+import io.github.yoshikawaa.example.ai_sample.model.AuditLog;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetToken;
 import io.github.yoshikawaa.example.ai_sample.repository.CustomerRepository;
 import io.github.yoshikawaa.example.ai_sample.repository.PasswordResetTokenRepository;
+import io.github.yoshikawaa.example.ai_sample.util.RequestContextUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,6 +27,7 @@ public class PasswordResetService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
+    private final AuditLogService auditLogService;
 
     public void sendResetLink(@NonNull String email) {
         // セキュリティ: メールアドレスの存在有無を外部に漏らさない
@@ -45,6 +48,9 @@ public class PasswordResetService {
 
         String resetLink = "http://localhost:8080/password-reset/confirm?token=" + token;
         emailService.sendEmail(email, "パスワードリセット", "以下のリンクをクリックしてパスワードをリセットしてください: " + resetLink);
+        
+        // 監査ログを記録
+        auditLogService.recordAudit(email, email, AuditLog.ActionType.PASSWORD_RESET, "パスワードリセットリンク送信", RequestContextUtil.getClientIpAddress());
         
         // パスワードリセットリンク送信を記録
         log.info("パスワードリセットリンク送信: email={}", email);
@@ -67,6 +73,9 @@ public class PasswordResetService {
         // ハッシュ化されたパスワードを保存
         customerRepository.updatePassword(email, hashedPassword);
 
+        // 監査ログを記録
+        auditLogService.recordAudit(email, email, AuditLog.ActionType.PASSWORD_RESET, "パスワードリセット完了", RequestContextUtil.getClientIpAddress());
+        
         // ログイン試行記録・ロック状態をリセット
         loginAttemptService.resetAttempts(email);
 
