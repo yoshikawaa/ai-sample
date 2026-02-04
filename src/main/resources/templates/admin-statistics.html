@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Statistics</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body class="bg-gray-900 min-h-screen min-h-dvh">
+    <div th:replace="~{fragments/nav :: nav(${true})}"></div>
+    <div class="container mx-auto px-4 py-8">
+        <div class="bg-white shadow-md rounded-lg p-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Statistics</h1>
+            
+            <!-- 期間指定フォーム -->
+            <form th:action="@{/admin/statistics/search}" th:object="${statisticsSearchForm}" method="get" class="mb-8">
+                <div class="flex items-end space-x-4">
+                    <div>
+                        <label for="startDate" class="block text-gray-700 font-medium mb-2">Start Date</label>
+                        <input type="date" id="startDate" name="startDate" th:field="*{startDate}" 
+                               class="border border-gray-300 rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label for="endDate" class="block text-gray-700 font-medium mb-2">End Date</label>
+                        <input type="date" id="endDate" name="endDate" th:field="*{endDate}" 
+                               class="border border-gray-300 rounded px-3 py-2">
+                    </div>
+                    <div class="flex space-x-2">
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Search</button>
+                        <a th:href="@{/admin/statistics}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Clear</a>
+                    </div>
+                </div>
+            </form>
+            
+            <!-- グラフ表示エリア（グリッドレイアウト） -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                <!-- 顧客数推移グラフ -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">Customer Growth</h2>
+                    <div id="customerChart" style="width: 100%; height: 300px;"></div>
+                </div>
+                
+                <!-- ログイン統計グラフ -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">Login Statistics</h2>
+                    <div id="loginChart" style="width: 100%; height: 300px;"></div>
+                </div>
+                
+                <!-- 利用状況グラフ -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">Usage Statistics</h2>
+                    <div id="usageChart" style="width: 100%; height: 300px;"></div>
+                </div>
+            </div>
+            
+            <!-- 統計数値テーブル（折りたたみ式） -->
+            <details class="mb-8">
+                <summary class="text-2xl font-bold text-gray-800 mb-4 cursor-pointer hover:text-blue-600">
+                    📊 Detailed Statistics (Click to expand)
+                </summary>
+                <div class="mt-4">
+                    <!-- 顧客数推移テーブル -->
+                <div class="mb-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Customer Growth</h3>
+                    <table class="w-full border-collapse border border-gray-300">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="border border-gray-300 px-4 py-2">Date</th>
+                                <th class="border border-gray-300 px-4 py-2">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="stat : ${statistics.customerStatistics}">
+                                <td class="border border-gray-300 px-4 py-2" th:text="${#temporals.format(stat.date, 'yyyy-MM-dd')}">2026-01-01</td>
+                                <td class="border border-gray-300 px-4 py-2" th:text="${stat.count}">10</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(statistics.customerStatistics)}">
+                                <td colspan="2" class="border border-gray-300 px-4 py-2 text-center text-gray-500">該当期間のデータがありません</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- ログイン統計テーブル -->
+                <div class="mb-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Login Statistics</h3>
+                    <table class="w-full border-collapse border border-gray-300">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="border border-gray-300 px-4 py-2">Status</th>
+                                <th class="border border-gray-300 px-4 py-2">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="stat : ${statistics.loginStatistics}">
+                                <td class="border border-gray-300 px-4 py-2" th:text="${stat.status}">SUCCESS</td>
+                                <td class="border border-gray-300 px-4 py-2" th:text="${stat.count}">50</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(statistics.loginStatistics)}">
+                                <td colspan="2" class="border border-gray-300 px-4 py-2 text-center text-gray-500">該当期間のデータがありません</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 利用状況テーブル -->
+                <div class="mb-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Usage Statistics</h3>
+                    <table class="w-full border-collapse border border-gray-300">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="border border-gray-300 px-4 py-2">Action Type</th>
+                                <th class="border border-gray-300 px-4 py-2">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="stat : ${statistics.usageStatistics}">
+                                <td class="border border-gray-300 px-4 py-2" th:text="${stat.actionType}">CREATE</td>
+                                <td class="border border-gray-300 px-4 py-2" th:text="${stat.count}">20</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(statistics.usageStatistics)}">
+                                <td colspan="2" class="border border-gray-300 px-4 py-2 text-center text-gray-500">該当期間のデータがありません</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            </details>
+            
+            <!-- 戻るボタン -->
+            <div class="text-center mt-6">
+                <a th:href="@{/admin}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Back to Admin</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EChartsグラフ描画 -->
+    <script th:inline="javascript">
+        // データ取得（Thymeleafから）
+        const customerData = /*[[${statistics.customerStatistics}]]*/ [];
+        const loginData = /*[[${statistics.loginStatistics}]]*/ [];
+        const usageData = /*[[${statistics.usageStatistics}]]*/ [];
+        
+        // 顧客数推移グラフ
+        const customerChartDom = document.getElementById('customerChart');
+        const customerChart = echarts.init(customerChartDom);
+        const customerOption = {
+            color: ['#3B82F6'],
+            tooltip: {
+                trigger: 'axis'
+            },
+            xAxis: {
+                type: 'category',
+                data: customerData.map(item => item.date) // LocalDate は ISO 文字列 (yyyy-MM-dd) として扱われる
+            },
+            yAxis: {
+                type: 'value',
+                name: 'Count'
+            },
+            series: [{
+                name: 'Customers',
+                type: 'line',
+                smooth: true,
+                data: customerData.map(item => item.count)
+            }]
+        };
+        customerChart.setOption(customerOption);
+        
+        // ログイン統計グラフ
+        const loginChartDom = document.getElementById('loginChart');
+        const loginChart = echarts.init(loginChartDom);
+        
+        // ステータス別の色定義
+        const statusColors = {
+            'SUCCESS': '#10B981',
+            'FAILURE': '#EF4444',
+            'LOCKED': '#F59E0B',
+            'SESSION_EXCEEDED': '#8B5CF6',
+            'LOGOUT': '#6B7280'
+        };
+        
+        const loginOption = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            xAxis: {
+                type: 'category',
+                data: loginData.map(item => item.status)
+            },
+            yAxis: {
+                type: 'value',
+                name: 'Count'
+            },
+            series: [{
+                name: 'Login',
+                type: 'bar',
+                data: loginData.map(item => ({
+                    value: item.count,
+                    itemStyle: {
+                        color: statusColors[item.status] || '#3B82F6'
+                    }
+                }))
+            }]
+        };
+        loginChart.setOption(loginOption);
+        
+        // 利用状況グラフ
+        const usageChartDom = document.getElementById('usageChart');
+        const usageChart = echarts.init(usageChartDom);
+        const usageOption = {
+            color: ['#3B82F6'],
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            xAxis: {
+                type: 'category',
+                data: usageData.map(item => item.actionType),
+                axisLabel: {
+                    rotate: 45,
+                    interval: 0
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: 'Count'
+            },
+            series: [{
+                name: 'Usage',
+                type: 'bar',
+                data: usageData.map(item => item.count)
+            }]
+        };
+        usageChart.setOption(usageOption);
+        
+        // レスポンシブ対応
+        window.addEventListener('resize', function() {
+            customerChart.resize();
+            loginChart.resize();
+            usageChart.resize();
+        });
+    </script>
+</body>
+</html>

@@ -700,6 +700,65 @@ src/main/resources/templates/
 - **同時ログイン数制限**（セッション数上限）を設定し、上限超過時は`session-limit-exceeded.html`へ遷移
 - セッションタイムアウト時はトップページへリダイレクト
 
+#### カスタムUserDetailsの実装
+
+**原則**: カスタムUserDetails実装時は、必ず`equals()`と`hashCode()`を実装する
+
+```java
+// ✅ 必須: equals と hashCode を実装
+@Data
+public class CustomerUserDetails implements UserDetails {
+    private final Customer customer;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CustomerUserDetails that = (CustomerUserDetails) o;
+        return Objects.equals(customer.getEmail(), that.customer.getEmail());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(customer.getEmail());
+    }
+    
+    // UserDetailsの他のメソッド実装...
+}
+
+// ❌ 禁止: equals/hashCode未実装
+@Data
+public class CustomerUserDetails implements UserDetails {
+    private final Customer customer;
+    // equals/hashCode未実装 → SessionRegistryが正しく動作しない
+}
+```
+
+**重要なポイント**:
+- **一意識別子（例: email）でequals/hashCodeを実装**
+- Lombokの`@Data`だけでは不十分（全フィールドで比較されてしまう）
+- `@EqualsAndHashCode(of = "email")`でも対応可能だが、Customerオブジェクト全体を持つ場合は明示的実装を推奨
+
+**なぜ必要か**:
+- `SessionRegistry`は`UserDetails`のインスタンスをMapのキーとして使用
+- 同じユーザーかどうかの判定に`equals()`/`hashCode()`を使用
+- これらが正しく実装されていないと、同一ユーザーの複数セッションを検出できない
+
+**テストでの検証**:
+```java
+@Test
+void testEquals() {
+    Customer customer1 = new Customer("test@example.com", ...);
+    Customer customer2 = new Customer("test@example.com", ...);
+    
+    CustomerUserDetails user1 = new CustomerUserDetails(customer1);
+    CustomerUserDetails user2 = new CustomerUserDetails(customer2);
+    
+    // 同じemailなら等しいと判定される
+    assertThat(user1).isEqualTo(user2);
+}
+```
+
 ### 6. パスワード管理
 - パスワードは**BCrypt**でハッシュ化し、平文保存・送信・ログ出力を禁止
 - パスワードリセット時は**ワンタイムトークン**を発行し、メールで送信
@@ -842,6 +901,66 @@ public String updateCustomer(@AuthenticationPrincipal CustomerUserDetails userDe
 - **冗長な変数削除**: 同じ値を複数回取得・保持しない
 - **nullチェックの適切な配置**: フレームワークが保証する条件では不要
 - **可読性の向上**: コードが簡潔になり、意図が明確になる
+
+##### 冗長なコード削減時の注意点
+
+**原則**: 冗長性削減時は、指摘された部分のみを変更し、関連しない部分まで変更しない
+
+```java
+// ❌ 悪い例: 指摘は「recordLoginFailureの重複削除」だけなのに、returnも削除してif-elseに変更
+loginHistoryService.recordLoginFailure(...);
+boolean locked = loginAttemptService.handleFailedLoginAttempt(email);
+
+if (locked) {
+    log.warn("...");
+    response.sendRedirect("/account-locked");
+} else {
+    log.warn("...");
+    response.sendRedirect("/login?error");
+}
+
+// ✅ 良い例: 指摘された重複のみを削減し、ガード節（早期return）を維持
+loginHistoryService.recordLoginFailure(...);
+boolean locked = loginAttemptService.handleFailedLoginAttempt(email);
+
+if (locked) {
+    log.warn("...");
+    response.sendRedirect("/account-locked");
+    return;
+}
+log.warn("...");
+response.sendRedirect("/login?error");
+```
+
+**重要**:
+- ガイドライン「if文のネスト回避・ガード節の推奨」に従い、早期returnを維持
+- 冗長性削減とコードスタイルは別の観点として扱う
+- 複数の改善を同時に行う場合は、事前に確認する
+
+##### 処理の順序の重要性
+
+**原則**: 処理の流れに沿った自然な順序を意識する
+
+```java
+// ❌ 不自然: ロック判定→履歴記録
+boolean locked = loginAttemptService.handleFailedLoginAttempt(email);
+loginHistoryService.recordLoginFailure(email, ipAddress, userAgent, exception.getMessage());
+
+// ✅ 自然: 履歴記録→ロック判定→画面遷移
+loginHistoryService.recordLoginFailure(email, ipAddress, userAgent, exception.getMessage());
+boolean locked = loginAttemptService.handleFailedLoginAttempt(email);
+
+if (locked) {
+    response.sendRedirect("/account-locked");
+    return;
+}
+response.sendRedirect("/login?error");
+```
+
+**重要**:
+- 「何が起きたか（履歴記録）」→「どう判断するか（ロック判定）」→「どうするか（画面遷移）」という自然な流れ
+- データベース操作は判定ロジックの前に実行
+- 可読性とメンテナンス性が向上する
 
 #### 命名規則
 - クラス・メソッド・変数名は、その責務・役割が一目で分かるように命名する。
@@ -1791,6 +1910,140 @@ public void updatePassword(String token, String newPassword) {
 - **メソッド呼び出しの最適化**: 同じメソッド呼び出し（例: `resetToken.getEmail()`）を複数回実行する場合は、変数に格納して再利用する
 - **適用範囲**: サービス層、コントローラ層、リポジトリ層など、すべてのレイヤーで適用
 
+#### 不要なメソッドの削除基準
+
+**原則**: 本番コードで使用されていないメソッドは削除する
+
+```java
+// ❌ 削除すべき: 本番コードで使用されていない（テストのみで使用）
+public static String getUserAgent() {
+    HttpServletRequest request = getCurrentRequest();
+    if (request == null) {
+        return "unknown";
+    }
+    String userAgent = request.getHeader("User-Agent");
+    return StringUtils.hasText(userAgent) ? userAgent : "unknown";
+}
+// → 使用箇所: テストコードのみ
+// → 本番コードでは request.getHeader("User-Agent") を直接使用
+
+// ✅ 保持すべき: 本番コードで複数箇所から使用されている
+public static String getClientIpAddress() {
+    // SecurityConfig、各種リスナー等で使用
+    // 複数のヘッダーをフォールバックする複雑なロジック
+    // ...
+}
+```
+
+**確認方法**:
+```bash
+# メソッド名で全使用箇所を検索
+grep -r "getUserAgent" src/
+```
+
+**重要**:
+- リポジトリ層・サービス層・ユーティリティクラスでも同じ原則が適用される
+- 既存ガイドラインの「テストのためだけのメソッドは作らない」を徹底する
+- 実装後に使用されなくなったメソッドは積極的に削除する
+- メソッドの複雑さではなく、「使用されているかどうか」が判断基準
+
+#### YAGNI原則（必要最小限の実装）
+
+**原則**: "You Aren't Gonna Need It" - 今必要ないものは実装しない
+
+**基本方針**:
+- **現在の要件に必要な機能のみを実装する**
+- 将来使うかもしれない機能は実装しない
+- リファクタリング後、使われなくなったメソッドは即座に削除する
+- 「念のため残しておく」「後で使うかも」という判断を避ける
+
+**判断基準**:
+```java
+// ✅ 実装すべき: コントローラから呼ばれている
+@Service
+public class StatisticsService {
+    
+    @Transactional
+    public StatisticsDto getStatistics(LocalDate startDate, LocalDate endDate) {
+        // コントローラから呼ばれる唯一のpublicメソッド
+        // 統計データ取得 + 監査ログ記録を1トランザクションで実行
+        List<CustomerStatistics> customerStats = repository.getCustomerStatistics(startDate, endDate);
+        List<LoginStatistics> loginStats = repository.getLoginStatistics(startDate, endDate);
+        List<UsageStatistics> usageStats = repository.getUsageStatistics(startDate, endDate);
+        auditLogService.recordAudit(...);
+        return new StatisticsDto(customerStats, loginStats, usageStats, startDate, endDate);
+    }
+}
+
+// ❌ 削除すべき: リファクタリング後に使われなくなったメソッド
+@Service
+public class StatisticsService {
+    
+    // コントローラから呼ばれない（getStatisticsData()に統合された）
+    public List<CustomerStatistics> getCustomerStatisticsByDay(LocalDate startDate, LocalDate endDate) {
+        return repository.getCustomerStatisticsByDay(startDate, endDate);
+    }
+    
+    // コントローラから呼ばれない（getStatisticsData()に統合された）
+    public List<LoginStatistics> getLoginStatistics(LocalDate startDate, LocalDate endDate) {
+        return repository.getLoginStatistics(startDate, endDate);
+    }
+    
+    // 「将来、月次集計が必要になるかも」という理由だけで実装
+    public List<CustomerStatistics> getCustomerStatisticsByMonth(LocalDate startDate, LocalDate endDate) {
+        return repository.getCustomerStatisticsByMonth(startDate, endDate);
+    }
+}
+```
+
+**実例（統計機能のリファクタリング）**:
+- **Before**: 5つのpublicメソッド（日次集計、月次集計、ログイン統計、利用統計、アクセス記録）
+- **リファクタリング**: トランザクション境界の問題で`getStatistics()`に統合
+- **After**: 1つのpublicメソッド（`getStatistics()`）のみ
+- **削除したメソッド**: 
+  - `getCustomerStatistics()` - リポジトリを呼ぶだけのラッパー（リポジトリでは`getCustomerStatisticsByDay()`から`getCustomerStatistics()`にリネーム）
+  - `getCustomerStatisticsByMonth()` - 使われていない将来用メソッド（リポジトリからも削除）
+  - `getLoginStatistics()` - リポジトリを呼ぶだけのラッパー
+  - `getUsageStatistics()` - リポジトリを呼ぶだけのラッパー
+  - `recordStatisticsAccess()` - `getStatistics()`に統合
+
+**削除の判断フロー**:
+1. **使用箇所を検索**: `grep -r "メソッド名" src/main/` でコントローラ・サービスでの使用を確認
+2. **テストコードのみで使用**: 削除対象（テストのためだけのメソッドは不要）
+3. **どこからも呼ばれていない**: 即座に削除（「将来使うかも」は禁止）
+4. **リポジトリをそのまま呼ぶだけ**: サービス層の価値がないラッパーメソッドは削除
+
+**利点**:
+- **コードベースの簡潔さ**: 保守対象のコード量が減る
+- **テストの簡潔さ**: テストすべきメソッドが減る
+- **認知負荷の軽減**: 開発者が理解すべき機能が減る
+- **変更容易性**: 使われていないコードによる制約がない
+- **バグリスク軽減**: 使われていないコードにもバグは潜む
+
+**アンチパターン**:
+```java
+// ❌ 禁止: 「拡張性」のための過剰実装
+public interface StatisticsService {
+    // 現在使われていない集計単位を全て用意
+    List<CustomerStatistics> getCustomerStatistics(...);
+    List<CustomerStatistics> getCustomerStatisticsByWeek(...);  // 未使用
+    List<CustomerStatistics> getCustomerStatisticsByMonth(...);  // 未使用
+    List<CustomerStatistics> getCustomerStatisticsByYear(...);  // 未使用
+}
+
+// ✅ 推奨: 現在必要な機能のみ
+public interface StatisticsService {
+    StatisticsDto getStatistics(LocalDate startDate, LocalDate endDate);
+    // 週次/月次/年次が必要になったら、その時に追加する
+}
+```
+
+**重要**:
+- **現在の要件に集中**: 将来の拡張性よりも、今のシンプルさを優先
+- **必要になったら追加**: 要件が明確になってから実装する
+- **定期的なクリーンアップ**: リファクタリング時は必ず不要メソッドを削除
+- **grep検索の活用**: 削除前に必ず使用箇所を確認
+
 ### 7. サービス層
 
 #### 汎用的なサービス設計（ジェネリクスの活用）
@@ -2045,6 +2298,75 @@ public class CustomerController {
 **重要**:
 - コントローラレベルでフォームオブジェクトを共通化する場合は `@ModelAttribute` メソッドを実装
 - `@ModelAttribute` メソッドは全てのリクエストハンドラーの前に実行され、戻り値を自動的にモデルに追加
+
+#### @ModelAttributeメソッドでのデフォルト値設定
+
+**原則**: デフォルト値は`@ModelAttribute`メソッドで設定し、各リクエストハンドラーで個別に設定しない
+
+```java
+// ✅ 推奨: @ModelAttributeメソッドでデフォルト値を設定
+@Controller
+@RequestMapping("/admin/statistics")
+public class AdminStatisticsController {
+    
+    @ModelAttribute("statisticsSearchForm")
+    public StatisticsSearchForm statisticsSearchForm() {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(30);
+        return new StatisticsSearchForm(startDate, endDate);  // デフォルト値
+    }
+    
+    @GetMapping
+    public String showStatistics(StatisticsSearchForm statisticsSearchForm, Model model) {
+        // フォームは@ModelAttributeメソッドで自動設定される（デフォルト値入り）
+        LocalDate startDate = statisticsSearchForm.getStartDate();
+        LocalDate endDate = statisticsSearchForm.getEndDate();
+        // 統計データ取得
+        return "admin-statistics";
+    }
+    
+    @GetMapping("/search")
+    public String searchStatistics(StatisticsSearchForm statisticsSearchForm, Model model) {
+        // パラメータがあればその値、なければ@ModelAttributeメソッドのデフォルト値
+        LocalDate startDate = statisticsSearchForm.getStartDate();
+        LocalDate endDate = statisticsSearchForm.getEndDate();
+        // 統計データ取得
+        return "admin-statistics";
+    }
+}
+
+// ❌ 非推奨: 各メソッドで個別にデフォルト値を設定
+@Controller
+@RequestMapping("/admin/statistics")
+public class AdminStatisticsController {
+    
+    @ModelAttribute("statisticsSearchForm")
+    public StatisticsSearchForm statisticsSearchForm() {
+        return new StatisticsSearchForm();  // 空のフォーム
+    }
+    
+    @GetMapping
+    public String showStatistics(Model model) {
+        // デフォルト値を個別に設定（冗長）
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(30);
+        StatisticsSearchForm form = new StatisticsSearchForm(startDate, endDate);
+        model.addAttribute("statisticsSearchForm", form);  // 重複
+        // ...
+    }
+}
+```
+
+**利点**:
+- **一貫性**: すべてのリクエストで同じデフォルト値が適用される
+- **簡潔性**: 各リクエストハンドラーでフォームを個別に作成する必要がない
+- **画面との整合性**: 初期表示時に画面の入力欄にデフォルト値が表示される
+- **バリデーション不要**: デフォルト値が設定されるため、必須項目のバリデーションが不要になる（YAGNI）
+
+**重要**: 
+- @ModelAttributeメソッドがデフォルト値を設定する場合、フォームの`@NotNull`バリデーションやコントローラの`@Validated`が不要になることがある
+- **YAGNI原則**: 今必要ないバリデーションは実装しない
+- 将来、期間の妥当性チェック（開始日≤終了日など）が必要になったら、その時に追加すれば良い
 - メソッド引数にフォームオブジェクトを使用する場合、`@ModelAttribute` アノテーションは不要
 - Spring MVC が自動的にリクエストパラメータをバインドし、モデルに追加する
 
@@ -2094,6 +2416,14 @@ public String updateCustomer(@AuthenticationPrincipal CustomerUserDetails userDe
 - `BindingResult` は `@Validated` の直後に配置
 - バリデーションエラー時は入力画面を再表示
 - 成功時は PRG パターン（Post-Redirect-Get）を使用
+
+**バリデーションとYAGNI原則**:
+- `@ModelAttribute`メソッドがデフォルト値を設定する場合、そのフィールドの`@NotNull`バリデーションは不要
+- 例: 統計画面の期間指定で、デフォルト期間（過去30日）を設定する場合、日付の必須チェックは不要
+- **画面の入力欄とデータ表示の一貫性**: 初期表示時に入力欄が空でデータだけが表示されるのはUX上問題
+  - ❌ 悪い例: 入力欄が空 + デフォルトデータ表示 → ユーザーが混乱
+  - ✅ 良い例: 入力欄にデフォルト値 + そのデータ表示 → 一貫性がある
+- バリデーションが本当に必要になったら（例: 開始日≤終了日のチェック）、その時に追加すれば良い
 
 #### メソッドの配置順序
 ```java
@@ -2252,6 +2582,41 @@ if (StringUtils.hasText(searchForm.getActionType())) {  // コンパイルエラ
 **重要**：
 - 既存のString型フィールドをEnum化する場合、サービス層・リポジトリ層・テストコードをすべて修正
 - データベースには文字列として保存される（MyBatisが自動変換）
+
+#### ステータス・Enum値の適切な分類
+
+**原則**: 性質が異なる事象は、異なるステータス値で管理する
+
+```java
+// ❌ 不適切: セッション超過を「認証失敗」として記録
+public static enum Status {
+    SUCCESS, FAILURE, LOCKED, LOGOUT
+}
+
+if (exception instanceof SessionAuthenticationException) {
+    loginHistoryService.recordLoginFailure(...);  // FAILUREステータス（不適切）
+}
+
+// ✅ 適切: セッション超過専用のステータスとメソッドを用意
+public static enum Status {
+    SUCCESS, FAILURE, LOCKED, LOGOUT, SESSION_EXCEEDED
+}
+
+if (exception instanceof SessionAuthenticationException) {
+    loginHistoryService.recordSessionExceeded(...);  // SESSION_EXCEEDEDステータス
+}
+```
+
+**判断基準**:
+- **セッション超過**: 認証は成功しているが、セッション数制限で拒否
+- **認証失敗**: パスワード誤りなど、認証そのものが失敗
+- **アカウントロック**: ロック中のログイン試行
+
+**重要**:
+- 性質が異なる事象を同じステータスで記録すると、統計・分析が困難になる
+- `failureReason`での区別よりも、明示的なステータス値での分類を優先
+- ステータスを追加する場合は、対応する記録メソッドも追加する
+- データベース分析・レポート作成時にステータスで簡単にフィルタリングできる
 
 #### CSV出力用DTOパターン
 ```java
@@ -2667,6 +3032,172 @@ private byte[] generateCSV(List<Customer> customers) {
 - **セカンダリアクション**: `bg-gray-500 hover:bg-gray-600`（Back、Cancel、戻るなど）
 - **新規作成**: `bg-green-500 hover:bg-green-600`（必要に応じて使用）
 - **危険な操作**: `bg-red-500 hover:bg-red-600`（削除の確認ボタンなど）
+
+#### 検索フォームのUI統一
+
+**原則**: すべての検索画面で統一されたUI/UXパターンを使用
+
+**必須要素**:
+- **SearchとClearボタンのペア配置**（両方必須）
+- Clearボタンは検索条件をリセットし、デフォルト状態に戻す
+- ボタンは横並び配置（`flex space-x-2`）
+
+**実装例**:
+```html
+<form th:action="@{/admin/statistics/search}" th:object="${statisticsSearchForm}" method="get" class="mb-8">
+    <div class="flex items-end space-x-4">
+        <div>
+            <label for="startDate" class="block text-gray-700 font-medium mb-2">Start Date</label>
+            <input type="date" id="startDate" name="startDate" th:field="*{startDate}" 
+                   class="border border-gray-300 rounded px-3 py-2">
+        </div>
+        <div>
+            <label for="endDate" class="block text-gray-700 font-medium mb-2">End Date</label>
+            <input type="date" id="endDate" name="endDate" th:field="*{endDate}" 
+                   class="border border-gray-300 rounded px-3 py-2">
+        </div>
+        <div class="flex space-x-2">
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Search</button>
+            <a th:href="@{/admin/statistics}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Clear</a>
+        </div>
+    </div>
+</form>
+```
+
+**重要**:
+- **Search**: 青色（`bg-blue-500`）のボタン
+- **Clear**: 灰色（`bg-gray-500`）のリンク（デフォルトパスへ遷移）
+- すべての検索画面で統一（顧客一覧、監査ログ、ログイン履歴、統計など）
+- ユーザーが検索条件を簡単にリセットできる
+
+#### グラフ・データ可視化のレイアウトパターン
+
+**原則**: 複数のグラフを一画面で俯瞰できるレスポンシブグリッドレイアウト
+
+**推奨レイアウト**:
+```html
+<!-- グラフ表示エリア（グリッドレイアウト） -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+    <!-- 顧客数推移グラフ -->
+    <div class="bg-gray-50 p-4 rounded-lg">
+        <h2 class="text-xl font-bold text-gray-800 mb-3">Customer Growth</h2>
+        <div id="customerChart" style="width: 100%; height: 300px;"></div>
+    </div>
+    
+    <!-- ログイン統計グラフ -->
+    <div class="bg-gray-50 p-4 rounded-lg">
+        <h2 class="text-xl font-bold text-gray-800 mb-3">Login Statistics</h2>
+        <div id="loginChart" style="width: 100%; height: 300px;"></div>
+    </div>
+    
+    <!-- 利用状況グラフ -->
+    <div class="bg-gray-50 p-4 rounded-lg">
+        <h2 class="text-xl font-bold text-gray-800 mb-3">Usage Statistics</h2>
+        <div id="usageChart" style="width: 100%; height: 300px;"></div>
+    </div>
+</div>
+```
+
+**レスポンシブ対応**:
+- **小画面（～768px）**: 1列（縦並び）
+- **中画面（768px～1280px）**: 2列
+- **大画面（1280px～）**: 3列（横並び）
+
+**グラフサイズ**:
+- 高さ: **300px**（コンパクトだが判読可能）
+- 幅: **100%**（親要素に追従）
+- タイトル: `text-xl`（省スペース）
+
+**視覚的グループ化**:
+- 背景色: `bg-gray-50`（グラフを際立たせる）
+- パディング: `p-4`
+- 角丸: `rounded-lg`
+- グリッド間隔: `gap-6`
+
+**重要**:
+- 一画面で全グラフを俯瞰可能（スクロール削減）
+- EChartsなどのツールチップで詳細確認可能
+- レスポンシブ対応でモバイルでも閲覧可能
+
+#### 詳細データの折りたたみパターン
+
+**原則**: メイン情報（グラフ）に集中し、詳細データは必要時のみ表示
+
+**実装例**:
+```html
+<!-- 統計数値テーブル（折りたたみ式） -->
+<details class="mb-8">
+    <summary class="text-2xl font-bold text-gray-800 mb-4 cursor-pointer hover:text-blue-600">
+        📊 Detailed Statistics (Click to expand)
+    </summary>
+    <div class="mt-4">
+        <!-- 顧客数推移テーブル -->
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">Customer Growth</h3>
+            <table class="w-full border-collapse border border-gray-300">
+                <!-- テーブル内容 -->
+            </table>
+        </div>
+        <!-- その他のテーブル -->
+    </div>
+</details>
+```
+
+**利点**:
+- **デフォルトは折りたたみ**: メイン情報（グラフ）に集中
+- **クリックで展開**: 詳細が必要な時のみアクセス
+- **アイコン使用**: 📊などで視認性向上
+- **ホバーエフェクト**: `hover:text-blue-600`でインタラクティブ感
+
+**使用場面**:
+- グラフと生データを両方提供する画面
+- 詳細な統計テーブル
+- ログの詳細情報
+- 長いリストや大量のデータ
+
+#### ダッシュボードのナビゲーション順序
+
+**原則**: 使用頻度と情報階層に基づいてボタンを配置
+
+**推奨順序**:
+```html
+<div class="space-y-3">
+    <!-- 1. 最重要機能（日常業務の中心） -->
+    <div>
+        <a th:href="@{/admin/customers}" class="block w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Customer List</a>
+    </div>
+    
+    <!-- 2. 概要把握（全体の健全性確認） -->
+    <div>
+        <a th:href="@{/admin/statistics}" class="block w-full bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Statistics</a>
+    </div>
+    
+    <!-- 3. セキュリティ監視（異常検知） -->
+    <div>
+        <a th:href="@{/admin/login-history}" class="block w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Login History</a>
+    </div>
+    
+    <!-- 4. 詳細調査・監査（問題発生時・定期監査） -->
+    <div>
+        <a th:href="@{/admin/audit-log}" class="block w-full bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Audit Log</a>
+    </div>
+</div>
+```
+
+**配置理由**:
+1. **Customer List**: 日常的な顧客管理の入り口（最重要）
+2. **Statistics**: システム全体の健全性を俯瞰（概要→詳細の流れ）
+3. **Login History**: セキュリティ監視（Statisticsで異常検知→詳細確認）
+4. **Audit Log**: 詳細調査・コンプライアンス（通常は問題発生時のみ）
+
+**情報のフロー**:
+- **概要（Statistics）** → **詳細（Login History/Audit Log）**
+- データドリブンな意思決定の流れ
+
+**重要**:
+- 使用頻度の高い機能を上に配置
+- ダッシュボードでの情報把握を優先
+- 論理的な作業フローに沿った配置
 
 ## テストコード
 
