@@ -41,7 +41,7 @@ public class AccountLockService {
     }
 
     /**
-     * トークン検証・ロック解除
+     * トークン検証・ロック解除・メール送信（文面生成はNotificationServiceで担当）
      */
     @Transactional
     public boolean unlockAccount(String token) {
@@ -52,6 +52,8 @@ public class AccountLockService {
         // ロック解除処理
         loginAttemptService.resetAttempts(unlockToken.getEmail());
         tokenRepository.deleteByToken(token);
+        
+        notificationService.sendAccountUnlockComplete(unlockToken.getEmail());
         
         // 監査ログを記録
         auditLogService.recordAudit(unlockToken.getEmail(), unlockToken.getEmail(), AuditLog.ActionType.ACCOUNT_UNLOCK, 

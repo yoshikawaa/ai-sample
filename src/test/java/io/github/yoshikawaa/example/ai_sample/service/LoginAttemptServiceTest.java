@@ -1,7 +1,6 @@
 
 package io.github.yoshikawaa.example.ai_sample.service;
 
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.ArgumentMatchers.any;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -41,13 +40,16 @@ class LoginAttemptServiceTest {
         @MockitoBean
         private EmailService emailService;
 
+        @MockitoBean
+        private NotificationHistoryService notificationHistoryService;
+
         @Autowired
         private LoginAttemptService loginAttemptService;
 
         @BeforeEach
         void setUpEmailService() {
-            // EmailServiceのメール送信を抑止
-            doNothing().when(emailService).sendEmail(any(), any(), any());
+            // EmailServiceのメール送信を抑止（booleanを返すメソッドなのでwhenを使用）
+            when(emailService.sendEmail(any(), any(), any())).thenReturn(true);
         }
 
         @Test
@@ -289,13 +291,16 @@ class LoginAttemptServiceTest {
         @MockitoBean
         private EmailService emailService;
 
+        @MockitoBean
+        private NotificationHistoryService notificationHistoryService;
+
         @Autowired
         private LoginAttemptService loginAttemptService;
 
         @BeforeEach
         void setUpEmailService() {
-            // EmailServiceのメール送信を抑止
-            doNothing().when(emailService).sendEmail(any(), any(), any());
+            // EmailServiceのメール送信を抑止（booleanを返すメソッドなのでwhenを使用）
+            when(emailService.sendEmail(any(), any(), any())).thenReturn(true);
         }
 
         @Test

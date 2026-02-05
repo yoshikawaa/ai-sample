@@ -1,5 +1,6 @@
 
 -- 依存テーブルを先にDROP
+DROP TABLE IF EXISTS notification_history;
 DROP TABLE IF EXISTS audit_log;
 DROP TABLE IF EXISTS login_history;
 DROP TABLE IF EXISTS account_unlock_token;
@@ -77,3 +78,22 @@ CREATE INDEX idx_audit_log_performed_by ON audit_log(performed_by);
 CREATE INDEX idx_audit_log_target_email ON audit_log(target_email);
 CREATE INDEX idx_audit_log_action_type ON audit_log(action_type);
 CREATE INDEX idx_audit_log_action_time ON audit_log(action_time);
+
+-- 通知履歴テーブル
+CREATE TABLE notification_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    recipient_email VARCHAR(255) NOT NULL,
+    notification_type VARCHAR(50) NOT NULL,  -- 'PASSWORD_RESET', 'ACCOUNT_LOCK', 'ACCOUNT_UNLOCK', 'PASSWORD_RESET_COMPLETE', 'ACCOUNT_UNLOCK_COMPLETE'
+    subject VARCHAR(255) NOT NULL,
+    body TEXT,
+    status VARCHAR(20) NOT NULL,             -- 'SUCCESS', 'FAILURE'
+    error_message TEXT,
+    sent_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (recipient_email) REFERENCES customer(email) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_notification_history_recipient ON notification_history(recipient_email);
+CREATE INDEX idx_notification_history_type ON notification_history(notification_type);
+CREATE INDEX idx_notification_history_status ON notification_history(status);
+CREATE INDEX idx_notification_history_sent_at ON notification_history(sent_at);

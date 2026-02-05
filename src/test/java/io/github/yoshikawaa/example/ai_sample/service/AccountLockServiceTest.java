@@ -44,6 +44,12 @@ class AccountLockServiceTest {
         private NotificationService notificationService;
 
         @MockitoBean
+        private NotificationHistoryService notificationHistoryService;
+
+        @MockitoBean
+        private LoginAttemptService loginAttemptService;
+
+        @MockitoBean
         private AuditLogRepository auditLogRepository;
 
         @BeforeEach
@@ -56,7 +62,6 @@ class AccountLockServiceTest {
         void testRequestUnlock() {
             String email = "test@example.com";
             String name = "テストユーザー";
-            doNothing().when(emailService).sendEmail(eq(email), anyString(), anyString());
             doNothing().when(accountUnlockTokenRepository).insert(any(AccountUnlockToken.class));
 
             doNothing().when(notificationService).sendUnlockRequestNotification(eq(email), eq(name), anyString(), anyLong());
@@ -146,10 +151,10 @@ class AccountLockServiceTest {
         private AccountUnlockTokenRepository accountUnlockTokenRepository;
 
         @MockitoBean
-        private EmailService emailService;
+        private NotificationService notificationService;
 
         @MockitoBean
-        private NotificationService notificationService;
+        private LoginAttemptService loginAttemptService;
 
         @MockitoBean
         private AuditLogRepository auditLogRepository;
@@ -161,7 +166,6 @@ class AccountLockServiceTest {
 
         @BeforeEach
         void setUp() {
-            doNothing().when(emailService).sendEmail(any(), any(), any());
             doNothing().when(accountUnlockTokenRepository).insert(any(AccountUnlockToken.class));
             doNothing().when(notificationService).sendUnlockRequestNotification(anyString(), anyString(), anyString(), anyLong());
         }

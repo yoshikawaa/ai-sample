@@ -4,12 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 通知種別ごとの送信数
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginAttempt {
-    private String email;
-    private int attemptCount;
-    private Long lockedUntil;
-    private Long lastAttemptTime;
+public class NotificationTypeCount {
+    private String notificationType;
+    private long count;
 }

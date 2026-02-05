@@ -4,12 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * ステータスごとの送信数
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginAttempt {
-    private String email;
-    private int attemptCount;
-    private Long lockedUntil;
-    private Long lastAttemptTime;
+public class StatusCount {
+    private String status;
+    private long count;
 }
