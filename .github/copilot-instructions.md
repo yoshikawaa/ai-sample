@@ -588,6 +588,95 @@ public class EmailSendException extends RuntimeException {
 - システムエラーはRuntimeExceptionを直接継承
 - BusinessExceptionをシステムエラーの基底クラスとして使用しない
 
+#### Boolean返却パターン（トランザクション内の副作用処理）
+
+**原則**: @Transactionalメソッド内で呼び出される副作用処理（外部サービス連携等）は、boolean返却で成功/失敗を表現する
+
+**適用条件**:
+1. **トランザクション境界内での呼び出し**: @Transactionalメソッドから呼ばれる
+2. **副作用処理**: メイン処理（DB操作等）の付随的な処理（メール送信、外部API呼び出し等）
+3. **処理の継続性**: 失敗してもメイン処理は完了すべき
+
+```java
+// ✅ 推奨: boolean返却で成功/失敗を表現
+@Service
+public class EmailService {
+    
+    /**
+     * メールを送信する
+     * @return 送信成功時true、失敗時false
+     */
+    public boolean sendEmail(@NonNull String to, @NonNull String subject, @NonNull String body) {
+        try {
+            // メール送信処理
+            return true;
+        } catch (Exception e) {
+            log.error("メール送信失敗: to={}, subject={}", to, subject, e);
+            return false;  // 例外をスローせずfalseを返す
+        }
+    }
+}
+
+@Service
+public class NotificationService {
+    
+    private final EmailService emailService;
+    
+    @Transactional
+    public void sendAccountLockedNotification(String email) {
+        boolean success = emailService.sendEmail(email, subject, body);
+        // 成功/失敗に応じた処理（通知履歴記録など）
+        // メール送信失敗でもDB記録は完了し、トランザクションはコミットされる
+        notificationHistoryService.recordNotification(email, "ACCOUNT_LOCK", 
+            success ? "SUCCESS" : "FAILURE");
+    }
+}
+
+// ❌ 非推奨: 例外をスローすると@Transactional全体がロールバック
+public void sendEmail(String to, String subject, String body) {
+    try {
+        // メール送信処理
+    } catch (Exception e) {
+        throw new EmailSendException("メール送信に失敗しました", e);  // 例外をスロー
+    }
+}
+
+@Transactional
+public void sendAccountLockedNotification(String email) {
+    try {
+        emailService.sendEmail(email, subject, body);
+        notificationHistoryService.recordNotification(email, "ACCOUNT_LOCK", "SUCCESS");
+    } catch (EmailSendException e) {
+        // メール送信失敗でDB記録もロールバック（意図しない動作）
+        log.error("通知送信失敗", e);
+        notificationHistoryService.recordNotification(email, "ACCOUNT_LOCK", "FAILURE");
+    }
+}
+```
+
+**判断基準**:
+
+| 状況 | 処理方法 | 理由 |
+|------|---------|------|
+| @Transactional内のメール送信失敗 | boolean返却 | 副作用処理の失敗でメイン処理をロールバックしない |
+| @Transactional内の外部API呼び出し失敗 | boolean返却 | 副作用処理の失敗でメイン処理をロールバックしない |
+| バリデーション失敗 | ビジネス例外 | メイン処理の前提条件違反、ユーザーに通知すべき |
+| データベース操作失敗 | 例外スロー（Spring管理） | メイン処理の失敗、トランザクションをロールバックすべき |
+| システムエラー（DB接続失敗等） | 例外スロー | システムの根本的な問題、処理継続不可 |
+
+**重要**:
+- **Spring標準は例外ベース**: 通常のSpringアプリケーションでは例外でエラーを通知するのが一般的
+- **boolean返却の限定的使用**: トランザクション内の副作用処理に限定
+- **トランザクション境界の明確化**: @Transactionalメソッド内で副作用処理の失敗がメイン処理に影響しないようにする
+- **呼び出し側の責務**: boolean結果に基づいて適切な後処理（履歴記録、再試行等）を実行
+- **ログ記録の一元化**: 失敗時のログは失敗箇所（EmailService）で記録
+- **トランザクション境界**: booleanはトランザクションをロールバックしない
+
+**適用例**:
+- EmailService.sendEmail() - メール送信の成功/失敗
+- FileService.deleteFile() - ファイル削除の成功/失敗
+- ExternalApiService.callApi() - 外部API呼び出しの成功/失敗
+
 #### 禁止事項
 
 - ❌ `spring.mvc.throw-exception-if-no-handler-found` の使用（Spring Boot 3.0で非推奨）
@@ -787,6 +876,64 @@ void testEquals() {
 - 設定やコードの追加・編集時は、原則として既存内容を消さずに追加・併記すること。
 - ただし、要件変更や仕様変更時は既存設定の書き換え・削除も許容される。
 - その場合は影響範囲を十分に確認し、意図しない副作用が出ないよう注意する。
+
+#### パラメータバリデーション（@NonNull）
+
+**原則**: メソッドパラメータのnullチェックには `org.springframework.lang.NonNull` を使用する
+
+```java
+import org.springframework.lang.NonNull;
+
+// ✅ 推奨: Spring Frameworkの@NonNull
+public boolean sendEmail(@NonNull String to, @NonNull String subject, @NonNull String body) {
+    // Spring Frameworkの標準的なnullチェック
+}
+
+// ❌ 禁止: Lombokの@NonNull
+import lombok.NonNull;
+
+public boolean sendEmail(@NonNull String to, @NonNull String subject, @NonNull String body) {
+    // Lombokのnullチェックは使用しない
+}
+```
+
+**重要**:
+- **Spring Framework標準**: `org.springframework.lang.NonNull` を使用
+- **Lombok不使用**: `lombok.NonNull` は使用しない
+- **理由**: 
+  - Spring Frameworkとの統合が自然
+  - Spring Data、Spring MVCなど他のSpringコンポーネントとの一貫性
+  - Lombokはコード生成（@Data, @AllArgsConstructor等）に特化させる
+- **適用対象**: publicメソッドのパラメータ（特にサービス層のエントリーポイント）
+
+#### パラメータバリデーション（@NonNull）
+
+**原則**: メソッドパラメータのnullチェックには `org.springframework.lang.NonNull` を使用する
+
+```java
+import org.springframework.lang.NonNull;
+
+// ✅ 推奨: Spring Frameworkの@NonNull
+public boolean sendEmail(@NonNull String to, @NonNull String subject, @NonNull String body) {
+    // Spring Frameworkの標準的なnullチェック
+}
+
+// ❌ 禁止: Lombokの@NonNull
+import lombok.NonNull;
+
+public boolean sendEmail(@NonNull String to, @NonNull String subject, @NonNull String body) {
+    // Lombokのnullチェックは使用しない
+}
+```
+
+**重要**:
+- **Spring Framework標準**: `org.springframework.lang.NonNull` を使用
+- **Lombok不使用**: `lombok.NonNull` は使用しない
+- **理由**: 
+  - Spring Frameworkとの統合が自然
+  - Spring Data、Spring MVCなど他のSpringコンポーネントとの一貫性
+  - Lombokはコード生成（@Data, @AllArgsConstructor等）に特化させる
+- **適用対象**: publicメソッドのパラメータ（特にサービス層のエントリーポイント）
 
 #### ユーティリティクラスのパターン
 
@@ -2454,6 +2601,56 @@ public class CustomerController {
 
 ### 9. モデルクラス
 
+#### Lombokアノテーションの統一ルール
+
+**原則**: クラス名の命名規則に基づいて一貫したLombokアノテーションを使用する
+
+**1. フォームクラス（Spring MVCバインディング専用）**
+- **判断基準**: クラス名が`*Form`で終わる
+- **ルール**: `@Data`のみ
+- **理由**: 
+  - Spring MVCが自動的にデフォルトコンストラクタを使用
+  - テストでもsetterで値を設定
+  - 全引数コンストラクタは使用しない
+
+```java
+@Data
+public class CustomerEditForm {
+    @NotBlank
+    private String name;
+    // ... その他のフィールド
+}
+```
+
+**2. データクラス（エンティティ、統計結果、DTO等）**
+- **判断基準**: クラス名が`*Form`で終わらないmodelパッケージのクラス
+- **ルール**: `@Data` + `@NoArgsConstructor` + `@AllArgsConstructor`
+- **理由**: 
+  - `@NoArgsConstructor`: MyBatisがデフォルトコンストラクタを使用
+  - `@AllArgsConstructor`: テストでオブジェクト生成が簡潔になる
+  - 実装方法（サービスでの生成方法）に依存しない統一ルール
+
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Customer {
+    private String email;
+    private String password;
+    private String name;
+    // ... その他のフィールド
+}
+```
+
+**判断フロー**:
+```
+modelパッケージのクラス？
+  ├─ Yes → クラス名が*Formで終わる？
+  │         ├─ Yes → @Dataのみ
+  │         └─ No  → @Data + @NoArgsConstructor + @AllArgsConstructor
+  └─ No → このルールの対象外
+```
+
 #### フォームクラス
 ```java
 @Data
@@ -2518,15 +2715,79 @@ public class Customer {
 }
 ```
 
-**Enumパターン**：
-- Inner static enum を使用（既存の `Customer.Role` パターンに従う）
-- エンティティクラス内に enum を定義
-- 検索フォームクラスでも同じ enum 型を使用
+#### 内部クラスの使用判断
 
-**利点**：
+**原則**: 内部クラス（inner class）は、そのクラスが親クラスと密接に関連し、独立して使用されない場合のみ使用する
+
+**1. 内部クラスとして実装すべきケース**
+
+**Enum（列挙型）**:
+- **対象**: Customer.Role, AuditLog.ActionType, LoginHistory.Status 等
+- **理由**: エンティティの属性として密接に関連し、そのエンティティの文脈でのみ意味を持つ
+- **パターン**: `public static enum` として親クラス内に定義
+
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Customer {
+    private String email;
+    private Role role;
+    
+    public static enum Role {
+        USER, ADMIN
+    }
+}
+```
+
+**2. 独立クラスとして実装すべきケース**
+
+**DTOクラス（統計結果、集計結果等）**:
+- **対象**: NotificationTypeCount, StatusCount, CustomerStatistics 等
+- **理由**: 
+  - リポジトリだけでなくサービス層でも使用される可能性がある
+  - 複数のリポジトリで同じ構造を使用する可能性がある
+  - リポジトリの責務（データアクセス）とDTOの責務（データ構造）を分離
+- **配置**: `model`パッケージに独立したクラスとして配置
+
+```java
+// ❌ 禁止: リポジトリの内部クラス
+@Mapper
+public interface NotificationHistoryRepository {
+    List<NotificationTypeCount> countByNotificationType();
+    
+    @lombok.Data  // FQCN参照になってしまう
+    class NotificationTypeCount {
+        private String notificationType;
+        private long count;
+    }
+}
+
+// ✅ 推奨: modelパッケージに独立したクラス
+// model/NotificationTypeCount.java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class NotificationTypeCount {
+    private String notificationType;
+    private long count;
+}
+
+// repository/NotificationHistoryRepository.java
+@Mapper
+public interface NotificationHistoryRepository {
+    List<NotificationTypeCount> countByNotificationType();
+}
+```
+
+**判断基準**:
+- ✅ 内部クラス: Enum（親クラスの属性として密接に関連）
+- ✅ 独立クラス: DTO、統計結果、集計結果（再利用性・責務分離）
+
+**Enumの利点**：
 - **型安全性**: 無効な値の使用を防ぐ（コンパイル時にチェック）
 - **IDEサポート**: 自動補完で有効な値を提示
-- **MyBatis対応**: 自動的にEnum ↔ String変換（後述）
+- **MyBatis対応**: 自動的にEnum ↔ String変換
 - **保守性**: 値の追加・変更が一箇所で完結
 
 **例**：
@@ -2777,6 +3038,13 @@ private byte[] generateCSV(List<Customer> customers) {
 - エラーメッセージは `th:errors` で表示
 - CSRFトークンは Spring Security が自動挿入
 - リンクは必ず `th:href="@{/path}"` を使用（`href="/path"` は禁止）
+
+**Tailwind CSS CDNの色制限**:
+- プロジェクトでは `https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css` を使用（実際にはv2.2.19が読み込まれる）
+- **Tailwind CSS v2の標準カラーパレットのみ使用可能**: gray, red, yellow, green, blue, indigo, purple, pink
+- **使用不可の色**: orange, amber（v3以降で追加された色）、teal（標準パレットに含まれない）
+- 色を使用する際は、必ず[Tailwind CSS v2ドキュメント](https://v2.tailwindcss.com/docs/customizing-colors#default-color-palette)で利用可能性を確認
+- 新しい色が必要な場合は、v2標準パレット内の代替色を選択（例: orange → yellow, amber → yellow, teal → blue または green）
 
 #### テンプレート内の認可チェック
 
@@ -3304,6 +3572,49 @@ static class TestConfig {
 - `@TestConfiguration` + `@Primary` でテスト用Beanをオーバーライド
 - `@ActiveProfiles` は使用しない（不要）
 - テストクラス内に static inner class として定義
+
+**GreenMailが不要なケース**:
+- NotificationServiceやEmailServiceを`@MockitoBean`でモック化している場合、実際のメール送信は行われないため、GreenMailは不要
+- モック検証（`verify(notificationService).sendXxx(...)`）で十分
+
+```java
+// ✅ GreenMail不要: NotificationServiceをモック化
+@SpringBootTest
+class PasswordResetServiceTest {
+    @MockitoBean
+    private NotificationService notificationService;  // モック化済み
+    
+    @Test
+    void testSendResetLink() {
+        passwordResetService.sendResetLink("test@example.com");
+        verify(notificationService).sendPasswordResetLink(anyString(), anyString());
+    }
+}
+
+// ✅ GreenMail必要: 実際のメール送信をテスト
+@SpringBootTest
+class EmailServiceIntegrationTest {
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public GreenMail greenMail() { ... }
+    }
+    
+    @Autowired
+    private EmailService emailService;
+    
+    @Autowired
+    private GreenMail greenMail;
+    
+    @Test
+    void testActualEmailSending() {
+        emailService.sendEmail("to@example.com", "subject", "body");
+        // GreenMailで実際の送信を検証
+        assertThat(greenMail.getReceivedMessages()).hasSize(1);
+    }
+}
+```
 
 #### テスト用コントローラの定義
 ```java

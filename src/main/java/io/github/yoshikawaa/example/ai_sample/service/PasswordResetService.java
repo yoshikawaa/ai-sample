@@ -24,7 +24,7 @@ public class PasswordResetService {
 
     private final CustomerRepository customerRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
-    private final EmailService emailService;
+    private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
     private final AuditLogService auditLogService;
@@ -47,15 +47,10 @@ public class PasswordResetService {
         passwordResetTokenRepository.insert(resetToken);
 
         String resetLink = "http://localhost:8080/password-reset/confirm?token=" + token;
-        emailService.sendEmail(email, "パスワードリセット", "以下のリンクをクリックしてパスワードをリセットしてください: " + resetLink);
-        
+        notificationService.sendPasswordResetLink(email, resetLink);
+
         // 監査ログを記録
         auditLogService.recordAudit(email, email, AuditLog.ActionType.PASSWORD_RESET, "パスワードリセットリンク送信", RequestContextUtil.getClientIpAddress());
-        
-        // パスワードリセットリンク送信を記録
-        log.info("パスワードリセットリンク送信: email={}", email);
-        // 開発環境でのデバッグ用（本番環境では出力されない）
-        log.debug("リセットリンク：{}", resetLink);
     }
 
     @Transactional(readOnly = true)
@@ -72,6 +67,9 @@ public class PasswordResetService {
 
         // ハッシュ化されたパスワードを保存
         customerRepository.updatePassword(email, hashedPassword);
+
+        // パスワードリセット完了通知を送信
+        notificationService.sendPasswordResetComplete(email);
 
         // 監査ログを記録
         auditLogService.recordAudit(email, email, AuditLog.ActionType.PASSWORD_RESET, "パスワードリセット完了", RequestContextUtil.getClientIpAddress());

@@ -51,9 +51,11 @@ public class LoginAttemptService {
             loginAttempt.setLastAttemptTime(currentTime);
 
             if (newAttemptCount >= loginAttemptProperties.getMax()) {
-                // ロック
+                // ロック通知を送信
                 var customer = customerService.getCustomerByEmail(email);
                 notificationService.sendAccountLockedNotification(customer);
+                
+                // ロック処理
                 long lockedUntil = currentTime + loginAttemptProperties.getLockDurationMs();
                 loginAttempt.setLockedUntil(lockedUntil);
                 loginAttemptRepository.update(loginAttempt);

@@ -2,7 +2,6 @@ package io.github.yoshikawaa.example.ai_sample.service;
 
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
-import io.github.yoshikawaa.example.ai_sample.exception.EmailSendException;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +12,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 
@@ -57,10 +55,10 @@ class EmailServiceTest {
         // Arrange
         doNothing().when(mailSender).send(any(MimeMessage.class));
 
-        // Act
-        emailService.sendEmail("test@example.com", "テストタイトル", "テスト本文");
-
-        // Assert
+        // Act & Assert（例外がスローされないことを検証）
+        assertThatCode(() -> emailService.sendEmail("test@example.com", "テストタイトル", "テスト本文"))
+            .doesNotThrowAnyException();
+        
         verify(mailSender).createMimeMessage();
         verify(mailSender).send(mimeMessage);
     }
@@ -71,10 +69,10 @@ class EmailServiceTest {
         // Arrange
         doNothing().when(mailSender).send(any(MimeMessage.class));
 
-        // Act
-        emailService.sendEmail("recipient@example.com", "重要な件名", "メール本文です");
-
-        // Assert
+        // Act & Assert
+        assertThatCode(() -> emailService.sendEmail("recipient@example.com", "重要な件名", "メール本文です"))
+            .doesNotThrowAnyException();
+        
         verify(mailSender).createMimeMessage();
         verify(mailSender).send(mimeMessage);
     }
@@ -85,27 +83,27 @@ class EmailServiceTest {
         // Arrange
         doNothing().when(mailSender).send(any(MimeMessage.class));
 
-        // Act
-        emailService.sendEmail("test@example.com", "HTMLメール", "<h1>HTML本文</h1>");
-
-        // Assert
+        // Act & Assert
+        assertThatCode(() -> emailService.sendEmail("test@example.com", "HTMLメール", "<h1>HTML本文</h1>"))
+            .doesNotThrowAnyException();
+        
         verify(mailSender).createMimeMessage();
         verify(mailSender).send(mimeMessage);
     }
 
     @Test
-    @DisplayName("sendEmail: MailException が発生した場合、EmailSendException をスローする")
+    @DisplayName("sendEmail: MailException が発生した場合、false を返す")
     void testSendEmail_MailException発生時() {
         // Arrange
         doThrow(new MailSendException("SMTP接続エラー"))
                 .when(mailSender).send(any(MimeMessage.class));
 
-        // Act & Assert
-        assertThatThrownBy(() -> emailService.sendEmail("test@example.com", "件名", "本文"))
-                .isInstanceOf(EmailSendException.class)
-                .hasMessage("メール送信中にエラーが発生しました")
-                .hasCauseInstanceOf(MailException.class);
+        // Act
+        boolean result = emailService.sendEmail("test@example.com", "件名", "本文");
 
+        // Assert
+        assertThat(result).isFalse();
+        
         verify(mailSender).createMimeMessage();
         verify(mailSender).send(mimeMessage);
     }
@@ -116,12 +114,13 @@ class EmailServiceTest {
         // Arrange
         doNothing().when(mailSender).send(any(MimeMessage.class));
 
-        // Act
-        emailService.sendEmail("user1@example.com", "件名1", "本文1");
-        emailService.sendEmail("user2@example.com", "件名2", "本文2");
-        emailService.sendEmail("user3@example.com", "件名3", "本文3");
-
-        // Assert
+        // Act & Assert
+        assertThatCode(() -> {
+            emailService.sendEmail("user1@example.com", "件名1", "本文1");
+            emailService.sendEmail("user2@example.com", "件名2", "本文2");
+            emailService.sendEmail("user3@example.com", "件名3", "本文3");
+        }).doesNotThrowAnyException();
+        
         verify(mailSender, times(3)).createMimeMessage();
         verify(mailSender, times(3)).send(mimeMessage);
     }
@@ -132,10 +131,10 @@ class EmailServiceTest {
         // Arrange
         doNothing().when(mailSender).send(any(MimeMessage.class));
 
-        // Act
-        emailService.sendEmail("test@example.com", "", "");
-
-        // Assert
+        // Act & Assert
+        assertThatCode(() -> emailService.sendEmail("test@example.com", "", ""))
+            .doesNotThrowAnyException();
+        
         verify(mailSender).createMimeMessage();
         verify(mailSender).send(mimeMessage);
     }
@@ -147,10 +146,10 @@ class EmailServiceTest {
         doNothing().when(mailSender).send(any(MimeMessage.class));
         String longBody = "あ".repeat(10000); // 10000文字の本文
 
-        // Act
-        emailService.sendEmail("test@example.com", "長い本文テスト", longBody);
-
-        // Assert
+        // Act & Assert
+        assertThatCode(() -> emailService.sendEmail("test@example.com", "長い本文テスト", longBody))
+            .doesNotThrowAnyException();
+        
         verify(mailSender).createMimeMessage();
         verify(mailSender).send(mimeMessage);
     }
@@ -161,24 +160,11 @@ class EmailServiceTest {
         // Arrange
         doNothing().when(mailSender).send(any(MimeMessage.class));
 
-        // Act
-        emailService.sendEmail("user+test@example.co.jp", "件名", "本文");
-
-        // Assert
+        // Act & Assert
+        assertThatCode(() -> emailService.sendEmail("user+test@example.co.jp", "件名", "本文"))
+            .doesNotThrowAnyException();
+        
         verify(mailSender).createMimeMessage();
         verify(mailSender).send(mimeMessage);
-    }
-
-    @Test
-    @DisplayName("sendEmail: createMimeMessage で null が返された場合でもエラーハンドリングされる")
-    void testSendEmail_MimeMessage作成失敗() {
-        // Arrange
-        when(mailSender.createMimeMessage()).thenReturn(null);
-
-        // Act & Assert
-        assertThatThrownBy(() -> emailService.sendEmail("test@example.com", "件名", "本文"))
-                .isInstanceOf(Exception.class); // NullPointerException または IllegalStateException
-
-        verify(mailSender).createMimeMessage();
     }
 }

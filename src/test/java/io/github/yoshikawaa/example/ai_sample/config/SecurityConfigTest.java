@@ -2,8 +2,9 @@
 package io.github.yoshikawaa.example.ai_sample.config;
 
 import io.github.yoshikawaa.example.ai_sample.service.EmailService;
+import io.github.yoshikawaa.example.ai_sample.service.NotificationHistoryService;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.model.LoginAttempt;
@@ -40,8 +41,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import java.time.LocalDate;
 import java.util.Optional;
 
-import static org.mockito.Mockito.when;
-
 @SpringBootTest
 @AutoConfigureMockMvc
 @DisplayName("SecurityConfig のテスト")
@@ -64,6 +63,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private EmailService emailService;
+
+    @MockitoBean
+    private NotificationHistoryService notificationHistoryService;
 
     @BeforeEach
     void setUpCustomer() {
@@ -91,8 +93,8 @@ class SecurityConfigTest {
         // LoginAttemptRepositoryのモック: アカウントはロックされていない
         when(loginAttemptRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
         
-        // EmailServiceのメール送信を抑止
-        doNothing().when(emailService).sendEmail(any(), any(), any());
+        // EmailServiceのメール送信を抑止（booleanを返すメソッドなのでwhenを使用）
+        when(emailService.sendEmail(any(), any(), any())).thenReturn(true);
     }
 
     @Test

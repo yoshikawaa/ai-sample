@@ -1,7 +1,5 @@
 package io.github.yoshikawaa.example.ai_sample.service;
 
-import com.icegreen.greenmail.util.GreenMail;
-import com.icegreen.greenmail.util.ServerSetup;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.exception.InvalidTokenException;
 import io.github.yoshikawaa.example.ai_sample.model.PasswordResetToken;
@@ -14,9 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -32,18 +27,6 @@ import static org.mockito.Mockito.*;
 @DisplayName("PasswordResetService のテスト")
 class PasswordResetServiceTest {
 
-    @TestConfiguration
-    static class TestGreenMailConfig {
-        @Bean(initMethod = "start", destroyMethod = "stop")
-        @Primary
-        public GreenMail testGreenMail() {
-            ServerSetup serverSetup = ServerSetup.SMTP.dynamicPort();
-            serverSetup.setServerStartupTimeout(10000);
-            serverSetup.setVerbose(false);
-            return new GreenMail(serverSetup);
-        }
-    }
-
     @MockitoBean
     private CustomerRepository customerRepository;
 
@@ -51,7 +34,7 @@ class PasswordResetServiceTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @MockitoBean
-    private EmailService emailService;
+    private NotificationService notificationService;
 
     @MockitoBean
     private PasswordEncoder passwordEncoder;
@@ -84,7 +67,7 @@ class PasswordResetServiceTest {
         // Arrange
         when(customerRepository.findByEmail("test@example.com"))
                 .thenReturn(Optional.of(testCustomer));
-        doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
+        doNothing().when(notificationService).sendPasswordResetLink(anyString(), anyString());
 
         // Act
         passwordResetService.sendResetLink("test@example.com");
@@ -98,9 +81,8 @@ class PasswordResetServiceTest {
         assertThat(capturedToken.getResetToken()).isNotNull().matches("[a-f0-9-]{36}"); // UUID形式
         assertThat(capturedToken.getTokenExpiry()).isGreaterThan(System.currentTimeMillis());
 
-        verify(emailService).sendEmail(
+        verify(notificationService).sendPasswordResetLink(
                 eq("test@example.com"),
-                eq("パスワードリセット"),
                 contains("http://localhost:8080/password-reset/confirm?token=")
         );
     }
@@ -117,7 +99,7 @@ class PasswordResetServiceTest {
 
         // トークン生成やメール送信は行われない
         verify(passwordResetTokenRepository, never()).insert(any());
-        verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
+        verify(notificationService, never()).sendPasswordResetLink(anyString(), anyString());
     }
 
     @Test
@@ -126,7 +108,7 @@ class PasswordResetServiceTest {
         // Arrange
         when(customerRepository.findByEmail("test@example.com"))
                 .thenReturn(Optional.of(testCustomer));
-        doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
+        doNothing().when(notificationService).sendPasswordResetLink(anyString(), anyString());
 
         long beforeTime = System.currentTimeMillis() + 3600000 - 1000; // 許容誤差1秒
         
@@ -206,6 +188,7 @@ class PasswordResetServiceTest {
         doNothing().when(customerRepository).updatePassword(anyString(), anyString());
         doNothing().when(loginAttemptService).resetAttempts(anyString());
         doNothing().when(passwordResetTokenRepository).deleteByEmail(anyString());
+        doNothing().when(notificationService).sendPasswordResetComplete(anyString());
 
         // Act
         passwordResetService.updatePassword("valid-token", "newPassword123");
@@ -215,6 +198,7 @@ class PasswordResetServiceTest {
         verify(customerRepository).updatePassword("test@example.com", "hashedNewPassword");
         verify(loginAttemptService).resetAttempts("test@example.com");
         verify(passwordResetTokenRepository).deleteByEmail("test@example.com");
+        verify(notificationService).sendPasswordResetComplete("test@example.com");
     }
 
     @Test
@@ -337,5 +321,37 @@ class PasswordResetServiceTest {
         // Act & Assert: 再利用時は例外
         assertThatThrownBy(() -> passwordResetService.updatePassword("valid-token", "anotherPassword"))
                 .isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    @DisplayName("updatePassword: メール送信失敗時も履歴が記録されるが例外はスローされない")
+    void testUpdatePassword_EmailSendFailure() {
+        // Arrange
+        PasswordResetToken validToken = new PasswordResetToken();
+        validToken.setEmail("test@example.com");
+        validToken.setResetToken("valid-token");
+        validToken.setTokenExpiry(System.currentTimeMillis() + 3600000);
+
+        when(passwordResetTokenRepository.findByResetToken("valid-token"))
+                .thenReturn(validToken);
+        when(passwordEncoder.encode("newPassword123"))
+                .thenReturn("hashedNewPassword");
+        doNothing().when(customerRepository).updatePassword(anyString(), anyString());
+        doNothing().when(loginAttemptService).resetAttempts(anyString());
+        doNothing().when(passwordResetTokenRepository).deleteByEmail(anyString());
+        
+        // メール送信は失敗する（falseを返す）
+        doNothing().when(notificationService).sendPasswordResetComplete(eq("test@example.com"));
+
+        // Act: 例外はスローされない（パスワード変更は成功）
+        assertDoesNotThrow(() -> passwordResetService.updatePassword("valid-token", "newPassword123"));
+
+        // Assert: パスワードは更新されている
+        verify(customerRepository).updatePassword("test@example.com", "hashedNewPassword");
+        verify(loginAttemptService).resetAttempts("test@example.com");
+        verify(passwordResetTokenRepository).deleteByEmail("test@example.com");
+        
+        // NotificationServiceが呼ばれたことを確認（履歴記録はNotificationService内で行われる）
+        verify(notificationService).sendPasswordResetComplete(eq("test@example.com"));
     }
 }
