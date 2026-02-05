@@ -149,6 +149,113 @@ class AuditLogRepositoryTest {
     // ========================================
 
     @Test
+    @DisplayName("findByTargetEmail: 特定顧客の監査ログを取得できる")
+    void testFindByTargetEmail() {
+        // テストデータを挿入
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "CREATE", "顧客登録", LocalDateTime.now().minusDays(3));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "UPDATE", "顧客更新", LocalDateTime.now().minusDays(2));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "CREATE", "別顧客登録", LocalDateTime.now().minusDays(1));
+
+        // 特定顧客のログを取得
+        List<AuditLog> logs = auditLogRepository.findByTargetEmail("test-user@example.com", null, null, 100);
+
+        // 検証
+        assertThat(logs).hasSize(3);
+        assertThat(logs.get(0).getActionType()).isEqualTo(AuditLog.ActionType.CREATE);  // 新しい順（1日前）
+        assertThat(logs.get(1).getActionType()).isEqualTo(AuditLog.ActionType.UPDATE);  // 2日前
+        assertThat(logs.get(2).getActionType()).isEqualTo(AuditLog.ActionType.CREATE);  // 3日前
+        assertThat(logs).allMatch(log -> log.getTargetEmail().equals("test-user@example.com"));
+    }
+
+    @Test
+    @DisplayName("findByTargetEmail: 開始日で絞り込みができる")
+    void testFindByTargetEmail_WithStartDate() {
+        LocalDateTime now = LocalDateTime.now();
+        // テストデータを挿入
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "CREATE", "顧客登録", now.minusDays(5));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "UPDATE", "顧客更新", now.minusDays(2));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "DELETE", "顧客削除", now);
+
+        // 3日前以降のログを取得
+        LocalDateTime startDate = now.minusDays(3).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        List<AuditLog> logs = auditLogRepository.findByTargetEmail("test-user@example.com", startDate, null, 100);
+
+        // 検証: 2件のみ取得される
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).getActionType()).isEqualTo(AuditLog.ActionType.DELETE);
+        assertThat(logs.get(1).getActionType()).isEqualTo(AuditLog.ActionType.UPDATE);
+    }
+
+    @Test
+    @DisplayName("findByTargetEmail: 終了日で絞り込みができる")
+    void testFindByTargetEmail_WithEndDate() {
+        LocalDateTime now = LocalDateTime.now();
+        // テストデータを挿入
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "CREATE", "顧客登録", now.minusDays(5));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "UPDATE", "顧客更新", now.minusDays(2));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "DELETE", "顧客削除", now);
+
+        // 3日前までのログを取得
+        LocalDateTime endDate = now.minusDays(3).withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+        List<AuditLog> logs = auditLogRepository.findByTargetEmail("test-user@example.com", null, endDate, 100);
+
+        // 検証: 1件のみ取得される
+        assertThat(logs).hasSize(1);
+        assertThat(logs.get(0).getActionType()).isEqualTo(AuditLog.ActionType.CREATE);
+    }
+
+    @Test
+    @DisplayName("findByTargetEmail: 期間指定で絞り込みができる")
+    void testFindByTargetEmail_WithDateRange() {
+        LocalDateTime now = LocalDateTime.now();
+        // テストデータを挿入
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "CREATE", "顧客登録", now.minusDays(10));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "UPDATE", "顧客更新1", now.minusDays(5));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "UPDATE", "顧客更新2", now.minusDays(3));
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "DELETE", "顧客削除", now);
+
+        // 6日前から2日前までのログを取得
+        LocalDateTime startDate = now.minusDays(6).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endDate = now.minusDays(2).withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+        List<AuditLog> logs = auditLogRepository.findByTargetEmail("test-user@example.com", startDate, endDate, 100);
+
+        // 検証: 2件取得される
+        assertThat(logs).hasSize(2);
+        assertThat(logs.get(0).getActionType()).isEqualTo(AuditLog.ActionType.UPDATE);
+        assertThat(logs.get(0).getActionDetail()).isEqualTo("顧客更新2");
+        assertThat(logs.get(1).getActionType()).isEqualTo(AuditLog.ActionType.UPDATE);
+        assertThat(logs.get(1).getActionDetail()).isEqualTo("顧客更新1");
+    }
+
+    @Test
+    @DisplayName("findByTargetEmail: limit数で取得件数を制限できる")
+    void testFindByTargetEmail_WithLimit() {
+        // テストデータを10件挿入
+        for (int i = 0; i < 10; i++) {
+            insertAuditLog("test-admin@example.com", "test-user@example.com", "UPDATE", "顧客更新" + i, LocalDateTime.now().minusDays(i));
+        }
+
+        // limit=5で取得
+        List<AuditLog> logs = auditLogRepository.findByTargetEmail("test-user@example.com", null, null, 5);
+
+        // 検証: 5件のみ取得される
+        assertThat(logs).hasSize(5);
+    }
+
+    @Test
+    @DisplayName("findByTargetEmail: 該当データがない場合は空リストを返す")
+    void testFindByTargetEmail_NoData() {
+        // テストデータを挿入（別の顧客）
+        insertAuditLog("test-admin@example.com", "test-user@example.com", "CREATE", "顧客登録", LocalDateTime.now());
+
+        // 存在しない顧客のログを取得
+        List<AuditLog> logs = auditLogRepository.findByTargetEmail("nonexistent@example.com", null, null, 100);
+
+        // 検証: 空リストが返される
+        assertThat(logs).isEmpty();
+    }
+
+    @Test
     @DisplayName("searchWithPagination: performedByで検索できる")
     void testSearchWithPagination_ByPerformedBy() {
         // チE��トデータを挿入

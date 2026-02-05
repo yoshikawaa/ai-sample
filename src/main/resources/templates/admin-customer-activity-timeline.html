@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Activity Timeline</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-screen min-h-dvh">
+    <div th:replace="~{fragments/nav :: nav(${true})}"></div>
+    <div class="container mx-auto px-4 py-8">
+        <!-- 顧客情報ヘッダー -->
+        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-4">Activity Timeline</h1>
+            <div class="border-b border-gray-200 pb-4">
+                <p class="text-sm text-gray-600 mb-2">Customer</p>
+                <p class="text-xl font-semibold text-gray-900" th:text="${customer.name}">Customer Name</p>
+                <p class="text-gray-600" th:text="${customer.email}">customer@example.com</p>
+            </div>
+        </div>
+
+        <!-- フィルタリングフォーム -->
+        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Filter Activities</h2>
+            <form th:action="@{/admin/customers/{email}/activity-timeline(email=${customer.email})}" 
+                  th:object="${activityTimelineSearchForm}" 
+                  method="get" 
+                  class="space-y-4">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- 開始日 -->
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                        <input type="date" id="startDate" name="startDate" th:field="*{startDate}"
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300">
+                    </div>
+                    
+                    <!-- 終了日 -->
+                    <div>
+                        <label for="endDate" class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                        <input type="date" id="endDate" name="endDate" th:field="*{endDate}"
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300">
+                    </div>
+                    
+                    <!-- アクティビティ種別 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Activity Type</label>
+                        <select name="activityTypes" multiple size="5"
+                                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300">
+                            <option value="LOGIN_SUCCESS" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).LOGIN_SUCCESS)}">ログイン成功</option>
+                            <option value="LOGIN_FAILURE" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).LOGIN_FAILURE)}">ログイン失敗</option>
+                            <option value="LOGOUT" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).LOGOUT)}">ログアウト</option>
+                            <option value="SESSION_EXCEEDED" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).SESSION_EXCEEDED)}">セッション超過</option>
+                            <option value="INFO_UPDATED" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).INFO_UPDATED)}">情報変更</option>
+                            <option value="PASSWORD_CHANGED" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).PASSWORD_CHANGED)}">パスワード変更</option>
+                            <option value="PASSWORD_RESET" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).PASSWORD_RESET)}">パスワードリセット</option>
+                            <option value="ACCOUNT_LOCKED" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).ACCOUNT_LOCKED)}">アカウントロック</option>
+                            <option value="ACCOUNT_UNLOCKED" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).ACCOUNT_UNLOCKED)}">アカウントアンロック</option>
+                            <option value="ACCOUNT_CREATED" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).ACCOUNT_CREATED)}">アカウント作成</option>
+                            <option value="ACCOUNT_DELETED" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).ACCOUNT_DELETED)}">アカウント削除</option>
+                            <option value="NOTIFICATION_SENT" th:selected="${activityTimelineSearchForm.activityTypes != null and activityTimelineSearchForm.activityTypes.contains(T(io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType).NOTIFICATION_SENT)}">通知送信</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Ctrl/Cmd + Click で複数選択</p>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-2">
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Search</button>
+                    <a th:href="@{/admin/customers/{email}/activity-timeline(email=${customer.email})}" 
+                       class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Clear</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- タイムライン表示 -->
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Timeline</h2>
+            
+            <!-- タイムラインがない場合 -->
+            <div th:if="${#lists.isEmpty(timelinePage.content)}" class="text-center text-gray-500 py-8">
+                <p>No activities found for the selected period.</p>
+            </div>
+            
+            <!-- タイムライン項目 -->
+            <div th:unless="${#lists.isEmpty(timelinePage.content)}" class="space-y-4">
+                <th:block th:each="activity : ${timelinePage.content}">
+                    <th:block th:switch="${activity.activityType.name()}">
+                        <div th:case="'LOGIN_SUCCESS'" class="border-l-4 border-green-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'LOGIN_FAILURE'" class="border-l-4 border-red-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'LOGOUT'" class="border-l-4 border-blue-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'SESSION_EXCEEDED'" class="border-l-4 border-yellow-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'INFO_UPDATED'" class="border-l-4 border-indigo-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'PASSWORD_CHANGED'" class="border-l-4 border-purple-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'PASSWORD_RESET'" class="border-l-4 border-purple-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'ACCOUNT_LOCKED'" class="border-l-4 border-red-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'ACCOUNT_UNLOCKED'" class="border-l-4 border-green-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'ACCOUNT_CREATED'" class="border-l-4 border-green-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'ACCOUNT_DELETED'" class="border-l-4 border-red-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="'NOTIFICATION_SENT'" class="border-l-4 border-blue-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                        <div th:case="*" class="border-l-4 border-gray-500 pl-4 py-3">
+                            <th:block th:replace="~{:: activityContent}"/>
+                        </div>
+                    </th:block>
+                    
+                    <th:block th:fragment="activityContent">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="font-semibold text-gray-800" th:text="${activity.description}">Activity Description</p>
+                            <p class="text-xs text-gray-500" th:text="${#temporals.format(activity.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2023-01-01 12:00:00</p>
+                        </div>
+                        <span th:if="${activity.status == 'SUCCESS'}"
+                              class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800"
+                              th:text="${activity.status}">STATUS</span>
+                        <span th:if="${activity.status == 'FAILURE'}"
+                              class="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-800"
+                              th:text="${activity.status}">STATUS</span>
+                        <span th:if="${activity.status == 'LOCKED'}"
+                              class="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-800"
+                              th:text="${activity.status}">STATUS</span>
+                        <span th:if="${activity.status == 'SENT'}"
+                              class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800"
+                              th:text="${activity.status}">STATUS</span>
+                        <span th:if="${activity.status == 'FAILED'}"
+                              class="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-800"
+                              th:text="${activity.status}">STATUS</span>
+                        <span th:if="${activity.status != null and activity.status != 'SUCCESS' and activity.status != 'FAILURE' and activity.status != 'LOCKED' and activity.status != 'SENT' and activity.status != 'FAILED'}"
+                              class="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800"
+                              th:text="${activity.status}">STATUS</span>
+                    </div>
+                    
+                    <!-- 詳細情報（折りたたみ可能） -->
+                    <details th:if="${activity.detail != null or activity.ipAddress != null}" class="mt-2">
+                        <summary class="cursor-pointer text-sm text-blue-600 hover:text-blue-800">Details</summary>
+                        <div class="mt-2 p-3 bg-gray-50 rounded text-sm text-gray-700">
+                            <p th:if="${activity.detail != null}" class="mb-2 whitespace-pre-wrap" th:text="${activity.detail}">Detail</p>
+                            <p th:if="${activity.ipAddress != null}" class="text-xs text-gray-500">
+                                IP Address: <span th:text="${activity.ipAddress}">0.0.0.0</span>
+                            </p>
+                        </div>
+                    </details>
+                    </th:block>
+                </th:block>
+            </div>
+            
+            <!-- ページネーション -->
+            <div th:if="${!#lists.isEmpty(timelinePage.content)}" class="mt-6 flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    Total: <span th:text="${timelinePage.totalElements}">0</span> activities
+                </div>
+                <div class="flex space-x-2">
+                    <a th:if="${timelinePage.hasPrevious()}"
+                       th:href="@{/admin/customers/{email}/activity-timeline(
+                           email=${customer.email},
+                           page=${timelinePage.number - 1},
+                           size=${timelinePage.size},
+                           startDate=${activityTimelineSearchForm.startDate},
+                           endDate=${activityTimelineSearchForm.endDate}
+                       )}"
+                       class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
+                        &laquo; Previous
+                    </a>
+                    <span class="px-3 py-1 text-gray-700">
+                        Page <span th:text="${timelinePage.number + 1}">1</span> / <span th:text="${timelinePage.totalPages}">1</span>
+                    </span>
+                    <a th:if="${timelinePage.hasNext()}"
+                       th:href="@{/admin/customers/{email}/activity-timeline(
+                           email=${customer.email},
+                           page=${timelinePage.number + 1},
+                           size=${timelinePage.size},
+                           startDate=${activityTimelineSearchForm.startDate},
+                           endDate=${activityTimelineSearchForm.endDate}
+                       )}"
+                       class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
+                        Next &raquo;
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 戻るボタン -->
+        <div class="flex justify-center mt-8">
+            <a th:href="@{/admin/customers/{email}(email=${customer.email})}" 
+               class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Back to Customer Detail</a>
+        </div>
+    </div>
+</body>
+</html>

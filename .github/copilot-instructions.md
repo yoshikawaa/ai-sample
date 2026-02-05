@@ -1176,8 +1176,6 @@ public class GreenMailConfig {
 **実装例**:
 ```java
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 @ConfigurationProperties(prefix = "app.security.login.attempt")
 public class LoginAttemptProperties {
     /** 最大試行回数 */
@@ -1186,6 +1184,11 @@ public class LoginAttemptProperties {
     private long lockDurationMs = 30 * 60 * 1000L;
 }
 ```
+
+**アノテーション規則**:
+- `@Data`と`@ConfigurationProperties`のみを使用（Spring Bootが自動的にBeanとして登録）
+- `@NoArgsConstructor`、`@AllArgsConstructor`、`@Component`は不要
+
 ```yaml
 # application.yaml
 app:
@@ -1796,6 +1799,28 @@ if ((name != null && !name.isEmpty()) || (email != null && !email.isEmpty())) {
 - null、空文字（`""`）、空白文字のみ（`"   "`）を一度にチェック可能
 - 冗長なnullチェックと空文字チェックを避ける
 - 可読性が向上し、Spring Frameworkの標準パターンに準拠
+
+#### コレクションのnull/空判定
+
+原則: コレクションのnullまたは空判定には org.springframework.util.CollectionUtils.isEmpty() を使用すること。
+```java
+// ✅ 推奨: StringUtils.hasText()を使用
+import org.springframework.util.CollectionUtils;
+
+if (!CollectionUtils.isEmpty(activityTypes)) {
+    // コレクションがnullまたは空でない場合の処理
+}
+
+// ❌ 非推奨: 手動でnullと空をチェック
+if ((activityTypes != null && !activityTypes.isEmpty())) {
+    // コレクションがnullまたは空でない場合の処理
+}
+```
+
+**重要**:
+- `CollectionUtils.isEmpty()` はnullと空リストの両方を判定できる
+- `collection != null && !collection.isEmpty()` のような冗長な記述を避ける
+- 文字列は `StringUtils.hasText()`、コレクションは `CollectionUtils.isEmpty()` を使い分ける
 
 #### コード簡潔化のベストプラクティス
 
@@ -3469,7 +3494,173 @@ private byte[] generateCSV(List<Customer> customers) {
 
 ## テストコード
 
-### 0. テストクラスの構造とインデント規則
+### 0. テストアノテーションの使い分け
+
+#### 原則：テストの目的と範囲に応じた適切なアノテーション選択
+
+Spring Bootでは、テストの目的（単体テスト vs 統合テスト）と対象レイヤー（コントローラ、サービス、リポジトリ）に応じて、適切なテストアノテーションを選択する必要があります。
+
+#### コントローラテスト
+
+**優先：@WebMvcTest + @Import(SecurityConfig.class)**
+- **用途**：コントローラの単体テスト（高速、軽量）
+- **特徴**：
+  - Web層のみをロードし、サービス・リポジトリはモック化
+  - Spring SecurityのみをImportで追加
+  - `@WithMockUser`で権限チェックのテスト
+  - 高速で効率的
+- **適用条件**：
+  - コントローラが`@PreAuthorize`のみを使用（権限チェックのみ）
+  - `@AuthenticationPrincipal CustomerUserDetails`を使用しない
+  - `SecurityContextUtil.getCurrentAuthenticatedEmail()`を使用しない
+
+```java
+@WebMvcTest(AdminCustomerController.class)
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@DisplayName("AdminCustomerController のテスト")
+class AdminCustomerControllerTest {
+    
+    @Autowired
+    private MockMvc mockMvc;
+    
+    @MockitoBean
+    private CustomerService customerService;
+    
+    @Test
+    @DisplayName("顧客一覧を表示する")
+    @WithMockUser(roles = "ADMIN")  // 権限チェックのみ
+    void testShowCustomers() throws Exception {
+        // テスト実装
+    }
+}
+```
+
+**代替：@SpringBootTest + @AutoConfigureMockMvc**
+- **用途**：コントローラの統合テスト（フルコンテキスト）
+- **特徴**：
+  - Spring Boot全体をロード（サービス、リポジトリ含む）
+  - `@WithUserDetails`でカスタムUserDetailsを使用可能
+  - より本番環境に近いテスト
+  - 起動が遅い
+- **適用条件**：
+  - コントローラが`@AuthenticationPrincipal CustomerUserDetails`を使用
+  - コントローラが`SecurityContextUtil.getCurrentAuthenticatedEmail()`を使用
+  - セキュリティフローの統合テストが必要
+
+```java
+@SpringBootTest
+@AutoConfigureMockMvc
+@DisplayName("CustomerEditController のテスト")
+class CustomerEditControllerTest {
+    
+    @Autowired
+    private MockMvc mockMvc;
+    
+    @MockitoBean
+    private CustomerService customerService;
+    
+    @Test
+    @DisplayName("顧客情報を更新できる")
+    @WithUserDetails(value = "test@example.com")  // カスタムUserDetails使用
+    void testUpdateCustomer() throws Exception {
+        // テスト実装
+    }
+}
+```
+
+**判断フローチャート**:
+```
+コントローラが@AuthenticationPrincipalを使用？
+├─ Yes → @SpringBootTest + @WithUserDetails
+└─ No → コントローラがSecurityContextUtil使用？
+         ├─ Yes → @SpringBootTest + @WithUserDetails
+         └─ No → テンプレートでprincipalを使用（#authentication.principal等）？
+                  ├─ Yes → @SpringBootTest + @WithUserDetails
+                  └─ No → @WebMvcTest + @WithMockUser（推奨）
+```
+
+#### リポジトリテスト
+
+**@MybatisTest + @AutoConfigureTestDatabase**
+- **用途**：MyBatisマッパーの単体テスト
+- **特徴**：
+  - MyBatis関連のBeanのみをロード
+  - インメモリH2データベースを自動設定
+  - 軽量で高速
+  - トランザクションは自動ロールバック
+- **適用対象**：すべてのリポジトリテスト
+
+```java
+@MybatisTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@DisplayName("AuditLogRepository のテスト")
+class AuditLogRepositoryTest {
+    
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+    
+    @Test
+    @DisplayName("特定顧客の監査ログを取得できる")
+    void testFindByTargetEmail() {
+        // テストデータ投入
+        // テスト実装
+    }
+}
+```
+
+**重要**:
+- `@AutoConfigureTestDatabase(replace = Replace.NONE)`: 既存のDB設定を使用（H2）
+- `@Sql`でテストデータを投入可能
+- トランザクションは自動ロールバック（テスト間の独立性を保証）
+
+#### サービステスト
+
+**@SpringBootTest**
+- **用途**：サービス層の統合テスト
+- **特徴**：
+  - 全Beanをロード（リポジトリ、他サービス含む）
+  - トランザクション動作を実際に検証可能
+  - `@MockitoBean`で外部依存をモック化
+- **適用対象**：すべてのサービステスト
+
+```java
+@SpringBootTest
+@DisplayName("ActivityTimelineService のテスト")
+class ActivityTimelineServiceTest {
+    
+    @Autowired
+    private ActivityTimelineService activityTimelineService;
+    
+    @MockitoBean
+    private AuditLogRepository auditLogRepository;
+    
+    @MockitoBean
+    private LoginHistoryRepository loginHistoryRepository;
+    
+    @Test
+    @DisplayName("アクティビティタイムラインを取得できる")
+    void testGetActivityTimeline() {
+        // モック設定
+        // テスト実装
+    }
+}
+```
+
+#### 使い分けまとめ
+
+| テスト対象 | アノテーション | 理由 | 認証設定 |
+|-----------|--------------|------|---------|
+| **コントローラ（権限チェックのみ）** | `@WebMvcTest` + `@Import` | 高速、単体テスト | `@WithMockUser` |
+| **コントローラ（カスタムUserDetails使用）** | `@SpringBootTest` + `@AutoConfigureMockMvc` | 統合テスト | `@WithUserDetails` |
+| **サービス** | `@SpringBootTest` | ビジネスロジック統合テスト | 不要（または`@WithUserDetails`） |
+| **リポジトリ** | `@MybatisTest` + `@AutoConfigureTestDatabase` | MyBatis特化、軽量 | 不要 |
+
+**禁止事項**:
+- ❌ コントローラテストで`@SpringBootTest`を過度に使用（遅い）
+- ❌ リポジトリテストで`@SpringBootTest`を使用（重い）
+- ❌ テストアノテーションの無計画な選択
+
+### 1. テストクラスの構造とインデント規則
 
 #### @Nestedクラスのインデント
 
@@ -3533,12 +3724,56 @@ void testRegisterCustomer() {  // インデントが合っていない
 }
 ```
 
-**確認方法**:
-- テストクラス作成後、必ずインデントを目視確認
-- IDEの自動フォーマット機能を活用
-- コンパイルエラーやテスト実行前にインデントチェック
+### 1. テストクラスの構造とインデント規則
 
-### 1. テスト用設定
+#### @Nestedクラスのインデント
+
+**原則**:
+- **@Nestedクラス内のテストメソッドは一貫したインデントを使用**
+- クラスレベルのテストと@Nestedクラス内のテストで階層を統一
+
+**インデント規則**:
+```java
+@SpringBootTest
+class CustomerServiceTest {  // トップレベルクラス（インデント0）
+
+    @Nested  // インデント4スペース
+    @DisplayName("顧客登録機能")
+    class CustomerRegistrationTest {  // インデント4スペース
+
+        @Test  // インデント8スペース
+        @DisplayName("顧客を登録できる")
+        void testRegisterCustomer() {  // インデント8スペース
+            // テストメソッド本体: インデント12スペース
+            Customer customer = new Customer(...);
+            customerService.registerCustomer(customer);
+            verify(customerRepository).save(any());
+        }  // インデント8スペース
+    }  // インデント4スペース
+}  // インデント0
+```
+
+**重要**:
+- @Nestedクラス: **4スペース**インデント
+- @Nestedクラス内のメソッド・アノテーション: **8スペース**インデント
+- @Nestedクラス内のテストメソッド本体: **12スペース**インデント
+- 閉じ括弧もそれぞれのレベルに合わせる
+
+**禁止事項**:
+```java
+// ❌ 禁止: インデントが不統一
+@Nested
+class CustomerRegistrationTest {
+    @Test
+    @DisplayName("顧客を登録できる")
+@WithMockUser  // インデントが合っていない
+void testRegisterCustomer() {  // インデントが合っていない
+    Customer customer = new Customer(...);  // 本体が4スペース（12スペースが正しい）
+}
+}
+```
+
+### 2. テスト用設定
 
 #### application.yml（src/test/resources）
 ```yaml
@@ -3666,7 +3901,7 @@ class GlobalExceptionHandlerTest {
 - MockMvc経由では404/500エラーが正しくErrorControllerに到達しない
 - 定数の使用については「コードスタイル > 定数の使用」を参照
 
-### 2. コントローラテスト
+### 3. コントローラテスト
 
 ```java
 @SpringBootTest
@@ -3711,12 +3946,49 @@ class CustomerEditControllerTest {
 
 **重要**:
 - `@MockitoBean` でリポジトリ・サービスをモック化
-- `@WithUserDetails` で認証ユーザーを設定
+- **認証設定の使い分け**:
+  - カスタムUserDetailsを使用する場合: `@WithUserDetails` で認証ユーザーを設定
+  - 権限チェックのみの場合: `@WithMockUser(roles = "ADMIN")` で十分（シンプル・高速）
 - CSRF トークンは `.with(csrf())` で付与
 - `@DisplayName` で日本語のテスト名を記述
 - **リクエストパラメータは `MultiValueMap` と `.params()` を使用**（`.param()` の連鎖は避ける）
 
-### 3. サービステスト
+#### 認証アノテーションの使い分け
+
+```java
+// ✅ @WithMockUser: 権限チェックのみ（@PreAuthorizeのみを使用）
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminCustomerController {
+    @GetMapping
+    public String showCustomers() { ... }  // 認証ユーザー情報を使わない
+}
+
+@Test
+@WithMockUser(roles = "ADMIN")  // シンプル・高速・十分
+void testShowCustomers() { ... }
+
+// ✅ @WithUserDetails: カスタムUserDetailsを使用
+public class CustomerEditController {
+    @PostMapping("/edit")
+    public String updateCustomer(
+        @AuthenticationPrincipal CustomerUserDetails userDetails  // カスタムUserDetailsを使用
+    ) {
+        String email = userDetails.getUsername();  // 認証ユーザー情報を使う
+        ...
+    }
+}
+
+@Test
+@WithUserDetails(value = "test@example.com")  // 本番環境に近いテスト
+void testUpdateCustomer() { ... }
+```
+
+**判断基準**:
+- コントローラが `@AuthenticationPrincipal CustomerUserDetails` を使用 → `@WithUserDetails`
+- コントローラが `SecurityContextUtil.getCurrentAuthenticatedEmail()` を使用 → `@WithUserDetails`
+- コントローラが `@PreAuthorize("hasRole(...)")` のみ使用 → `@WithMockUser`
+
+### 4. サービステスト
 
 ```java
 @SpringBootTest

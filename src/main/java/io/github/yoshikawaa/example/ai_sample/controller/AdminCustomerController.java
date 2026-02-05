@@ -3,8 +3,11 @@ package io.github.yoshikawaa.example.ai_sample.controller;
 import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
 import io.github.yoshikawaa.example.ai_sample.model.AdminCustomerEditForm;
 import io.github.yoshikawaa.example.ai_sample.model.AdminCustomerRegistrationForm;
+import io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline;
+import io.github.yoshikawaa.example.ai_sample.model.ActivityTimelineSearchForm;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
 import io.github.yoshikawaa.example.ai_sample.model.CustomerSearchForm;
+import io.github.yoshikawaa.example.ai_sample.service.ActivityTimelineService;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
@@ -45,6 +48,7 @@ public class AdminCustomerController {
     private final CustomerService customerService;
     private final LoginAttemptService loginAttemptService;
     private final PasswordResetService passwordResetService;
+    private final ActivityTimelineService activityTimelineService;
 
     // ========================================
     // 顧客一覧・検索
@@ -281,6 +285,33 @@ public class AdminCustomerController {
         passwordResetService.sendResetLink(email);
         model.addAttribute("email", email);
         return "admin-password-reset-complete";
+    }
+
+    // ========================================
+    // アクティビティタイムライン
+    // ========================================
+
+    @ModelAttribute("activityTimelineSearchForm")
+    public ActivityTimelineSearchForm activityTimelineSearchForm() {
+        ActivityTimelineSearchForm form = new ActivityTimelineSearchForm();
+        form.setStartDate(LocalDate.now().minusDays(30));
+        form.setEndDate(LocalDate.now());
+        return form;
+    }
+
+    @GetMapping("/{email}/activity-timeline")
+    public String showActivityTimeline(@PathVariable String email,
+                                        ActivityTimelineSearchForm form,
+                                        @PageableDefault(size = 20, sort = "timestamp", direction = Direction.DESC) Pageable pageable,
+                                        Model model) {
+        Customer customer = customerService.getCustomerByEmail(email);
+        Page<ActivityTimeline> timelinePage = activityTimelineService.getActivityTimeline(
+            email, form.getStartDate(), form.getEndDate(), form.getActivityTypes(), pageable);
+        
+        model.addAttribute("customer", customer);
+        model.addAttribute("timelinePage", timelinePage);
+        model.addAttribute("activityTimelineSearchForm", form);
+        return "admin-customer-activity-timeline";
     }
 
     // ========================================

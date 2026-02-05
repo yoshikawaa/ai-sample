@@ -45,6 +45,7 @@ import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
 import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
 import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
+import io.github.yoshikawaa.example.ai_sample.service.ActivityTimelineService;
 import io.github.yoshikawaa.example.ai_sample.service.CustomerService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
@@ -69,6 +70,9 @@ class AdminCustomerControllerTest {
 
     @MockitoBean
     private PasswordResetService passwordResetService;
+
+    @MockitoBean
+    private ActivityTimelineService activityTimelineService;
 
     // ========================================
     // 顧客一覧・検索・詳細・CSV出力
@@ -913,6 +917,106 @@ class AdminCustomerControllerTest {
 
     // ========================================
     // 認可テスト
+    // ========================================
+    // アクティビティタイムライン
+    // ========================================
+
+    @Nested
+    @DisplayName("アクティビティタイムライン")
+    class ActivityTimelineTest {
+
+        @Test
+        @DisplayName("GET /{email}/activity-timeline: アクティビティタイムラインを表示する")
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+        void testShowActivityTimeline() throws Exception {
+            String email = "test@example.com";
+            Page<io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline> mockPage = new PageImpl<>(
+                java.util.Collections.singletonList(
+                    new io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline(
+                        1L,
+                        java.time.LocalDateTime.now(),
+                        io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline.ActivityType.LOGIN_SUCCESS,
+                        "Login successful",
+                        "Detail",
+                        "192.168.1.1",
+                        "SUCCESS"
+                    )
+                )
+            );
+
+            Customer mockCustomer = new Customer(email, "password", "Test User", LocalDate.now(), LocalDate.of(1990, 1, 1), "123-456-7890", "Test Address", Customer.Role.USER);
+            when(customerService.getCustomerByEmail(email)).thenReturn(mockCustomer);
+            when(activityTimelineService.getActivityTimeline(eq(email), any(), any(), any(), any())).thenReturn(mockPage);
+
+            mockMvc.perform(get("/admin/customers/" + email + "/activity-timeline"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin-customer-activity-timeline"))
+                .andExpect(model().attributeExists("timelinePage"))
+                .andExpect(model().attributeExists("activityTimelineSearchForm"))
+                .andExpect(model().attributeExists("customer"));
+
+            verify(activityTimelineService, times(1)).getActivityTimeline(eq(email), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("GET /{email}/activity-timeline: ページネーションパラメータが正しく渡される")
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+        void testShowActivityTimeline_WithPagination() throws Exception {
+            String email = "test@example.com";
+            Page<io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline> mockPage = new PageImpl<>(emptyList());
+
+            Customer mockCustomer = new Customer(email, "password", "Test User", LocalDate.now(), LocalDate.of(1990, 1, 1), "123-456-7890", "Test Address", Customer.Role.USER);
+            when(customerService.getCustomerByEmail(email)).thenReturn(mockCustomer);
+            when(activityTimelineService.getActivityTimeline(eq(email), any(), any(), any(), any())).thenReturn(mockPage);
+
+            mockMvc.perform(get("/admin/customers/" + email + "/activity-timeline")
+                    .param("page", "1")
+                    .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin-customer-activity-timeline"));
+
+            verify(activityTimelineService, times(1)).getActivityTimeline(eq(email), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("GET /{email}/activity-timeline: フィルタ検索ができる")
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+        void testSearchActivityTimeline() throws Exception {
+            String email = "test@example.com";
+            Page<io.github.yoshikawaa.example.ai_sample.model.ActivityTimeline> mockPage = new PageImpl<>(emptyList());
+
+            Customer mockCustomer = new Customer(email, "password", "Test User", LocalDate.now(), LocalDate.of(1990, 1, 1), "123-456-7890", "Test Address", Customer.Role.USER);
+            when(customerService.getCustomerByEmail(email)).thenReturn(mockCustomer);
+            when(activityTimelineService.getActivityTimeline(eq(email), any(), any(), any(), any())).thenReturn(mockPage);
+
+            mockMvc.perform(get("/admin/customers/" + email + "/activity-timeline")
+                    .param("startDate", "2024-01-01")
+                    .param("endDate", "2024-01-31"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin-customer-activity-timeline"));
+
+            verify(activityTimelineService, times(1)).getActivityTimeline(eq(email), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("GET /{email}/activity-timeline: USER権限ではアクセス拒否される")
+        @WithMockUser(username = "user@example.com", roles = "USER")
+        void testShowActivityTimeline_AccessDenied() throws Exception {
+            mockMvc.perform(get("/admin/customers/test@example.com/activity-timeline"))
+                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("GET /{email}/activity-timeline: 未認証ユーザーはリダイレクトされる")
+        @WithAnonymousUser
+        void testShowActivityTimeline_Unauthenticated() throws Exception {
+            mockMvc.perform(get("/admin/customers/test@example.com/activity-timeline"))
+                .andExpect(status().is3xxRedirection());
+        }
+    }
+
+    // ========================================
+    // 認可制御（ロールごと）
     // ========================================
 
     @Nested

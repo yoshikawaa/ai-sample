@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -415,6 +416,40 @@ class AdminLoginHistoryControllerTest {
         history.setIpAddress("192.168.1.1");
         history.setUserAgent("Mozilla/5.0");
         return history;
+    }
+
+    // ========================================
+    // 認可制御（ロールごと）
+    // ========================================
+
+    @Nested
+    @DisplayName("認可制御（ロールごと）")
+    class AuthorizationTest {
+
+        @Test
+        @DisplayName("ADMINロールはログイン履歴にアクセスできる")
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+        void adminCanAccessLoginHistory() throws Exception {
+            when(loginHistoryService.getAllLoginHistoriesWithPagination(any())).thenReturn(new PageImpl<>(Collections.emptyList()));
+            mockMvc.perform(get("/admin/login-history"))
+                .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("USERロールはログイン履歴にアクセスできず403")
+        @WithMockUser(username = "user@example.com", roles = "USER")
+        void userCannotAccessLoginHistory() throws Exception {
+            mockMvc.perform(get("/admin/login-history"))
+                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("未認証はログイン履歴にアクセスできずリダイレクト")
+        @WithAnonymousUser
+        void anonymousCannotAccessLoginHistory() throws Exception {
+            mockMvc.perform(get("/admin/login-history"))
+                .andExpect(status().is3xxRedirection());
+        }
     }
 }
 
