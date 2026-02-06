@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -142,5 +143,46 @@ class AdminStatisticsControllerTest {
     void testShowStatistics_AsUser() throws Exception {
         mockMvc.perform(get("/admin/statistics"))
             .andExpect(status().isForbidden());
+    }
+
+    // ========================================
+    // 認可制御（ロールごと）
+    // ========================================
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("認可制御（ロールごと）")
+    class AuthorizationTest {
+
+        @Test
+        @DisplayName("ADMINロールは統計画面にアクセスできる")
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+        void adminCanAccessStatistics() throws Exception {
+            StatisticsDto mockDto = new StatisticsDto(
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                LocalDate.now().minusDays(30),
+                LocalDate.now()
+            );
+            when(statisticsService.getStatistics(any(), any())).thenReturn(mockDto);
+            mockMvc.perform(get("/admin/statistics"))
+                .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("USERロールは統計画面にアクセスできず403")
+        @WithMockUser(username = "user@example.com", roles = "USER")
+        void userCannotAccessStatistics() throws Exception {
+            mockMvc.perform(get("/admin/statistics"))
+                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("未認証は統計画面にアクセスできずリダイレクト")
+        @WithAnonymousUser
+        void anonymousCannotAccessStatistics() throws Exception {
+            mockMvc.perform(get("/admin/statistics"))
+                .andExpect(status().is3xxRedirection());
+        }
     }
 }

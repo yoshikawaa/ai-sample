@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -334,6 +336,43 @@ class AdminNotificationHistoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin-notification-history"))
                 .andExpect(model().attributeExists("historyPage"));
+        }
+    }
+
+    // ========================================
+    // 認可制御（ロールごと）
+    // ========================================
+
+    @Nested
+    @DisplayName("認可制御（ロールごと）")
+    class AuthorizationTest {
+
+        @Test
+        @DisplayName("ADMINロールは通知履歴にアクセスできる")
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+        void adminCanAccessNotificationHistory() throws Exception {
+            when(notificationHistoryService.getAllNotificationHistoriesWithPagination(any())).thenReturn(new PageImpl<>(Collections.emptyList()));
+            NotificationHistoryService.NotificationHistoryStatistics mockStatistics =
+                new NotificationHistoryService.NotificationHistoryStatistics(0, 0, 0, 0.0, Collections.emptyList());
+            when(notificationHistoryService.getStatistics()).thenReturn(mockStatistics);
+            mockMvc.perform(get("/admin/notification-history"))
+                .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("USERロールは通知履歴にアクセスできず403")
+        @WithMockUser(username = "user@example.com", roles = "USER")
+        void userCannotAccessNotificationHistory() throws Exception {
+            mockMvc.perform(get("/admin/notification-history"))
+                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("未認証は通知履歴にアクセスできずリダイレクト")
+        @WithAnonymousUser
+        void anonymousCannotAccessNotificationHistory() throws Exception {
+            mockMvc.perform(get("/admin/notification-history"))
+                .andExpect(status().is3xxRedirection());
         }
     }
 }

@@ -20,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -446,6 +447,40 @@ class AdminAuditLogControllerTest {
         auditLog.setActionTime(LocalDateTime.now());
         auditLog.setIpAddress("192.168.1.1");
         return auditLog;
+    }
+
+    // ========================================
+    // 認可制御（ロールごと）
+    // ========================================
+
+    @Nested
+    @DisplayName("認可制御（ロールごと）")
+    class AuthorizationTest {
+
+        @Test
+        @DisplayName("ADMINロールは監査ログにアクセスできる")
+        @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+        void adminCanAccessAuditLog() throws Exception {
+            when(auditLogService.getAllAuditLogsWithPagination(any())).thenReturn(new PageImpl<>(Collections.emptyList()));
+            mockMvc.perform(get("/admin/audit-log"))
+                .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("USERロールは監査ログにアクセスできず403")
+        @WithMockUser(username = "user@example.com", roles = "USER")
+        void userCannotAccessAuditLog() throws Exception {
+            mockMvc.perform(get("/admin/audit-log"))
+                .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("未認証は監査ログにアクセスできずリダイレクト")
+        @WithAnonymousUser
+        void anonymousCannotAccessAuditLog() throws Exception {
+            mockMvc.perform(get("/admin/audit-log"))
+                .andExpect(status().is3xxRedirection());
+        }
     }
 }
 
