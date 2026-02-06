@@ -8,7 +8,6 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -114,30 +113,4 @@ public interface AuditLogRepository {
     long countBySearch(@Param("performedBy") String performedBy, @Param("targetEmail") String targetEmail,
                        @Param("actionType") AuditLog.ActionType actionType,
                        @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
-
-    // ========================================
-    // 顧客アクティビティタイムライン用
-    // ========================================
-
-    /**
-     * 特定顧客の監査ログを取得（タイムライン用）
-     */
-    @Select("""
-        <script>
-        SELECT * FROM audit_log
-        WHERE target_email = #{email}
-        <if test="startDate != null">
-            AND action_time &gt;= #{startDate}
-        </if>
-        <if test="endDate != null">
-            AND action_time &lt;= #{endDate}
-        </if>
-        ORDER BY action_time DESC
-        LIMIT #{limit}
-        </script>
-    """)
-    List<AuditLog> findByTargetEmail(@Param("email") String email,
-                                      @Param("startDate") LocalDateTime startDate,
-                                      @Param("endDate") LocalDateTime endDate,
-                                      @Param("limit") int limit);
 }
