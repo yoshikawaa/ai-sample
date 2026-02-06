@@ -175,30 +175,4 @@ public interface NotificationHistoryRepository {
         GROUP BY status
     """)
     List<StatusCount> countByStatus();
-
-    // ========================================
-    // 顧客アクティビティタイムライン用
-    // ========================================
-
-    /**
-     * 特定顧客の通知履歴を取得（タイムライン用）
-     */
-    @Select("""
-        <script>
-        SELECT * FROM notification_history
-        WHERE recipient_email = #{email}
-        <if test="startDate != null">
-            AND sent_at &gt;= #{startDate}
-        </if>
-        <if test="endDate != null">
-            AND sent_at &lt; #{endDate}
-        </if>
-        ORDER BY sent_at DESC
-        LIMIT #{limit}
-        </script>
-    """)
-    List<NotificationHistory> findByRecipientEmail(@Param("email") String email,
-                                                     @Param("startDate") LocalDateTime startDate,
-                                                     @Param("endDate") LocalDateTime endDate,
-                                                     @Param("limit") int limit);
 }

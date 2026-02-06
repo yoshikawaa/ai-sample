@@ -81,50 +81,21 @@
             
             <!-- タイムライン項目 -->
             <div th:unless="${#lists.isEmpty(timelinePage.content)}" class="space-y-4">
-                <th:block th:each="activity : ${timelinePage.content}">
-                    <th:block th:switch="${activity.activityType.name()}">
-                        <div th:case="'LOGIN_SUCCESS'" class="border-l-4 border-green-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'LOGIN_FAILURE'" class="border-l-4 border-red-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'LOGOUT'" class="border-l-4 border-blue-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'SESSION_EXCEEDED'" class="border-l-4 border-yellow-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'INFO_UPDATED'" class="border-l-4 border-indigo-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'PASSWORD_CHANGED'" class="border-l-4 border-purple-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'PASSWORD_RESET'" class="border-l-4 border-purple-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'ACCOUNT_LOCKED'" class="border-l-4 border-red-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'ACCOUNT_UNLOCKED'" class="border-l-4 border-green-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'ACCOUNT_CREATED'" class="border-l-4 border-green-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'ACCOUNT_DELETED'" class="border-l-4 border-red-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="'NOTIFICATION_SENT'" class="border-l-4 border-blue-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                        <div th:case="*" class="border-l-4 border-gray-500 pl-4 py-3">
-                            <th:block th:replace="~{:: activityContent}"/>
-                        </div>
-                    </th:block>
+                <div th:each="activity : ${timelinePage.content}"
+                     th:classappend="${activity.activityType.name() == 'LOGIN_SUCCESS' ? 'border-l-4 border-green-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'LOGIN_FAILURE' ? 'border-l-4 border-red-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'LOGOUT' ? 'border-l-4 border-blue-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'SESSION_EXCEEDED' ? 'border-l-4 border-yellow-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'INFO_UPDATED' ? 'border-l-4 border-indigo-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'PASSWORD_CHANGED' ? 'border-l-4 border-purple-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'PASSWORD_RESET' ? 'border-l-4 border-purple-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'ACCOUNT_LOCKED' ? 'border-l-4 border-red-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'ACCOUNT_UNLOCKED' ? 'border-l-4 border-green-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'ACCOUNT_CREATED' ? 'border-l-4 border-green-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'ACCOUNT_DELETED' ? 'border-l-4 border-red-500 pl-4 py-3' : 
+                                      activity.activityType.name() == 'NOTIFICATION_SENT' ? 'border-l-4 border-blue-500 pl-4 py-3' : 
+                                      'border-l-4 border-gray-500 pl-4 py-3'}">
                     
-                    <th:block th:fragment="activityContent">
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <p class="font-semibold text-gray-800" th:text="${activity.description}">Activity Description</p>
@@ -160,8 +131,7 @@
                             </p>
                         </div>
                     </details>
-                    </th:block>
-                </th:block>
+                </div>
             </div>
             
             <!-- ページネーション -->

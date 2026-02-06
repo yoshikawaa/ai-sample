@@ -32,8 +32,6 @@ mybatis:
     map-underscore-to-camel-case: true
 
 app:
-  activity-timeline:
-    fetch-limit: 500 # 各テーブルから取得する最大件数
   security:
     account-unlock:
       token-expiry-seconds: 900 # 15分

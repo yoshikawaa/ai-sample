@@ -8,7 +8,6 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -106,30 +105,4 @@ public interface LoginHistoryRepository {
     """)
     long countBySearch(@Param("email") String email, @Param("status") String status,
                        @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
-
-    // ========================================
-    // 顧客アクティビティタイムライン用
-    // ========================================
-
-    /**
-     * 特定顧客のログイン履歴を取得（タイムライン用）
-     */
-    @Select("""
-        <script>
-        SELECT * FROM login_history
-        WHERE email = #{email}
-        <if test="startDate != null">
-            AND login_time &gt;= #{startDate}
-        </if>
-        <if test="endDate != null">
-            AND login_time &lt;= #{endDate}
-        </if>
-        ORDER BY login_time DESC
-        LIMIT #{limit}
-        </script>
-    """)
-    List<LoginHistory> findByEmail(@Param("email") String email,
-                                     @Param("startDate") LocalDateTime startDate,
-                                     @Param("endDate") LocalDateTime endDate,
-                                     @Param("limit") int limit);
 }

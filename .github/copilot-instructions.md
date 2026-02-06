@@ -1645,6 +1645,55 @@ public class AuditLogSearchForm {
 }
 ```
 
+#### MyBatis動的SQLでの空リスト処理
+
+**原則**: サービス層で空リスト→null変換を行わない。MyBatisの動的SQLに処理を委任する。
+
+**理由**:
+- MyBatisの`<if test="list != null and !list.isEmpty()">`が空リストとnullの両方を適切に処理
+- サービス層での変換は冗長で不要
+- コードがシンプルになり、意図が明確になる
+
+```java
+// ✅ 推奨: リストをそのまま渡す
+public Page<ActivityTimeline> getActivityTimeline(List<ActivityType> activityTypes, Pageable pageable) {
+    // 空リストもnullもそのまま渡す（MyBatisが適切に処理）
+    List<ActivityTimeline> results = repository.search(activityTypes, startDate, endDate);
+    return new PageImpl<>(results, pageable, repository.count(activityTypes, startDate, endDate));
+}
+
+// ❌ 非推奨: サービス層で空リスト→null変換
+public Page<ActivityTimeline> getActivityTimeline(List<ActivityType> activityTypes, Pageable pageable) {
+    // 不要な変換ロジック
+    if (activityTypes != null && activityTypes.isEmpty()) {
+        activityTypes = null;
+    }
+    List<ActivityTimeline> results = repository.search(activityTypes, startDate, endDate);
+    return new PageImpl<>(results, pageable, repository.count(activityTypes, startDate, endDate));
+}
+```
+
+**MyBatis側での処理**:
+```xml
+<select id="search" resultType="ActivityTimeline">
+    SELECT * FROM activity_timeline
+    <where>
+        <!-- nullと空リストの両方を適切に処理 -->
+        <if test="activityTypes != null and !activityTypes.isEmpty()">
+            AND activity_type IN
+            <foreach item="type" collection="activityTypes" open="(" separator="," close=")">
+                #{type}
+            </foreach>
+        </if>
+    </where>
+</select>
+```
+
+**重要**:
+- サービス層は業務ロジックに集中し、データアクセス層の詳細に関与しない
+- MyBatisの動的SQLは十分に強力で、特別な前処理は不要
+- 空リスト・null判定をサービス層に持ち込まない
+
 #### メソッドの配置順序
 
 リポジトリのメソッドは**機能ごとにグループ化**し、関連するメソッドを近接配置する：
@@ -3119,6 +3168,132 @@ private byte[] generateCSV(List<Customer> customers) {
 - 冗長な認可チェックはコードの可読性を下げる
 - セキュリティの二重チェックは不要（コントローラレベルで十分）
 
+#### Thymeleafフラグメントの使用ガイドライン
+
+##### フラグメントの適切な使用場面
+
+**使用すべき場合**:
+- 複数のテンプレートで共通するコンポーネント（ナビゲーション、フッター、ヘッダー等）
+- 真に再利用性のある独立したUI部品
+- 別ファイルで管理すべき大きな共通部品
+
+**使用を避けるべき場合**:
+- ループ内で繰り返される要素の抽出（単純な`th:each`で十分）
+- 単一テンプレート内でのみ使用されるコード分割（YAGNI原則違反）
+- シンプルな繰り返しパターン（フラグメントは過剰）
+
+##### フラグメントの配置とスコープ
+
+**原則**: フラグメント定義はループの外に配置し、変数を明示的に渡す
+
+```html
+<!-- ❌ 禁止: ループ内にフラグメント定義 → 二重描画 -->
+<div th:each="item : ${items}">
+    <div th:replace="~{:: content}"/>  <!-- 1回目の描画: フラグメント置換 -->
+</div>
+<th:block th:fragment="content">
+    <!-- 2回目の描画: フラグメント定義自体も描画される -->
+    <p th:text="${item.name}"></p>  <!-- エラー: item変数が存在しない -->
+</th:block>
+<!-- 結果: 各アイテムが2回表示される（色付き/色なしなど視覚的に区別可能な場合がある） -->
+
+<!-- ⚠️ 問題あり: ループ外にフラグメント定義 → 変数スコープエラー -->
+<div th:each="item : ${items}">
+    <div th:replace="~{this :: content}"/>  <!-- item変数を渡していない -->
+</div>
+<th:block th:fragment="content">
+    <p th:text="${item.name}"></p>  <!-- エラー: Property 'name' cannot be found on null -->
+</th:block>
+
+<!-- ✅ 可能: ループ外にフラグメント定義 + 変数を明示的に渡す -->
+<div th:each="item : ${items}">
+    <div th:replace="~{this :: content(${item})}"/>  <!-- 変数を渡す -->
+</div>
+<th:block th:fragment="content(item)">  <!-- パラメータを受け取る -->
+    <p th:text="${item.name}"></p>
+</th:block>
+
+<!-- ✅ より推奨: フラグメントを使わずシンプルに -->
+<div th:each="item : ${items}">
+    <p th:text="${item.name}"></p>
+</div>
+```
+
+**問題のメカニズム**:
+1. **ループ内配置**: フラグメント呼び出し（`th:replace`）とフラグメント定義自体の両方が描画される
+2. **ループ外配置**: 変数スコープが失われ、`${item.name}` が null として評価される
+3. **解決策1**: フラグメント定義で明示的にパラメータを受け取る `th:fragment="name(param)"`
+4. **解決策2（推奨）**: フラグメントを使わず直接描画（YAGNI原則）
+
+##### 動的スタイル適用のベストプラクティス
+
+**原則**: `th:classappend`を使って条件分岐し、フラグメントは不要
+
+```html
+<!-- ✅ 推奨: th:classappend で動的スタイル適用 -->
+<div th:each="activity : ${activities}"
+     th:classappend="${activity.type == 'LOGIN_SUCCESS' ? 'border-l-4 border-green-500 pl-4 py-3' : 
+                      activity.type == 'LOGIN_FAILURE' ? 'border-l-4 border-red-500 pl-4 py-3' : 
+                      activity.type == 'LOGOUT' ? 'border-l-4 border-blue-500 pl-4 py-3' : 
+                      'border-l-4 border-gray-500 pl-4 py-3'}">
+    <p th:text="${activity.description}"></p>
+    <span th:text="${activity.status}"></span>
+</div>
+
+<!-- ❌ 非推奨: th:switch + フラグメント（複雑で保守が困難） -->
+<th:block th:each="activity : ${activities}">
+    <th:block th:switch="${activity.type}">
+        <div th:case="'LOGIN_SUCCESS'" class="border-l-4 border-green-500 pl-4 py-3">
+            <th:block th:replace="~{this :: content(${activity})}"/>
+        </div>
+        <div th:case="'LOGIN_FAILURE'" class="border-l-4 border-red-500 pl-4 py-3">
+            <th:block th:replace="~{this :: content(${activity})}"/>
+        </div>
+        <div th:case="'LOGOUT'" class="border-l-4 border-blue-500 pl-4 py-3">
+            <th:block th:replace="~{this :: content(${activity})}"/>
+        </div>
+        <!-- 多数の繰り返し... -->
+    </th:block>
+</th:block>
+<th:block th:fragment="content(activity)">
+    <p th:text="${activity.description}"></p>
+    <span th:text="${activity.status}"></span>
+</th:block>
+```
+
+**利点**:
+- コードが簡潔で読みやすい
+- フラグメントのスコープ問題を回避
+- 保守が容易（条件とスタイルが1箇所に集約）
+- デバッグが簡単（変数スコープエラーが発生しない）
+
+##### 別ファイルのフラグメント（fragments/xxx.html）
+
+**適切な使用例**:
+```html
+<!-- fragments/nav.html: 複数画面で共通使用 -->
+<nav th:fragment="nav(showMenuLinks)" class="bg-gray-800 p-4">
+    <a th:href="@{/}" class="text-white">Home</a>
+    <ul th:if="${showMenuLinks}">
+        <li sec:authorize="isAuthenticated()">
+            <a th:href="@{/mypage}">My Page</a>
+        </li>
+    </ul>
+</nav>
+
+<!-- 各テンプレートで使用 -->
+<body>
+    <div th:replace="~{fragments/nav :: nav(${true})}"></div>
+    <!-- ページコンテンツ -->
+</body>
+```
+
+**重要**:
+- **YAGNI原則**: 単純な繰り返しにフラグメントは不要。`th:each`で直接描画する方がシンプル
+- **複雑性の回避**: フラグメントの入れ子やパラメータ渡しは可読性を下げる
+- **スコープの明示**: 変数を渡す場合は必ずパラメータ宣言 `th:fragment="name(param)"`
+- **デバッグ**: フラグメント使用時の「Property cannot be found on null」エラーは変数スコープ問題
+
 #### 共通ナビゲーション（fragments/nav.html）の適用ルール
 
 **適用対象**
@@ -4038,6 +4213,68 @@ when(customerRepository.searchWithSort(eq("John"), any(), any(), any())).thenRet
 - **`eq(value)`**: 正確な値のマッチング（特定の値を検証したい場合）
 - **nullが渡される可能性のあるパラメータ**: 必ず `any()` を使用（`anyString()` は使用禁止）
 - **複数のマッチャーを混在**: 一部を `eq()` で固定、残りを `any()` で柔軟にマッチ可能
+
+**anyList()、anyString()等の型指定マッチャーの危険性**:
+
+```java
+// ❌ 注意: anyList() - nullにはマッチしない（非nullのリストのみ）
+@BeforeEach
+void setUp() {
+    when(repository.search(anyList(), any(), any())).thenReturn(Collections.emptyList());
+}
+
+@Test
+void testWithNullParameter() {
+    service.search(null, startDate, endDate);  // nullパラメータで失敗
+    // エラー: マッチするスタブが見つからない
+}
+
+// ✅ 推奨: any() - nullを含むすべての値にマッチ
+@BeforeEach
+void setUp() {
+    when(repository.search(any(), any(), any())).thenReturn(Collections.emptyList());
+}
+
+@Test
+void testWithNullParameter() {
+    service.search(null, startDate, endDate);  // 成功
+}
+
+@Test
+void testWithEmptyList() {
+    service.search(Collections.emptyList(), startDate, endDate);  // 成功
+}
+
+@Test
+void testWithList() {
+    service.search(Arrays.asList(TYPE1, TYPE2), startDate, endDate);  // 成功
+}
+```
+
+**ベストプラクティス**:
+- **デフォルトモック設定（@BeforeEach）**: `any()`を使用し、すべてのケースに対応
+- **個別テストでの具体値検証**: `eq()`を使用して特定の値をアサート
+
+```java
+@BeforeEach
+void setUp() {
+    // デフォルト: すべてのパラメータに対応
+    when(repository.search(any(), any(), any())).thenReturn(Collections.emptyList());
+}
+
+@Test
+void testSearchWithSpecificType() {
+    // 個別テスト: 具体的な値を検証
+    when(repository.search(eq(Arrays.asList(TYPE1)), any(), any())).thenReturn(...);
+    service.search(Arrays.asList(TYPE1), startDate, endDate);
+}
+```
+
+**重要**:
+- **`anyList()`の落とし穴**: 非nullのリストのみにマッチし、nullが渡されるとマッチング失敗
+- **`anyString()`の落とし穴**: 非nullの文字列のみにマッチし、nullが渡されるとマッチング失敗
+- **null許容パラメータ**: 必ず`any()`を使用（型指定マッチャーは避ける）
+- **テスト失敗の原因**: `anyList()`使用時にnullパラメータのテストが「スタブが見つからない」エラーで失敗
 
 #### モックデータの順序
 
