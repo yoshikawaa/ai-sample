@@ -22,7 +22,4 @@ public class AdminCustomerEditForm {
 
     @NotBlank
     private String address;
-
-    @NotNull
-    private Customer.Role role;
 }

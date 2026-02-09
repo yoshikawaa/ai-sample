@@ -1,13 +1,11 @@
 app:
   greenmail:
     enabled: false
-
-spring:
-  datasource:
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  sql:
-    init:
-      mode: always
+  e2e:
+    selenide:
+      browser-type: EDGE
+      headless: true
+      timeout: 10000
+      page-load-timeout: 30000
+      screenshots: true
+      save-page-source: false

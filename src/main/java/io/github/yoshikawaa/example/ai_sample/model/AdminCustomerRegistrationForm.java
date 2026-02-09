@@ -37,7 +37,4 @@ public class AdminCustomerRegistrationForm {
 
     @NotBlank
     private String address;
-
-    @NotNull
-    private Customer.Role role;
 }
