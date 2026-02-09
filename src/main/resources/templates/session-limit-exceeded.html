@@ -14,8 +14,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">Session Limit Exceeded</h1>
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert" th:text="${errorMessage}">
+            <h1 id="page-title" class="text-3xl font-bold text-gray-800 mb-6">Session Limit Exceeded</h1>
+            <div id="error-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert" th:text="${errorMessage}">
                 同時ログインの上限に達したため、これ以上ログインできません。<br>他の端末でログアウトしてから再度お試しください。
             </div>
             <div class="flex justify-center space-x-4">

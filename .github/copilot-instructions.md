@@ -3086,6 +3086,96 @@ private byte[] generateCSV(List<Customer> customers) {
 </html>
 ```
 
+#### HTML要素のid属性付与原則
+
+**原則**: 意味のある要素には必ずid属性を付与する
+
+**対象要素**:
+1. **ページタイトル（h1要素）**: `id="page-title"`
+   - すべての画面（完了画面、エラー画面、入力画面、一覧画面等）で統一
+   - E2Eテストでページ遷移の検証に使用
+   - 例: `<h1 id="page-title" class="text-3xl font-bold text-gray-800 mb-6">Customer Registration</h1>`
+
+2. **主要メッセージ（エラー、成功、警告等）**: 適切なidを付与
+   - エラーメッセージ: `id="error-message"`
+   - 成功メッセージ: `id="success-message"`
+   - 警告メッセージ: `id="warning-message"`
+   - 例: `<p id="error-message" class="text-red-500" th:text="${errorMessage}">エラーが発生しました。</p>`
+
+3. **フォーム入力要素**: フィールド名をidとして使用
+   - 必須: label要素のfor属性と連携
+   - エラーメッセージ要素: `id="{フィールド名}-error"`
+   - 例: `<input type="text" id="email" name="email" th:field="*{email}">`
+   - 例: `<p id="email-error" class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>`
+
+4. **主要コンテンツ領域**: セクションごとにidを付与
+   - 確認画面の表示項目: `id="confirm-{フィールド名}"`
+   - データ表示セクション: `id="{セクション名}-section"`
+   - 例: `<p id="confirm-email" th:text="${customerForm.email}">test@example.com</p>`
+
+5. **ナビゲーションとボタン**: 重要な操作要素にidを付与
+   - 主要な操作ボタンは必要に応じてidを付与（ただしtext-based selectorを優先）
+   - 複数の同種ボタンがある場合は区別のためidを推奨
+
+**理由**:
+- **E2Eテストの安定性**: CSSクラスやXPathに依存しない安定したセレクタ
+- **保守性の向上**: HTML構造変更時の影響を最小化
+- **可読性の向上**: 要素の意味・役割が明確になる
+- **開発効率の向上**: デバッグ・検査ツールでの要素特定が容易
+- **アクセシビリティ**: label要素のfor属性でフォーム操作性向上
+
+**命名規則**:
+- **ケバブケース**: `page-title`, `error-message`, `confirm-email`
+- **意味が明確**: 要素の役割を表現（`message1`ではなく`error-message`）
+- **一貫性**: 同じ種類の要素は統一したidパターン（例: すべてのページタイトルは`page-title`）
+
+**禁止事項**:
+```html
+<!-- ❌ 禁止: 意味のない要素にidを付与 -->
+<div id="div1" class="container">
+    <p id="p2">本文</p>
+</div>
+
+<!-- ❌ 禁止: ページタイトルにidがない -->
+<h1 class="text-3xl font-bold text-gray-800 mb-6">Customer Registration</h1>
+
+<!-- ❌ 禁止: エラーメッセージにidがない -->
+<p class="text-red-500" th:text="${errorMessage}">エラーが発生しました。</p>
+
+<!-- ❌ 禁止: label要素のfor属性がない -->
+<label class="block text-gray-700 font-medium">Email</label>
+<input type="text" id="email" name="email">
+```
+
+**推奨パターン**:
+```html
+<!-- ✅ 推奨: 完了画面 -->
+<h1 id="page-title" class="text-3xl font-bold text-gray-800 mb-6">Registration Complete</h1>
+<p id="success-message" class="text-lg text-gray-600 mb-6">顧客登録が完了しました。</p>
+
+<!-- ✅ 推奨: エラー画面 -->
+<h1 id="page-title" class="text-3xl font-bold text-gray-800 mb-2">Error</h1>
+<div id="error-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
+    <p th:text="${errorMessage}">エラーが発生しました。</p>
+</div>
+
+<!-- ✅ 推奨: 入力フォーム -->
+<label for="email" class="block text-gray-700 font-medium">Email</label>
+<input type="text" id="email" name="email" th:field="*{email}">
+<p id="email-error" class="text-red-500 text-sm mt-1" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
+
+<!-- ✅ 推奨: 確認画面 -->
+<div>
+    <label class="block text-gray-700 font-medium">Email</label>
+    <p id="confirm-email" class="text-gray-900" th:text="${customerForm.email}">test@example.com</p>
+</div>
+```
+
+**重要**:
+- テンプレート作成時は必ず主要要素にidを付与
+- 既存テンプレート修正時もid付与の原則を適用
+- E2Eテストでセレクタを書く前にHTMLにidが存在するか確認
+
 #### フォーム
 ```html
 <form th:action="@{/mypage/edit}" th:object="${customerEditForm}" method="post" class="space-y-4" novalidate>
@@ -4407,4 +4497,714 @@ void setUpEmailService() {
     doNothing().when(emailService).sendEmail(any(), any(), any());
 }
 ```
+
+---
+
+## E2Eテスト（End-to-End Testing）
+
+### 1. E2Eテストアーキテクチャ
+
+#### テクノロジースタック
+- **Selenide**: 7.14.0+（ブラウザ自動化フレームワーク）
+- **WebDriverManager**: 6.3.3+（ブラウザドライバー自動管理）
+- **Spring Boot Test**: `@SpringBootTest(webEnvironment = RANDOM_PORT)`（ランダムポートで実行）
+- **GreenMail**: 2.1.8（テスト用SMTPサーバー、動的ポート）
+- **H2 Database**: インメモリDB（@Sqlでデータリセット）
+- **Microsoft Edge**: Headlessモード（プロジェクト標準ブラウザ）
+
+#### アーキテクチャ原則
+```
+E2ETestBase（抽象基底クラス）
+├── Spring Boot サーバー起動（RANDOM_PORT）
+├── Selenide/WebDriver設定（プロパティ外部化）
+├── GreenMail起動・停止（動的ポート、本番Configは無効）
+└── 共通ヘルパーメソッド（login, logout, email検証等）
+    ↓ 継承
+各テストクラス（CustomerRegistrationE2ETest等）
+├── テストケースごとにブラウザ起動・終了
+└── メールボックスは毎回クリア
+```
+
+**重要な設計原則**:
+- **本番サーバー不要**: `@SpringBootTest(webEnvironment = RANDOM_PORT)`でテスト専用サーバー起動
+- **データベース初期化**: Spring Boot起動時に schema.sql + data.sql が自動実行される（@Sqlは不要）
+- **テストメソッド間の独立性**: 各テストメソッドで異なるユーザーを使用（@Order不要）
+- **GreenMail分離**: 本番用GreenMailConfig（固定ポート3025）は`application.yml`で`app.greenmail.enabled: false`により無効化、テスト専用GreenMail（動的ポート）をE2ETestBaseで起動
+- **並行実行対応**: 動的ポート使用により複数テストの同時実行が可能
+- **設定外部化**: Selenide設定は`app.e2e.selenide.*`プロパティで調整可能
+- **クリーンアップ**: 各テスト後にブラウザ・Cookie・LocalStorage・メールボックスをクリア
+
+### 2. E2ETestBase実装ガイド
+
+#### 必須設定項目
+```java
+@Slf4j
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@EnableConfigurationProperties(SelenideProperties.class)
+public abstract class E2ETestBase {
+    
+    @LocalServerPort
+    protected int port;
+    
+    @Autowired
+    private SelenideProperties selenideProperties;
+    
+    protected static GreenMail greenMail;
+}
+```
+
+#### GreenMail設定（動的ポート）
+```java
+@BeforeAll
+static void setupGreenMail() {
+    ServerSetup serverSetup = ServerSetup.SMTP.dynamicPort();
+    greenMail = new GreenMail(serverSetup);
+    greenMail.start();
+    greenMail.setUser("test@example.com", "password");
+    log.info("GreenMail started on port: {}", greenMail.getSmtp().getPort());
+}
+
+@AfterAll
+static void tearDownGreenMail() {
+    if (greenMail != null) {
+        greenMail.stop();
+        log.info("GreenMail stopped");
+    }
+}
+```
+
+**重要**:
+- `ServerSetup.SMTP.dynamicPort()`で動的ポート割り当て（並行実行対応）
+- `@BeforeAll`/`@AfterAll`で全テスト共通のGreenMail起動・停止
+- 本番用GreenMailConfigは`application.yml`で無効化（`app.greenmail.enabled: false`）
+
+#### WebDriverManager設定（ブラウザ自動管理）
+```java
+@BeforeEach
+void setupBrowser() {
+    try {
+        switch (selenideProperties.getBrowserType()) {
+            case EDGE:
+                WebDriverManager.edgedriver()
+                    .cachePath("target/.wdm")
+                    .setup();
+                break;
+            case CHROME:
+                WebDriverManager.chromedriver()
+                    .cachePath("target/.wdm")
+                    .clearDriverCache()
+                    .clearResolutionCache()
+                    .setup();
+                break;
+            case FIREFOX:
+                WebDriverManager.firefoxdriver()
+                    .cachePath("target/.wdm")
+                    .clearDriverCache()
+                    .clearResolutionCache()
+                    .setup();
+                break;
+        }
+        log.info("WebDriverManager configured for {}", selenideProperties.getBrowserType());
+    } catch (Exception e) {
+        log.warn("WebDriverManager setup failed, falling back to system driver: {}", e.getMessage());
+    }
+    
+    Configuration.browser = selenideProperties.getBrowserType().getSelenideName();
+    Configuration.headless = selenideProperties.isHeadless();
+    Configuration.timeout = selenideProperties.getTimeout();
+    Configuration.pageLoadTimeout = selenideProperties.getPageLoadTimeout();
+    Configuration.baseUrl = "http://localhost:" + port;
+}
+```
+
+**重要**:
+- `target/.wdm`にドライバーキャッシュ（プロジェクトローカル）
+- プロパティベースの設定（`app.e2e.selenide.*`）
+- システムドライバーへのフォールバック
+
+#### クリーンアップ処理
+```java
+@AfterEach
+void cleanupBrowser() {
+    Selenide.clearBrowserCookies();
+    Selenide.clearBrowserLocalStorage();
+    Selenide.closeWebDriver();
+    log.debug("Browser cleaned up");
+}
+
+@AfterEach
+void clearEmails() {
+    try {
+        greenMail.purgeEmailFromAllMailboxes();
+        log.debug("Emails cleared");
+    } catch (Exception e) {
+        log.warn("Failed to clear emails", e);
+    }
+}
+```
+
+#### 共通ヘルパーメソッド
+```java
+// ログイン処理
+protected void login(String email, String password) {
+    open("/login");
+    $("#username").setValue(email);
+    $("#password").setValue(password);
+    $("button[type=submit]").click();
+    log.debug("Logged in as: {}", email);
+}
+
+// ログアウト処理
+protected void logout() {
+    open("/logout");
+    $("button[type=submit]").click();
+    log.debug("Logged out");
+}
+
+// メール受信数取得
+protected int getReceivedEmailCount() {
+    return greenMail.getReceivedMessages().length;
+}
+
+// 最後のメール件名取得
+protected String getLastEmailSubject() throws Exception {
+    var messages = greenMail.getReceivedMessages();
+    if (messages.length == 0) {
+        return null;
+    }
+    return messages[messages.length - 1].getSubject();
+}
+
+// 最後のメール本文取得
+protected String getLastEmailBody() throws Exception {
+    var messages = greenMail.getReceivedMessages();
+    if (messages.length == 0) {
+        return null;
+    }
+    return messages[messages.length - 1].getContent().toString();
+}
+
+// スクリーンショット取得（デバッグ用）
+protected void takeScreenshot(String fileName) {
+    Selenide.screenshot(fileName);
+    log.info("Screenshot taken: {}", fileName);
+}
+```
+
+**禁止事項**:
+- ❌ `getPageTitle()`、`getCurrentUrl()`などのラッパーメソッド作成（Selenideで直接取得可能）
+  - ページタイトル: `Selenide.title()`
+  - 現在のURL: `WebDriverRunner.url()`
+
+### 3. テストケース実装ガイド
+
+#### 基本構造
+```java
+@DisplayName("E2E: 顧客登録フロー")
+class CustomerRegistrationE2ETest extends E2ETestBase {
+    
+    @Test
+    @DisplayName("正常系: 入力→確認→登録完了の一連のフローが成功する")
+    void testSuccessfulRegistrationFlow() {
+        // 1. 画面遷移
+        open("/register/input");
+        $("#page-title").shouldHave(text("Customer Registration"));
+        
+        // 2. フォーム入力
+        $("#email").setValue("test@example.com");
+        $("#name").setValue("Test User");
+        $("#birthDate").setValue(withDate(LocalDate.of(1990, 1, 1)));
+        
+        // 3. 確認画面へ遷移
+        $("button[type=submit]").click();
+        $("#page-title").shouldHave(text("Confirm Registration"));
+        
+        // 4. 登録実行
+        $$("button[type=submit]").findBy(text("Register")).click();
+        
+        // 5. 完了画面検証
+        $("#page-title").shouldHave(text("Registration Complete"));
+        
+        // 6. データベース検証
+        var customer = customerRepository.findByEmail("test@example.com");
+        assertThat(customer).isPresent();
+    }
+}
+```
+
+### 4. セレクタ戦略
+
+#### ID優先の原則
+```java
+// ✅ 推奨: IDセレクタ（最も安定）
+$("#email").setValue("test@example.com");
+$("#page-title").shouldHave(text("Customer Registration"));
+$("#error-message").shouldBe(visible);
+
+// ❌ 非推奨: クラスセレクタ（HTML構造変更に弱い）
+$(".text-3xl.font-bold").shouldHave(text("..."));
+
+// ❌ 非推奨: XPath（複雑で保守困難）
+$x("//div[@class='container']/h1").shouldHave(text("..."));
+```
+
+**重要**: すべてのテンプレートで「10. テンプレート（Thymeleaf）> HTML要素のid属性付与原則」に従い、意味のある要素には必ずidを付与する
+
+#### ボタンセレクタパターン
+```java
+// ✅ 推奨: text()でボタンを特定（ユーザー視点で直感的）
+$$("button[type=submit]").findBy(text("Register")).click();
+$$("button[type=submit]").findBy(text("Back")).click();
+
+// ✅ 推奨: 単一ボタンの場合
+$("button[type=submit]").click();
+
+// ❌ 禁止: attribute()セレクタ（確認画面のフォーム構造で動作しない）
+$$("form").findBy(attribute("action", "/register/register"))
+    .$("button[type=submit]").click();
+```
+
+**禁止理由**: 確認画面では各ボタンが個別のフォーム内にあり、`$$("form").findBy(attribute(...))`が正しく動作しない
+
+#### フォーム要素セレクタ
+```java
+// ✅ 推奨: IDベースのセレクタ
+$("#email").setValue("test@example.com");
+$("#name").setValue("Test User");
+$("#birthDate").setValue(withDate(LocalDate.of(1990, 1, 1)));
+
+// ✅ 推奨: エラーメッセージの検証
+$("#email-error").shouldBe(visible);
+$("#confirmPassword-error").shouldHave(text("パスワード"));
+```
+
+### 5. 日付入力の特殊処理
+
+#### `<input type="date">`の入力パターン
+```java
+import static com.codeborne.selenide.SetValueOptions.withDate;
+
+// ✅ 推奨: SelenideのwithDate()を使用
+$("#birthDate").setValue(withDate(LocalDate.of(1990, 1, 1)));
+$("#birthDate").setValue(withDate(underageBirthDate));
+
+// ❌ 禁止: 文字列での直接入力（ブラウザで動作しない）
+$("#birthDate").setValue("1990-01-01");
+
+// ❌ 禁止: JavaScriptによる値設定（非推奨パターン）
+executeJavaScript("document.getElementById('birthDate').value = '1990-01-01';");
+```
+
+**重要**:
+- `<input type="date">`は特殊処理が必要（通常のsetValue()では動作しない）
+- `withDate()`は**Selenide 7.14.0+**で利用可能（バージョン要件を確認）
+- 必ず`import static com.codeborne.selenide.SetValueOptions.withDate;`をインポート
+
+### 6. ページ遷移と待機戦略
+
+#### 暗黙的待機パターン（推奨）
+```java
+// ✅ 推奨: ボタンクリック後、次画面の要素をshouldHave()で検証（暗黙的待機）
+$("button[type=submit]").click();
+$("#page-title").shouldHave(text("Confirm Registration"));  // 遷移完了を待機
+
+// ✅ 推奨: 複数の検証を連鎖
+$("button[type=submit]").click();
+$("#page-title").shouldHave(text("Complete"));
+$("#success-message").shouldBe(visible);
+```
+
+**重要**:
+- `shouldHave()`は要素が条件を満たすまで自動的に待機（デフォルト10秒）
+- 明示的な`sleep()`や`waitUntil()`は不要（コードが簡潔になる）
+
+#### 禁止パターン
+```java
+// ❌ 禁止: 明示的なsleep（テストが遅くなる、不安定）
+$("button[type=submit]").click();
+Thread.sleep(2000);
+$("#page-title").shouldHave(text("Complete"));
+
+// ❌ 禁止: 不要なwaitUntil（shouldHave()で十分）
+$("button[type=submit]").click();
+Wait().until(ExpectedConditions.visibilityOfElementLocated(By.id("page-title")));
+```
+
+### 7. インポート規約
+
+#### 必須インポート
+```java
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import java.time.LocalDate;
+
+import static com.codeborne.selenide.Condition.exist;
+import static com.codeborne.selenide.Condition.text;
+import static com.codeborne.selenide.Condition.value;
+import static com.codeborne.selenide.Condition.visible;
+import static com.codeborne.selenide.Selenide.$$;
+import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.open;
+import static com.codeborne.selenide.SetValueOptions.withDate;
+import static org.assertj.core.api.Assertions.assertThat;
+```
+
+**禁止事項**:
+- ❌ ワイルドカードインポート: `import static com.codeborne.selenide.Selenide.*;`
+- ❌ 未使用インポート: `import static com.codeborne.selenide.Condition.attribute;`（使用しない場合は削除）
+
+### 8. テストデータ戦略とデータベース初期化
+
+#### データベース初期化の仕組み（重要）
+
+E2Eテストでは、**@SpringBootTest**がSpring Bootアプリケーションを起動する際に、**schema.sqlとdata.sqlが自動的に実行される**ことでデータベースが初期化されます。
+
+**アーキテクチャ理解**:
+```
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+  ↓
+Spring Bootアプリケーション起動
+  ↓
+spring.sql.init.mode=embedded により schema.sql + data.sql 実行
+  ↓
+H2インメモリDB（jdbc:h2:mem:testdb）が初期化される
+  ↓
+Webアプリケーションがこのデータベースを使用
+  ↓
+テストコード（Selenide）がWebアプリケーションにHTTPリクエスト
+```
+
+**@Sqlの制限（E2Eテストでは無効）**:
+- `@BeforeEach @Sql(scripts = {"/schema.sql", "/data.sql"})` は**E2Eテストでは意味がない**
+- **理由**: @Sqlはテストコードのトランザクションで実行されるため、**Webアプリケーションのデータベース接続には影響しない**
+- Webアプリケーションは別スレッド・別トランザクションで動作しており、テストコードとは完全に独立している
+
+**正しい理解**:
+```java
+// ❌ 誤解: @Sqlでテストメソッドごとにデータベースをリセットできる
+@BeforeEach
+@Sql(scripts = {"/schema.sql", "/data.sql"})
+void resetDatabase() {
+    // これはテストコードのトランザクションにのみ影響し、
+    // Webアプリケーションのデータベース接続には一切影響しない
+}
+
+// ✅ 現実: Spring Boot起動時に1度だけschema.sql + data.sqlが実行される
+// テストクラス単位でSpring Bootが起動するため、テストクラス間ではDBがリセットされる
+// 同一テストクラス内のテストメソッド間では、DBの状態が引き継がれる
+```
+
+#### テストメソッド間の独立性確保（重要）
+
+**原則**: 各テストメソッドで**異なるユーザー**を使用することで、テストメソッド間の独立性を確保する
+
+**理由**:
+- login_attemptテーブルのエントリは**ユーザー単位**で管理される
+- 同じユーザーを複数のテストメソッドで使用すると、ログイン試行回数やロック状態が引き継がれる
+- **異なるユーザー**を使用すれば、ログイン試行回数やロック状態が互いに影響しない
+
+**実装例**:
+```java
+@DisplayName("E2E: ログイン・ログアウト機能")
+class LoginLogoutE2ETest extends E2ETestBase {
+    
+    @Test
+    @DisplayName("正常系: ログインできる")
+    void testSuccessfulLogin() {
+        login("john.doe@example.com", "password");  // john.doeを使用
+        $("#page-title").shouldHave(text("My Page"));
+    }
+    
+    @Test
+    @DisplayName("異常系: パスワード間違いでエラー")
+    void testLoginWithWrongPassword() {
+        login("jane.doe@example.com", "wrongpassword");  // jane.doeを使用
+        $("#error-message").shouldBe(visible);
+    }
+    
+    @Test
+    @DisplayName("正常系: ログアウトできる")
+    void testSuccessfulLogout() {
+        login("alice.smith@example.com", "password");  // alice.smithを使用
+        logout();
+        $("#page-title").shouldHave(text("Welcome to the Spring Boot Application!"));
+    }
+    
+    @Test
+    @DisplayName("異常系: 5回失敗でアカウントロック")
+    void testAccountLockAfterMultipleFailedAttempts() {
+        for (int i = 0; i < 5; i++) {
+            login("bob.johnson@example.com", "wrongpassword");  // bob.johnsonを使用（ロックされる）
+        }
+        login("bob.johnson@example.com", "password");
+        $("#page-title").shouldHave(text("Account Locked"));
+    }
+}
+```
+
+**重要**:
+- **@Order不要**: 異なるユーザーを使用すれば、テストメソッドの実行順序は関係ない
+- **ランダム実行対応**: JUnitのデフォルト動作（ランダム実行）でも問題ない
+- **data.sqlの準備**: 16ユーザー（john.doe, jane.doe, alice.smith, bob.johnson, charlie.brown等）が利用可能
+
+#### テストデータの準備
+```java
+// data.sqlに既存データを用意（パスワードは全て"password"）
+INSERT INTO customer (email, password, name, registration_date, birth_date, phone_number, address)
+VALUES ('john.doe@example.com', '$2a$10$...', 'John Doe', ...),
+       ('jane.doe@example.com', '$2a$10$...', 'Jane Doe', ...),
+       ('alice.smith@example.com', '$2a$10$...', 'Alice Smith', ...);
+
+// テストで異なるユーザーを使用
+@Test
+void testA() { login("john.doe@example.com", "password"); }
+
+@Test
+void testB() { login("jane.doe@example.com", "password"); }
+
+@Test
+void testC() { login("alice.smith@example.com", "password"); }
+```
+
+### 9. アサーション戦略
+
+#### ページ検証の優先順位
+```java
+// 1. ページタイトル検証（画面遷移の確認）
+$("#page-title").shouldHave(text("Confirm Registration"));
+
+// 2. 主要コンテンツ検証（データの確認）
+$("#confirm-email").shouldHave(text("test@example.com"));
+$("#confirm-name").shouldHave(text("Test User"));
+
+// 3. ボタン存在確認（UI要素の確認）
+$$("button[type=submit]").findBy(text("Back")).should(exist);
+
+// 4. データベース検証（永続化の確認）
+var customer = customerRepository.findByEmail("test@example.com");
+assertThat(customer).isPresent();
+assertThat(customer.get().getName()).isEqualTo("Test User");
+```
+
+#### エラー画面検証パターン
+```java
+// ビジネス例外（customer-registration-error.html等）
+$("#page-title").shouldHave(text("Error"));
+$("#error-message").shouldBe(visible);
+$("#error-message").shouldHave(text("未成年の登録はできません。"));
+
+// システムエラー（error/500.html）
+$("#page-title").shouldHave(text("500 - Internal Server Error"));
+$("#error-message").shouldBe(visible);
+
+// 汎用エラー（error.html）
+$("#page-title").shouldHave(text("Error"));
+$("#error-message").shouldBe(visible);
+```
+
+**重要**: テンプレートは「10. テンプレート（Thymeleaf）> HTML要素のid属性付与原則」に従い作成されていること
+
+### 10. メール検証パターン
+
+#### GreenMailによるメール検証
+```java
+@Test
+@DisplayName("メール送信が成功する")
+void testEmailSending() {
+    // メール送信処理を実行
+    passwordResetService.sendResetLink("test@example.com");
+    
+    // メール受信検証
+    assertThat(getReceivedEmailCount()).isEqualTo(1);
+    assertThat(getLastEmailSubject()).isEqualTo("Password Reset");
+    assertThat(getLastEmailBody()).contains("http://localhost");
+}
+```
+
+**重要**:
+- `getReceivedEmailCount()`、`getLastEmailSubject()`、`getLastEmailBody()`はE2ETestBaseの共通メソッド
+- 各テスト後にメールボックスは自動クリア
+
+### 11. 設定外部化（application.yml）
+
+#### テスト用設定ファイル（src/test/resources/application.yml）
+```yaml
+# GreenMail設定（本番用Configを無効化）
+app:
+  greenmail:
+    enabled: false  # E2ETestBaseで動的ポートのGreenMailを起動
+
+# Selenide設定（プロパティベース）
+app:
+  e2e:
+    selenide:
+      browser-type: EDGE
+      headless: true
+      timeout: 10000
+      page-load-timeout: 30000
+      screenshots: true
+      save-page-source: false
+```
+
+#### SelenidePropertiesクラス
+```java
+@Data
+@ConfigurationProperties(prefix = "app.e2e.selenide")
+public class SelenideProperties {
+    private BrowserType browserType = BrowserType.EDGE;
+    private boolean headless = true;
+    private long timeout = 10000L;
+    private long pageLoadTimeout = 30000L;
+    private boolean screenshots = true;
+    private boolean savePageSource = false;
+    
+    public static enum BrowserType {
+        EDGE("edge"), CHROME("chrome"), FIREFOX("firefox");
+        
+        private final String selenideName;
+        
+        BrowserType(String selenideName) {
+            this.selenideName = selenideName;
+        }
+        
+        public String getSelenideName() {
+            return selenideName;
+        }
+    }
+}
+```
+
+### 12. バージョン要件
+
+#### pom.xml
+```xml
+<properties>
+    <selenide.version>7.14.0</selenide.version>
+    <webdrivermanager.version>6.3.3</webdrivermanager.version>
+</properties>
+
+<dependencies>
+    <dependency>
+        <groupId>com.codeborne</groupId>
+        <artifactId>selenide</artifactId>
+        <version>${selenide.version}</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.github.bonigarcia</groupId>
+        <artifactId>webdrivermanager</artifactId>
+        <version>${webdrivermanager.version}</version>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+**重要**:
+- **Selenide 7.14.0+**: `withDate()`メソッド使用のため必須
+- **WebDriverManager 6.3.3+**: Edge/Chrome/Firefoxの最新ドライバー対応
+
+### 13. テスト実行
+
+#### コマンドライン実行
+```bash
+# 全E2Eテスト実行
+mvn test -Dtest=*E2ETest
+
+# 特定のテストクラス実行
+mvn test -Dtest=CustomerRegistrationE2ETest
+
+# 特定のテストメソッド実行
+mvn test -Dtest=CustomerRegistrationE2ETest#testSuccessfulRegistrationFlow
+
+# ヘッドレスモード無効化（デバッグ用）
+mvn test -Dtest=CustomerRegistrationE2ETest -Dapp.e2e.selenide.headless=false
+```
+
+### 14. トラブルシューティング
+
+#### よくある問題と解決方法
+
+**問題1**: `Element not found {#element-id}`
+- **原因**: ページ遷移が完了していない
+- **解決**: 次画面の要素を`shouldHave()`で検証（暗黙的待機）
+```java
+$("button[type=submit]").click();
+$("#page-title").shouldHave(text("Next Page"));  // 遷移完了を待機
+```
+
+**問題2**: `Element not found {form.findBy(attribute action="...")}`
+- **原因**: 確認画面のフォーム構造で`attribute()`セレクタが動作しない
+- **解決**: `$$("button[type=submit]").findBy(text("..."))`を使用
+```java
+// ❌ 動作しない
+$$("form").findBy(attribute("action", "/register/register"))
+    .$("button[type=submit]").click();
+
+// ✅ 動作する
+$$("button[type=submit]").findBy(text("Register")).click();
+```
+
+**問題3**: `<input type="date">`に値が入力されない
+- **原因**: 通常の`setValue()`では動作しない
+- **解決**: `withDate()`を使用
+```java
+// ❌ 動作しない
+$("#birthDate").setValue("1990-01-01");
+
+// ✅ 動作する
+$("#birthDate").setValue(withDate(LocalDate.of(1990, 1, 1)));
+```
+
+**問題4**: テストが不安定（時々失敗する）
+- **原因**: 明示的な`sleep()`や不適切な待機戦略
+- **解決**: `shouldHave()`による暗黙的待機に統一
+```java
+// ❌ 不安定
+$("button[type=submit]").click();
+Thread.sleep(2000);
+
+// ✅ 安定
+$("button[type=submit]").click();
+$("#page-title").shouldHave(text("Next Page"));
+```
+
+**問題5**: WebDriverが起動しない
+- **原因**: WebDriverManagerのキャッシュ問題
+- **解決**: キャッシュクリア
+```bash
+rm -rf target/.wdm
+mvn clean test -Dtest=CustomerRegistrationE2ETest
+```
+
+### 15. ベストプラクティスまとめ
+
+#### 推奨パターン
+- ✅ ID優先のセレクタ戦略（`$("#element-id")`）
+- ✅ text()でボタン特定（`$$("button[type=submit]").findBy(text("Register"))`）
+- ✅ `withDate()`で日付入力（`$("#birthDate").setValue(withDate(...))`）
+- ✅ `shouldHave()`による暗黙的待機（明示的sleep不要）
+- ✅ 各テスト後の自動クリーンアップ（ブラウザ・DB・メール）
+- ✅ データベースリセット（`@Sql`で毎回初期化）
+- ✅ 設定外部化（`application.yml`でSelenide設定管理）
+- ✅ ログ記録（セットアップ・クリーンアップ・重要操作）
+
+#### 禁止パターン
+- ❌ `attribute()`セレクタでボタンクリック
+- ❌ 文字列での日付入力（`setValue("1990-01-01")`）
+- ❌ JavaScriptによる値設定（`executeJavaScript(...)`）
+- ❌ 明示的sleep（`Thread.sleep(...)`）
+- ❌ ワイルドカードインポート
+- ❌ 未使用インポート放置
+- ❌ ラッパーメソッド作成（`getPageTitle()`等、Selenideで直接取得可能）
+
+#### コードレビューチェックリスト
+- [ ] `withDate()`を使用しているか（`<input type="date">`）
+- [ ] `$$("button[type=submit]").findBy(text(...))`でボタンクリックしているか
+- [ ] ページ遷移後に`shouldHave()`で次画面要素を検証しているか
+- [ ] 明示的な`sleep()`を使用していないか
+- [ ] すべてのインポートが使用されているか（未使用インポートなし）
+- [ ] 意味のある要素に`id`属性が付与されているか（ページタイトル、エラーメッセージ等）
+- [ ] テストメソッド名と`@DisplayName`が一致しているか
+
+---
 

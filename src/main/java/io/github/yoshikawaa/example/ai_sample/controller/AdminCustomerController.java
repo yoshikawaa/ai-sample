@@ -161,7 +161,7 @@ public class AdminCustomerController {
         customer.setPhoneNumber(form.getPhoneNumber());
         customer.setAddress(form.getAddress());
         customer.setRegistrationDate(LocalDate.now());
-        customer.setRole(form.getRole());
+        customer.setRole(Customer.Role.USER);
 
         customerService.registerCustomer(customer);
 
@@ -191,7 +191,6 @@ public class AdminCustomerController {
         form.setBirthDate(customer.getBirthDate());
         form.setPhoneNumber(customer.getPhoneNumber());
         form.setAddress(customer.getAddress());
-        form.setRole(customer.getRole());
         
         model.addAttribute("adminCustomerEditForm", form);
         model.addAttribute("email", email);
@@ -234,7 +233,6 @@ public class AdminCustomerController {
         customer.setBirthDate(form.getBirthDate());
         customer.setPhoneNumber(form.getPhoneNumber());
         customer.setAddress(form.getAddress());
-        customer.setRole(form.getRole());
 
         customerService.updateCustomerInfo(customer);
 

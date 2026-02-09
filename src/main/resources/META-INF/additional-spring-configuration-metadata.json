@@ -23,5 +23,35 @@
     "name": "app.security.account-unlock.host-url",
     "type": "java.lang.String",
     "description": "アプリケーションのホストURL（例: http://localhost:8080）"
+  },
+  {
+    "name": "app.e2e.selenide.browser-type",
+    "type": "io.github.yoshikawaa.example.ai_sample.e2e.config.SelenideProperties$BrowserType",
+    "description": "E2Eテストで使用するブラウザ種別（EDGE, CHROME, FIREFOX, デフォルト: EDGE）"
+  },
+  {
+    "name": "app.e2e.selenide.headless",
+    "type": "java.lang.Boolean",
+    "description": "E2Eテストでヘッドレスモードを使用するか（デフォルト: true）"
+  },
+  {
+    "name": "app.e2e.selenide.timeout",
+    "type": "java.lang.Long",
+    "description": "要素待機タイムアウト（ミリ秒, デフォルト: 10000）"
+  },
+  {
+    "name": "app.e2e.selenide.page-load-timeout",
+    "type": "java.lang.Long",
+    "description": "ページロードタイムアウト（ミリ秒, デフォルト: 30000）"
+  },
+  {
+    "name": "app.e2e.selenide.screenshots",
+    "type": "java.lang.Boolean",
+    "description": "失敗時のスクリーンショット取得の有効化（デフォルト: true）"
+  },
+  {
+    "name": "app.e2e.selenide.save-page-source",
+    "type": "java.lang.Boolean",
+    "description": "失敗時のHTMLソース保存の有効化（デフォルト: false）"
   }
 ]}

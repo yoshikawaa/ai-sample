@@ -8,38 +8,33 @@
     <div th:replace="~{fragments/nav :: nav(${true})}"></div>
     <div class="container mx-auto px-4 flex items-center justify-center min-h-[80dvh]">
         <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md mx-auto">
-            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Confirm Edit</h1>
+            <h1 id="page-title" class="text-3xl font-bold text-center text-gray-800 mb-6">Confirm Edit</h1>
             <p class="text-sm text-gray-600 text-center mb-4">以下の内容で更新します。よろしいですか？</p>
             <form th:object="${adminCustomerEditForm}" class="space-y-4">
                 <!-- Email Field (読み取り専用) -->
                 <div>
                     <label class="block text-gray-700 font-medium">Email</label>
-                    <p class="text-gray-900" th:text="${email}">email</p>
+                    <p id="confirm-email" class="text-gray-900" th:text="${email}">email</p>
                 </div>
                 <!-- Name Field -->
                 <div>
                     <label class="block text-gray-700 font-medium">Name</label>
-                    <p class="text-gray-900" th:text="*{name}">name</p>
+                    <p id="confirm-name" class="text-gray-900" th:text="*{name}">name</p>
                 </div>
                 <!-- Birth Date Field -->
                 <div>
                     <label class="block text-gray-700 font-medium">Birth Date</label>
-                    <p class="text-gray-900" th:text="*{birthDate}">birth date</p>
+                    <p id="confirm-birthDate" class="text-gray-900" th:text="*{birthDate}">birth date</p>
                 </div>
                 <!-- Phone Number Field -->
                 <div>
                     <label class="block text-gray-700 font-medium">Phone Number</label>
-                    <p class="text-gray-900" th:text="*{phoneNumber}">phone number</p>
+                    <p id="confirm-phoneNumber" class="text-gray-900" th:text="*{phoneNumber}">phone number</p>
                 </div>
                 <!-- Address Field -->
                 <div>
                     <label class="block text-gray-700 font-medium">Address</label>
-                    <p class="text-gray-900" th:text="*{address}">address</p>
-                </div>
-                <!-- Role Field -->
-                <div>
-                    <label class="block text-gray-700 font-medium">Role</label>
-                    <p class="text-gray-900" th:text="*{role}">role</p>
+                    <p id="confirm-address" class="text-gray-900" th:text="*{address}">address</p>
                 </div>
             </form>
                 <!-- Actions -->
@@ -51,7 +46,6 @@
                             <input type="hidden" th:field="*{birthDate}">
                             <input type="hidden" th:field="*{phoneNumber}">
                             <input type="hidden" th:field="*{address}">
-                            <input type="hidden" th:field="*{role}">
                             <button type="submit" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Back</button>
                         </form>
                         <!-- Update ボタン -->
@@ -60,7 +54,6 @@
                             <input type="hidden" th:field="*{birthDate}">
                             <input type="hidden" th:field="*{phoneNumber}">
                             <input type="hidden" th:field="*{address}">
-                            <input type="hidden" th:field="*{role}">
                             <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Update</button>
                         </form>
                     </div>

@@ -522,7 +522,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "2000-01-01");
             params.add("phoneNumber", "123-456-7890");
             params.add("address", "123 Main St");
-            params.add("role", "USER");
 
             mockMvc.perform(post("/admin/customers/registration-confirm")
                     .params(params)
@@ -543,7 +542,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "2000-01-01");
             params.add("phoneNumber", "");
             params.add("address", "");
-            params.add("role", "USER");
 
             mockMvc.perform(post("/admin/customers/registration-confirm")
                     .params(params)
@@ -566,7 +564,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "2000-01-01");
             params.add("phoneNumber", "123-456-7890");
             params.add("address", "123 Main St");
-            params.add("role", "USER");
 
             mockMvc.perform(post("/admin/customers/registration")
                     .params(params)
@@ -589,7 +586,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "2000-01-01");
             params.add("phoneNumber", "");
             params.add("address", "");
-            params.add("role", "USER");
 
             mockMvc.perform(post("/admin/customers/registration")
                     .params(params)
@@ -613,7 +609,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", LocalDate.now().minusYears(10).toString());
             params.add("phoneNumber", "123-456-7890");
             params.add("address", "123 Main St");
-            params.add("role", "USER");
 
             mockMvc.perform(post("/admin/customers/registration")
                     .params(params)
@@ -644,7 +639,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "2000-01-01");
             params.add("phoneNumber", "123-456-7890");
             params.add("address", "123 Main St");
-            params.add("role", "USER");
 
             mockMvc.perform(post("/admin/customers/registration-input")
                     .params(params)
@@ -707,7 +701,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "1990-05-20");
             params.add("phoneNumber", "987-654-3210");
             params.add("address", "456 Elm St");
-            params.add("role", "ADMIN");
 
             mockMvc.perform(post("/admin/customers/test@example.com/edit")
                     .params(params)
@@ -727,7 +720,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "1990-05-20");
             params.add("phoneNumber", "987-654-3210");
             params.add("address", "456 Elm St");
-            params.add("role", "ADMIN");
 
             mockMvc.perform(post("/admin/customers/test@example.com/edit-confirm")
                     .params(params)
@@ -746,7 +738,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "1990-05-20");
             params.add("phoneNumber", "");
             params.add("address", "");
-            params.add("role", "ADMIN");
 
             mockMvc.perform(post("/admin/customers/test@example.com/edit-confirm")
                     .params(params)
@@ -765,7 +756,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "1990-05-20");
             params.add("phoneNumber", "987-654-3210");
             params.add("address", "456 Elm St");
-            params.add("role", "ADMIN");
 
             mockMvc.perform(post("/admin/customers/test@example.com/edit-input")
                     .params(params)
@@ -796,7 +786,6 @@ class AdminCustomerControllerTest {
             params.add("birthDate", "1990-05-20");
             params.add("phoneNumber", "");
             params.add("address", "");
-            params.add("role", "ADMIN");
 
             mockMvc.perform(post("/admin/customers/test@example.com/edit")
                     .params(params)
