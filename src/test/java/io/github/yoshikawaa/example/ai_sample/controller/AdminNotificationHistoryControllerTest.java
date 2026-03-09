@@ -18,7 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -30,6 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import io.github.yoshikawaa.example.ai_sample.config.WebConfig;
 import io.github.yoshikawaa.example.ai_sample.model.NotificationHistory;
 import io.github.yoshikawaa.example.ai_sample.model.NotificationHistorySearchForm;
 import io.github.yoshikawaa.example.ai_sample.model.NotificationTypeCount;
@@ -39,7 +40,7 @@ import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 import io.github.yoshikawaa.example.ai_sample.service.NotificationHistoryService;
 
 @WebMvcTest(AdminNotificationHistoryController.class)
-@Import(SecurityConfig.class)
+@Import({ WebConfig.class, SecurityConfig.class })
 @DisplayName("AdminNotificationHistoryController のテスト")
 class AdminNotificationHistoryControllerTest {
 
