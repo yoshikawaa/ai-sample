@@ -2,6 +2,7 @@ package io.github.yoshikawaa.example.ai_sample.controller;
 
 
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import io.github.yoshikawaa.example.ai_sample.config.WebConfig;
 import io.github.yoshikawaa.example.ai_sample.service.AccountLockService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginAttemptService;
 import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
@@ -9,7 +10,7 @@ import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,7 +27,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.LinkedMultiValueMap;
 
 @WebMvcTest(AccountUnlockController.class)
-@Import(SecurityConfig.class) // セキュリティ設定をインポート
+@Import({ WebConfig.class, SecurityConfig.class })
 @DisplayName("AccountUnlockController のテスト")
 class AccountUnlockControllerTest {
 

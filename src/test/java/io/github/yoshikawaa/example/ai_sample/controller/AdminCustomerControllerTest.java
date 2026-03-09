@@ -27,7 +27,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -42,6 +42,7 @@ import org.springframework.util.MultiValueMap;
 
 import io.github.yoshikawaa.example.ai_sample.config.GlobalExceptionHandler;
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import io.github.yoshikawaa.example.ai_sample.config.WebConfig;
 import io.github.yoshikawaa.example.ai_sample.exception.CustomerNotFoundException;
 import io.github.yoshikawaa.example.ai_sample.exception.UnderageCustomerException;
 import io.github.yoshikawaa.example.ai_sample.model.Customer;
@@ -52,7 +53,7 @@ import io.github.yoshikawaa.example.ai_sample.service.LoginHistoryService;
 import io.github.yoshikawaa.example.ai_sample.service.PasswordResetService;
 
 @WebMvcTest(AdminCustomerController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class}) // セキュリティ設定とグローバルエラーハンドラーをインポート
+@Import({ WebConfig.class, SecurityConfig.class, GlobalExceptionHandler.class })
 @DisplayName("AdminCustomerController のテスト")
 class AdminCustomerControllerTest {
 

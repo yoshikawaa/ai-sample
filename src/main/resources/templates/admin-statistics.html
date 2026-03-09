@@ -134,12 +134,40 @@
     </div>
     
     <!-- EChartsグラフ描画 -->
-    <script th:inline="javascript">
-        // データ取得（Thymeleafから）
-        const customerData = /*[[${statistics.customerStatistics}]]*/ [];
-        const loginData = /*[[${statistics.loginStatistics}]]*/ [];
-        const usageData = /*[[${statistics.usageStatistics}]]*/ [];
-        
+        <div>
+            <script th:inline="javascript">
+                // データ取得（Thymeleafから）
+                const customerDates = [
+                    <th:block th:each="stat, statStat : ${statistics.customerStatistics}">
+                        <th:block th:if="${statStat.index > 0}">,</th:block>"<span th:text="${#temporals.format(stat.date, 'yyyy-MM-dd')}"></span>"
+                    </th:block>
+                ];
+                const customerCounts = [
+                    <th:block th:each="stat, statStat : ${statistics.customerStatistics}">
+                        <th:block th:if="${statStat.index > 0}">,</th:block><span th:text="${stat.count}"></span>
+                    </th:block>
+                ];
+                const loginStatuses = [
+                    <th:block th:each="stat, statStat : ${statistics.loginStatistics}">
+                        <th:block th:if="${statStat.index > 0}">,</th:block>"<span th:text="${stat.status}"></span>"
+                    </th:block>
+                ];
+                const loginCounts = [
+                    <th:block th:each="stat, statStat : ${statistics.loginStatistics}">
+                        <th:block th:if="${statStat.index > 0}">,</th:block><span th:text="${stat.count}"></span>
+                    </th:block>
+                ];
+                const usageTypes = [
+                    <th:block th:each="stat, statStat : ${statistics.usageStatistics}">
+                        <th:block th:if="${statStat.index > 0}">,</th:block>"<span th:text="${stat.actionType}"></span>"
+                    </th:block>
+                ];
+                const usageCounts = [
+                    <th:block th:each="stat, statStat : ${statistics.usageStatistics}">
+                        <th:block th:if="${statStat.index > 0}">,</th:block><span th:text="${stat.count}"></span>
+                    </th:block>
+                ];
+
         // 顧客数推移グラフ
         const customerChartDom = document.getElementById('customerChart');
         const customerChart = echarts.init(customerChartDom);
@@ -150,7 +178,7 @@
             },
             xAxis: {
                 type: 'category',
-                data: customerData.map(item => item.date) // LocalDate は ISO 文字列 (yyyy-MM-dd) として扱われる
+                data: customerDates
             },
             yAxis: {
                 type: 'value',
@@ -160,15 +188,15 @@
                 name: 'Customers',
                 type: 'line',
                 smooth: true,
-                data: customerData.map(item => item.count)
+                data: customerCounts
             }]
         };
         customerChart.setOption(customerOption);
-        
+
         // ログイン統計グラフ
         const loginChartDom = document.getElementById('loginChart');
         const loginChart = echarts.init(loginChartDom);
-        
+
         // ステータス別の色定義
         const statusColors = {
             'SUCCESS': '#10B981',
@@ -177,7 +205,7 @@
             'SESSION_EXCEEDED': '#8B5CF6',
             'LOGOUT': '#6B7280'
         };
-        
+
         const loginOption = {
             tooltip: {
                 trigger: 'axis',
@@ -187,7 +215,7 @@
             },
             xAxis: {
                 type: 'category',
-                data: loginData.map(item => item.status)
+                data: loginStatuses
             },
             yAxis: {
                 type: 'value',
@@ -196,16 +224,16 @@
             series: [{
                 name: 'Login',
                 type: 'bar',
-                data: loginData.map(item => ({
-                    value: item.count,
+                data: loginCounts.map((count, idx) => ({
+                    value: count,
                     itemStyle: {
-                        color: statusColors[item.status] || '#3B82F6'
+                        color: statusColors[loginStatuses[idx]] || '#3B82F6'
                     }
                 }))
             }]
         };
         loginChart.setOption(loginOption);
-        
+
         // 利用状況グラフ
         const usageChartDom = document.getElementById('usageChart');
         const usageChart = echarts.init(usageChartDom);
@@ -219,7 +247,7 @@
             },
             xAxis: {
                 type: 'category',
-                data: usageData.map(item => item.actionType),
+                data: usageTypes,
                 axisLabel: {
                     rotate: 45,
                     interval: 0
@@ -232,17 +260,18 @@
             series: [{
                 name: 'Usage',
                 type: 'bar',
-                data: usageData.map(item => item.count)
+                data: usageCounts
             }]
         };
         usageChart.setOption(usageOption);
-        
+
         // レスポンシブ対応
         window.addEventListener('resize', function() {
             customerChart.resize();
             loginChart.resize();
             usageChart.resize();
         });
-    </script>
+      </script>
+    </div>
 </body>
 </html>

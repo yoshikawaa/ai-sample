@@ -1,6 +1,7 @@
 package io.github.yoshikawaa.example.ai_sample.controller;
 
 import io.github.yoshikawaa.example.ai_sample.config.SecurityConfig;
+import io.github.yoshikawaa.example.ai_sample.config.WebConfig;
 import io.github.yoshikawaa.example.ai_sample.model.CustomerStatistics;
 import io.github.yoshikawaa.example.ai_sample.model.LoginHistory;
 import io.github.yoshikawaa.example.ai_sample.model.LoginStatistics;
@@ -13,7 +14,7 @@ import io.github.yoshikawaa.example.ai_sample.service.StatisticsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -34,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(AdminStatisticsController.class)
-@Import(SecurityConfig.class)
+@Import({ WebConfig.class, SecurityConfig.class })
 @DisplayName("AdminStatisticsController のテスト")
 class AdminStatisticsControllerTest {
 
